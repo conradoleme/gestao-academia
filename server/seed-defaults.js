@@ -59,6 +59,7 @@ function buildDefaultTransactions() {
     status: 'a_pagar',
     tipo: 'saida',
     origem: 'seed_padrao',
+    recorrente: true,
   }));
 }
 

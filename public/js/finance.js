@@ -24,6 +24,7 @@ function renderFinancePage() {
         </div>
         <div class="btn-row" style="margin:0;">
           <button class="btn btn-secondary" onclick="openCategoryManager()">⚙️ Categorias</button>
+          <button class="btn btn-secondary" onclick="gerarRecorrentesAgora()">🔁 Gerar Recorrentes do Mês</button>
           <button class="btn btn-primary" onclick="openTransactionForm()">+ Novo Lançamento</button>
         </div>
       </div>
@@ -102,6 +103,7 @@ function transactionRow(t) {
     <td class="${isEntrada?'pos':'neg'}" style="font-weight:700;">${fmtFull(t.valor)}</td>
     <td><button class="status-toggle ${badgeCls}" title="Clique para alternar" onclick="toggleTransactionStatus('${t.id}')">${label}</button></td>
     <td>
+      <button class="btn-icon" title="${t.recorrente ? 'Recorrente — clique para desativar' : 'Marcar como recorrente (repete todo mês)'}" style="opacity:${t.recorrente?'1':'0.35'};" onclick="toggleTransactionRecorrente('${t.id}')">🔁</button>
       <button class="btn-icon" title="Editar" onclick="openTransactionForm('${t.id}')">✏️</button>
       <button class="btn-icon" title="Excluir" onclick="handleDeleteTransaction('${t.id}')">🗑️</button>
     </td>
@@ -139,6 +141,21 @@ async function updateTransactionGrupo(id, novoGrupo) {
 async function updateTransactionCategoria(id, novaCategoria) {
   await updateTransaction(id, { categoria: novaCategoria });
   showToast('Categoria atualizada.');
+  renderFinancePage();
+  if (typeof refreshDashboard === 'function') refreshDashboard();
+}
+
+async function toggleTransactionRecorrente(id) {
+  const t = data.transactions.find(x => x.id === id);
+  if (!t) return;
+  await updateTransaction(id, { recorrente: !t.recorrente });
+  showToast(t.recorrente ? 'Marcado como recorrente.' : 'Recorrência removida.');
+  renderFinancePage();
+}
+
+async function gerarRecorrentesAgora() {
+  const n = await ensureRecorrentesForMonth(financeSelectedMonth);
+  showToast(n > 0 ? `${n} lançamento(s) recorrente(s) gerado(s) para ${monthLabel(financeSelectedMonth)}.` : 'Nenhum lançamento novo — já estava atualizado.');
   renderFinancePage();
   if (typeof refreshDashboard === 'function') refreshDashboard();
 }
@@ -197,6 +214,10 @@ function openTransactionForm(id) {
         <option value="pago" ${t.status==='pago'?'selected':''}>Pago</option>
       </select>
     </div>
+    <div class="form-group" style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="f-tx-recorrente" style="width:auto;" ${t.recorrente?'checked':''}>
+      <label style="margin:0;">🔁 Recorrente (repete automaticamente todo mês)</label>
+    </div>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="saveTransactionForm(${id ? `'${id}'` : null})">Salvar</button>
       <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
@@ -221,6 +242,7 @@ async function saveTransactionForm(id) {
     descricao: document.getElementById('f-tx-desc').value.trim(),
     valor: parseCurrencyValue(document.getElementById('f-tx-valor').value),
     status: document.getElementById('f-tx-status').value,
+    recorrente: document.getElementById('f-tx-recorrente').checked,
   };
   if (!patch.data) { showToast('Informe a data do lançamento.', 'error'); return; }
   if (patch.valor <= 0) { showToast('Informe um valor maior que zero.', 'error'); return; }

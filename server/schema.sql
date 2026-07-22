@@ -64,6 +64,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   tipo VARCHAR(10) NOT NULL,
   aluno_id INT,
   origem VARCHAR(30),
+  recorrente TINYINT(1) NOT NULL DEFAULT 0,
   CONSTRAINT fk_transactions_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
   CONSTRAINT fk_transactions_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE SET NULL,
   INDEX idx_transactions_academia_data (academia_id, data)

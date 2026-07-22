@@ -29,7 +29,7 @@ function txToJSON(r) {
     id: String(r.id), data: r.data, grupo: r.grupo, categoria: r.categoria, descricao: r.descricao || '',
     valor: Number(r.valor) || 0, status: r.status, tipo: r.tipo,
     alunoId: r.aluno_id === null || r.aluno_id === undefined ? null : String(r.aluno_id),
-    origem: r.origem || '',
+    origem: r.origem || '', recorrente: !!r.recorrente,
   };
 }
 

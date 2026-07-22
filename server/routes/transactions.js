@@ -14,9 +14,9 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'Dados incompletos para o lançamento.' });
   }
   const [result] = await pool.query(
-    `INSERT INTO transactions (academia_id, data, grupo, categoria, descricao, valor, status, tipo, aluno_id, origem)
-     VALUES (?,?,?,?,?,?,?,?,?,?)`,
-    [req.academiaId, t.data, t.grupo, t.categoria, t.descricao || null, t.valor || 0, t.status, t.tipo, t.alunoId || null, t.origem || null]
+    `INSERT INTO transactions (academia_id, data, grupo, categoria, descricao, valor, status, tipo, aluno_id, origem, recorrente)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?)`,
+    [req.academiaId, t.data, t.grupo, t.categoria, t.descricao || null, t.valor || 0, t.status, t.tipo, t.alunoId || null, t.origem || null, t.recorrente ? 1 : 0]
   );
   const [rows] = await pool.query('SELECT * FROM transactions WHERE id = ?', [result.insertId]);
   res.json(txToJSON(rows[0]));
@@ -25,9 +25,9 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const t = req.body;
   await pool.query(
-    `UPDATE transactions SET data=?, grupo=?, categoria=?, descricao=?, valor=?, status=?, tipo=?, aluno_id=?, origem=?
+    `UPDATE transactions SET data=?, grupo=?, categoria=?, descricao=?, valor=?, status=?, tipo=?, aluno_id=?, origem=?, recorrente=?
      WHERE id=? AND academia_id=?`,
-    [t.data, t.grupo, t.categoria, t.descricao || null, t.valor || 0, t.status, t.tipo, t.alunoId || null, t.origem || null, req.params.id, req.academiaId]
+    [t.data, t.grupo, t.categoria, t.descricao || null, t.valor || 0, t.status, t.tipo, t.alunoId || null, t.origem || null, t.recorrente ? 1 : 0, req.params.id, req.academiaId]
   );
   res.json({ ok: true });
 });

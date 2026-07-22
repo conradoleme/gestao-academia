@@ -261,6 +261,41 @@ async function ensureMensalidadesForMonth(yearMonth) {
   return created;
 }
 
+/* ---------------- Lançamentos recorrentes (despesas fixas repetidas todo mês) ---------------- */
+function recurringTemplates() {
+  // uma "série" recorrente é identificada por grupo+categoria+descrição; usa a
+  // ocorrência mais recente marcada como recorrente como modelo pro próximo mês.
+  const map = new Map();
+  data.transactions.filter(t => t.recorrente).forEach(t => {
+    const key = `${t.grupo}|${t.categoria}|${t.descricao || ''}`;
+    const existing = map.get(key);
+    if (!existing || t.data > existing.data) map.set(key, t);
+  });
+  return [...map.values()];
+}
+
+async function ensureRecorrentesForMonth(yearMonth) {
+  const [year, month] = yearMonth.split('-').map(Number);
+  const daysInMonth = new Date(year, month, 0).getDate();
+  let created = 0;
+
+  for (const tpl of recurringTemplates()) {
+    const already = data.transactions.some(t =>
+      t.grupo === tpl.grupo && t.categoria === tpl.categoria && (t.descricao||'') === (tpl.descricao||'') && monthKey(t.data) === yearMonth);
+    if (already) continue;
+
+    const dia = Math.min(Number(tpl.data.slice(-2)) || 5, daysInMonth);
+    const dataStr = `${yearMonth}-${String(dia).padStart(2,'0')}`;
+    await addTransaction({
+      data: dataStr, grupo: tpl.grupo, categoria: tpl.categoria, descricao: tpl.descricao,
+      valor: tpl.valor, status: tpl.tipo === 'entrada' ? 'a_receber' : 'a_pagar',
+      origem: 'auto-recorrente', recorrente: true,
+    });
+    created++;
+  }
+  return created;
+}
+
 function currentYearMonth() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -270,6 +305,7 @@ async function autoGenerateOnLoad() {
   const ym = currentYearMonth();
   if (!data.meta.generatedMonths.includes(ym)) {
     await ensureMensalidadesForMonth(ym);
+    await ensureRecorrentesForMonth(ym);
   }
 }
 

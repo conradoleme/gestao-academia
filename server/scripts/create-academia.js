@@ -53,9 +53,9 @@ async function main() {
   const transacoes = buildDefaultTransactions();
   for (const tx of transacoes) {
     await pool.query(
-      `INSERT INTO transactions (academia_id, data, grupo, categoria, descricao, valor, status, tipo, origem)
-       VALUES (?,?,?,?,?,?,?,?,?)`,
-      [result.insertId, tx.data, tx.grupo, tx.categoria, tx.descricao, tx.valor, tx.status, tx.tipo, tx.origem]
+      `INSERT INTO transactions (academia_id, data, grupo, categoria, descricao, valor, status, tipo, origem, recorrente)
+       VALUES (?,?,?,?,?,?,?,?,?,?)`,
+      [result.insertId, tx.data, tx.grupo, tx.categoria, tx.descricao, tx.valor, tx.status, tx.tipo, tx.origem, tx.recorrente ? 1 : 0]
     );
   }
   console.log(`${transacoes.length} lançamento(s) de despesa padrão criado(s).`);
