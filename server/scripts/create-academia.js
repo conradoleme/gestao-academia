@@ -1,6 +1,10 @@
 /* Cadastra uma nova academia (uso: uma vez por academia, por linha de comando).
    Exemplo:
      node server/scripts/create-academia.js --email=dono@academia.com --senha=SenhaForte123 --nome="GOUSHI Jiu Jitsu"
+
+   Passe --turmas-padrao=true se quiser já entrar com a grade de horários
+   original da GOUSHI (T730..T2000) em vez de começar sem nenhuma turma —
+   útil pra recriar a conta da GOUSHI depois da migração para login+MySQL.
 */
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
@@ -26,6 +30,15 @@ const DEFAULT_COBRANCA_TEMPLATES = [
     mensagem: 'Oi {nome}, sua mensalidade de {valor} está em aberto há {diasAtraso} dias (venceu em {vencimento}). Precisamos regularizar a situação — vamos conversar?' },
 ];
 
+const DEFAULT_TURMAS = [
+  { nome: 'T730',  horarios: [{dia:'Segunda',hora:'07:30'},{dia:'Quarta',hora:'07:30'},{dia:'Sexta',hora:'07:30'}], freqAnterior: 2, freqAtual: 2 },
+  { nome: 'T830',  horarios: [{dia:'Segunda',hora:'08:30'},{dia:'Quarta',hora:'08:30'},{dia:'Sexta',hora:'08:30'}], freqAnterior: 1, freqAtual: 1 },
+  { nome: 'T930',  horarios: [{dia:'Terça',hora:'09:30'},{dia:'Quinta',hora:'09:30'}], freqAnterior: 2, freqAtual: 2 },
+  { nome: 'T1600', horarios: [{dia:'Terça',hora:'16:00'},{dia:'Quinta',hora:'16:00'}], freqAnterior: 3, freqAtual: 3 },
+  { nome: 'T1615', horarios: [{dia:'Segunda',hora:'16:15'},{dia:'Quarta',hora:'16:15'}], freqAnterior: 3, freqAtual: 3 },
+  { nome: 'T2000', horarios: [{dia:'Segunda',hora:'20:00'},{dia:'Quarta',hora:'20:00'}], freqAnterior: 3, freqAtual: 3 },
+];
+
 function parseArgs() {
   const args = {};
   process.argv.slice(2).forEach(arg => {
@@ -36,7 +49,7 @@ function parseArgs() {
 }
 
 async function main() {
-  const { email, senha, nome } = parseArgs();
+  const { email, senha, nome, 'turmas-padrao': turmasPadrao } = parseArgs();
   if (!email || !senha) {
     console.error('Uso: node server/scripts/create-academia.js --email=dono@academia.com --senha=SenhaForte123 --nome="Nome da Academia"');
     process.exit(1);
@@ -54,6 +67,16 @@ async function main() {
      VALUES (?, ?, ?, ?, ?, ?)`,
     [email, senhaHash, nome || 'Minha Academia', JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES)]
   );
+
+  if (turmasPadrao === 'true' || turmasPadrao === '1') {
+    for (const t of DEFAULT_TURMAS) {
+      await pool.query(
+        `INSERT INTO turmas (academia_id, nome, horarios, freq_anterior, freq_atual) VALUES (?,?,?,?,?)`,
+        [result.insertId, t.nome, JSON.stringify(t.horarios), t.freqAnterior, t.freqAtual]
+      );
+    }
+    console.log(`${DEFAULT_TURMAS.length} turma(s) padrão criada(s).`);
+  }
 
   console.log(`Academia criada com sucesso! id=${result.insertId}, email=${email}`);
   process.exit(0);
