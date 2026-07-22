@@ -21,6 +21,25 @@ async function migrate() {
     await pool.query(statement);
   }
   console.log(`Schema aplicado (${statements.length} comando(s)).`);
+
+  await addColumnIfMissing('academias', 'status_pagamento', `VARCHAR(20) NOT NULL DEFAULT 'ativo'`);
+  await addColumnIfMissing('academias', 'valor_mensal', `DECIMAL(10,2) NOT NULL DEFAULT 0`);
+  await addColumnIfMissing('academias', 'proximo_vencimento', `DATE NULL`);
+}
+
+/* ALTER TABLE ... ADD COLUMN é seguro rodar de novo a cada boot só se a
+   coluna ainda não existir — tabelas criadas antes deste campo existir
+   (como a academia já em produção) precisam desse passo além do
+   CREATE TABLE IF NOT EXISTS, que não altera tabelas já existentes. */
+async function addColumnIfMissing(table, column, definition) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS total FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+    [table, column]
+  );
+  if (rows[0].total === 0) {
+    await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+    console.log(`Coluna ${table}.${column} adicionada.`);
+  }
 }
 
 module.exports = migrate;

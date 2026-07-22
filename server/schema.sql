@@ -16,6 +16,9 @@ CREATE TABLE IF NOT EXISTS academias (
   generated_months JSON NOT NULL,
   category_groups JSON NOT NULL,
   cobranca_templates JSON NOT NULL,
+  status_pagamento VARCHAR(20) NOT NULL DEFAULT 'ativo',
+  valor_mensal DECIMAL(10,2) NOT NULL DEFAULT 0,
+  proximo_vencimento DATE NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

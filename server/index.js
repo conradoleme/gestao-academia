@@ -36,11 +36,15 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-/* ---------------- Provisionamento (só eu, com a chave de admin) ---------------- */
-app.post('/admin/create-academia', async (req, res) => {
+/* ---------------- Painel de admin (só eu, com a chave de admin) ---------------- */
+function requireAdminKey(req, res, next) {
   if (!process.env.ADMIN_SETUP_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_SETUP_KEY) {
     return res.status(401).json({ error: 'Não autorizado.' });
   }
+  next();
+}
+
+app.post('/admin/create-academia', requireAdminKey, async (req, res) => {
   const { email, senha, nome, turmasPadrao } = req.body || {};
   if (!email || !senha) return res.status(400).json({ error: 'Informe email e senha.' });
 
@@ -68,6 +72,44 @@ app.post('/admin/create-academia', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erro ao criar academia.' });
+  }
+});
+
+app.get('/admin/academias', requireAdminKey, async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT a.id, a.nome, a.email, a.status_pagamento, a.valor_mensal, a.proximo_vencimento, a.created_at,
+        (SELECT COUNT(*) FROM students WHERE academia_id = a.id) AS total_alunos,
+        (SELECT COUNT(*) FROM turmas WHERE academia_id = a.id) AS total_turmas
+      FROM academias a ORDER BY a.created_at DESC
+    `);
+    res.json(rows.map(r => ({
+      id: r.id, nome: r.nome, email: r.email,
+      statusPagamento: r.status_pagamento, valorMensal: Number(r.valor_mensal) || 0,
+      proximoVencimento: r.proximo_vencimento, createdAt: r.created_at,
+      totalAlunos: r.total_alunos, totalTurmas: r.total_turmas,
+    })));
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao listar academias.' });
+  }
+});
+
+app.put('/admin/academias/:id/pagamento', requireAdminKey, async (req, res) => {
+  const { statusPagamento, valorMensal, proximoVencimento } = req.body || {};
+  const statusesValidos = ['ativo', 'pendente', 'inadimplente'];
+  if (statusPagamento && !statusesValidos.includes(statusPagamento)) {
+    return res.status(400).json({ error: 'Status de pagamento inválido.' });
+  }
+  try {
+    await pool.query(
+      `UPDATE academias SET status_pagamento = ?, valor_mensal = ?, proximo_vencimento = ? WHERE id = ?`,
+      [statusPagamento || 'ativo', valorMensal || 0, proximoVencimento || null, req.params.id]
+    );
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao atualizar pagamento.' });
   }
 });
 

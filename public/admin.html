@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Painel Admin — Gestão de Academias</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="admin-login-screen">
+  <div class="login-wrap">
+    <div class="card login-card">
+      <div class="logo" style="margin-bottom:2px;">🔑 Painel <span>Admin</span></div>
+      <p class="subtitle" style="margin-bottom:24px;">Acesso restrito — chave de administrador</p>
+      <div id="admin-login-error"></div>
+      <div class="form-group"><label>Chave de Admin</label><input type="password" id="admin-key-input" placeholder="••••••••"></div>
+      <button class="btn btn-primary" style="width:100%;margin-top:20px;" onclick="handleAdminLogin()">Entrar</button>
+    </div>
+  </div>
+</div>
+
+<div id="admin-app" style="display:none;">
+  <main class="main" style="max-width:1200px;margin:0 auto;">
+    <div class="section-header">
+      <div><h1>Painel Admin</h1><p class="subtitle" style="margin:0;">Controle de academias cadastradas e status de pagamento</p></div>
+    </div>
+
+    <div class="card-grid card-grid-4" id="admin-kpis" style="margin-bottom:24px;"></div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <h3 style="margin:0;">Academias Cadastradas</h3>
+        <button class="btn btn-secondary" onclick="loadAcademias()">🔄 Atualizar</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th style="text-align:left;">Academia</th><th>Alunos</th><th>Turmas</th>
+            <th>Status</th><th>Valor Mensal</th><th>Próx. Vencimento</th><th>Criada em</th><th>Ações</th>
+          </tr></thead>
+          <tbody id="admin-academias-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script src="js/helpers.js"></script>
+<script src="js/admin.js"></script>
+</body>
+</html>
