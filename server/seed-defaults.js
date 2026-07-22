@@ -31,4 +31,35 @@ const DEFAULT_TURMAS = [
   { nome: 'T2000', horarios: [{dia:'Segunda',hora:'20:00'},{dia:'Quarta',hora:'20:00'}], freqAnterior: 3, freqAtual: 3 },
 ];
 
-module.exports = { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS };
+/* Despesas mais comuns de uma academia de jiu-jitsu — pré-lançadas no mês
+   atual (valor 0, status "a pagar") para toda academia nova, já editável
+   direto na tela de Fluxo de Caixa, sem precisar cadastrar categoria por
+   categoria do zero. */
+const DEFAULT_DESPESAS = [
+  { categoria: 'ALUGUEL', dia: 5 },
+  { categoria: 'ÁGUA', dia: 10 },
+  { categoria: 'LUZ', dia: 10 },
+  { categoria: 'INTERNET', dia: 10 },
+  { categoria: 'TELEFONE', dia: 10 },
+  { categoria: 'PRO LABORE', dia: 5 },
+  { categoria: 'SALÁRIOS', dia: 5 },
+  { categoria: 'CONTABILIDADE', dia: 10 },
+];
+
+function buildDefaultTransactions() {
+  const now = new Date();
+  const ano = now.getFullYear();
+  const mes = String(now.getMonth() + 1).padStart(2, '0');
+  return DEFAULT_DESPESAS.map(({ categoria, dia }) => ({
+    data: `${ano}-${mes}-${String(dia).padStart(2, '0')}`,
+    grupo: 'despesasOperacionais',
+    categoria,
+    descricao: null,
+    valor: 0,
+    status: 'a_pagar',
+    tipo: 'saida',
+    origem: 'seed_padrao',
+  }));
+}
+
+module.exports = { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions };

@@ -9,7 +9,7 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
-const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS } = require('../seed-defaults');
+const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions } = require('../seed-defaults');
 
 function parseArgs() {
   const args = {};
@@ -49,6 +49,16 @@ async function main() {
     }
     console.log(`${DEFAULT_TURMAS.length} turma(s) padrão criada(s).`);
   }
+
+  const transacoes = buildDefaultTransactions();
+  for (const tx of transacoes) {
+    await pool.query(
+      `INSERT INTO transactions (academia_id, data, grupo, categoria, descricao, valor, status, tipo, origem)
+       VALUES (?,?,?,?,?,?,?,?,?)`,
+      [result.insertId, tx.data, tx.grupo, tx.categoria, tx.descricao, tx.valor, tx.status, tx.tipo, tx.origem]
+    );
+  }
+  console.log(`${transacoes.length} lançamento(s) de despesa padrão criado(s).`);
 
   console.log(`Academia criada com sucesso! id=${result.insertId}, email=${email}`);
   process.exit(0);

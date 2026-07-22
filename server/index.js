@@ -7,7 +7,7 @@ const bcrypt = require('bcryptjs');
 const migrate = require('./migrate');
 const pool = require('./db');
 const { requireAuth, login } = require('./auth');
-const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS } = require('./seed-defaults');
+const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions } = require('./seed-defaults');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
 const turmasRoutes = require('./routes/turmas');
@@ -66,6 +66,14 @@ app.post('/admin/create-academia', requireAdminKey, async (req, res) => {
           [result.insertId, t.nome, JSON.stringify(t.horarios), t.freqAnterior, t.freqAtual]
         );
       }
+    }
+
+    for (const tx of buildDefaultTransactions()) {
+      await pool.query(
+        `INSERT INTO transactions (academia_id, data, grupo, categoria, descricao, valor, status, tipo, origem)
+         VALUES (?,?,?,?,?,?,?,?,?)`,
+        [result.insertId, tx.data, tx.grupo, tx.categoria, tx.descricao, tx.valor, tx.status, tx.tipo, tx.origem]
+      );
     }
 
     res.json({ ok: true, id: result.insertId, email });
