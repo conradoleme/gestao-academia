@@ -83,9 +83,9 @@ function openStudentForm(id) {
       <div class="form-group"><label>Status</label>
         <select id="f-status"><option value="Ativo" ${s.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${s.status==='Inativo'?'selected':''}>Inativo</option></select>
       </div>
-      <div class="form-group"><label>Valor Mensalidade (R$)</label><input type="number" id="f-mensalidade" value="${s.valorMensalidade||0}" step="0.01"></div>
+      <div class="form-group"><label>Valor Mensalidade (R$)</label><input type="text" inputmode="decimal" id="f-mensalidade" value="${formatCurrencyValue(s.valorMensalidade||0)}"></div>
       <div class="form-group"><label>Dia Vencimento</label><input type="number" id="f-vencimento" value="${s.diaVencimento||''}" min="1" max="31"></div>
-      <div class="form-group"><label>Valor Matrícula (R$)</label><input type="number" id="f-matricula" value="${s.valorMatricula||0}" step="0.01"></div>
+      <div class="form-group"><label>Valor Matrícula (R$)</label><input type="text" inputmode="decimal" id="f-matricula" value="${formatCurrencyValue(s.valorMatricula||0)}"></div>
       <div class="form-group"><label>Mês Matrícula</label><select id="f-mes-matricula">${mesOptions}</select></div>
       <div class="form-group"><label>Dia Matrícula</label><input type="number" id="f-dia-matricula" value="${s.diaMatricula||1}" min="1" max="31"></div>
       <div class="form-group"><label>E-mail</label><input type="email" id="f-email" value="${escapeHtml(s.email||'')}" placeholder="aluno@email.com"></div>
@@ -97,6 +97,8 @@ function openStudentForm(id) {
       <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
     </div>
   `);
+  maskCurrencyInput(document.getElementById('f-mensalidade'));
+  maskCurrencyInput(document.getElementById('f-matricula'));
 }
 
 async function saveStudentForm(id) {
@@ -105,9 +107,9 @@ async function saveStudentForm(id) {
     turma: document.getElementById('f-turma').value,
     categoria: document.getElementById('f-categoria').value,
     status: document.getElementById('f-status').value,
-    valorMensalidade: parseFloat(document.getElementById('f-mensalidade').value) || 0,
+    valorMensalidade: parseCurrencyValue(document.getElementById('f-mensalidade').value),
     diaVencimento: parseInt(document.getElementById('f-vencimento').value) || null,
-    valorMatricula: parseFloat(document.getElementById('f-matricula').value) || 0,
+    valorMatricula: parseCurrencyValue(document.getElementById('f-matricula').value),
     mesMatricula: document.getElementById('f-mes-matricula').value,
     diaMatricula: parseInt(document.getElementById('f-dia-matricula').value) || 1,
     email: document.getElementById('f-email').value.trim(),

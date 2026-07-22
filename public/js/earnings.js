@@ -41,10 +41,10 @@ function renderGanhosPage() {
       <div class="card">
         <h3>💰 Ticket Médio</h3>
         <div class="form-grid">
-          <div class="form-group"><label>Mensalidade Kids (R$)</label><input type="number" id="g-ticket-kids" value="${avgTicket('Kids').toFixed(0)}"></div>
-          <div class="form-group"><label>Mensalidade Adulto (R$)</label><input type="number" id="g-ticket-adulto" value="${avgTicket('Adulto').toFixed(0)}"></div>
-          <div class="form-group"><label>Aula Particular (R$)</label><input type="number" id="g-ticket-particular" value="${avgTicket('Particular').toFixed(0)}"></div>
-          <div class="form-group"><label>Matrícula média (R$)</label><input type="number" id="g-matricula" value="150"></div>
+          <div class="form-group"><label>Mensalidade Kids (R$)</label><input type="text" inputmode="decimal" id="g-ticket-kids" value="${formatCurrencyValue(avgTicket('Kids'))}"></div>
+          <div class="form-group"><label>Mensalidade Adulto (R$)</label><input type="text" inputmode="decimal" id="g-ticket-adulto" value="${formatCurrencyValue(avgTicket('Adulto'))}"></div>
+          <div class="form-group"><label>Aula Particular (R$)</label><input type="text" inputmode="decimal" id="g-ticket-particular" value="${formatCurrencyValue(avgTicket('Particular'))}"></div>
+          <div class="form-group"><label>Matrícula média (R$)</label><input type="text" inputmode="decimal" id="g-matricula" value="${formatCurrencyValue(150)}"></div>
           <div class="form-group"><label>Reajuste anual de preço (%)</label><input type="number" id="g-reajuste" value="0" step="0.5"></div>
         </div>
         <div class="btn-row" style="margin-top:8px;">
@@ -56,6 +56,7 @@ function renderGanhosPage() {
     <div id="ganhos-result"></div>
   `;
 
+  ['g-ticket-kids', 'g-ticket-adulto', 'g-ticket-particular', 'g-matricula'].forEach(id => maskCurrencyInput(document.getElementById(id)));
   runGanhosSimulation();
 }
 
@@ -68,10 +69,10 @@ function runGanhosSimulation() {
   const novosParticular = parseFloat(document.getElementById('g-novos-particular').value) || 0;
   const churn = (parseFloat(document.getElementById('g-churn').value) || 0) / 100;
   const horizonte = parseInt(document.getElementById('g-horizonte').value) || 12;
-  const ticketKidsBase = parseFloat(document.getElementById('g-ticket-kids').value) || 0;
-  const ticketAdultoBase = parseFloat(document.getElementById('g-ticket-adulto').value) || 0;
-  const ticketParticularBase = parseFloat(document.getElementById('g-ticket-particular').value) || 0;
-  const matricula = parseFloat(document.getElementById('g-matricula').value) || 0;
+  const ticketKidsBase = parseCurrencyValue(document.getElementById('g-ticket-kids').value);
+  const ticketAdultoBase = parseCurrencyValue(document.getElementById('g-ticket-adulto').value);
+  const ticketParticularBase = parseCurrencyValue(document.getElementById('g-ticket-particular').value);
+  const matricula = parseCurrencyValue(document.getElementById('g-matricula').value);
   const reajuste = (parseFloat(document.getElementById('g-reajuste').value) || 0) / 100;
 
   const diag = computePlanejamentoDiagnostico();

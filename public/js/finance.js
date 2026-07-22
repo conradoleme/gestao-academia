@@ -186,7 +186,7 @@ function openTransactionForm(id) {
       <div class="form-group"><label>Categoria</label>
         <select id="f-tx-categoria">${categorySelectOptions(t.grupo, t.categoria)}</select>
       </div>
-      <div class="form-group"><label>Valor (R$)</label><input type="number" id="f-tx-valor" value="${t.valor}" step="0.01"></div>
+      <div class="form-group"><label>Valor (R$)</label><input type="text" inputmode="decimal" id="f-tx-valor" value="${formatCurrencyValue(t.valor)}"></div>
     </div>
     <div class="form-group" style="margin-top:12px;"><label>Descrição</label><input type="text" id="f-tx-desc" value="${escapeHtml(t.descricao||'')}"></div>
     <div class="form-group" style="margin-top:12px;"><label>Status</label>
@@ -202,6 +202,7 @@ function openTransactionForm(id) {
       <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
     </div>
   `);
+  maskCurrencyInput(document.getElementById('f-tx-valor'));
 }
 
 function onTxGroupChange() {
@@ -218,7 +219,7 @@ async function saveTransactionForm(id) {
     grupo,
     categoria: document.getElementById('f-tx-categoria').value,
     descricao: document.getElementById('f-tx-desc').value.trim(),
-    valor: parseFloat(document.getElementById('f-tx-valor').value) || 0,
+    valor: parseCurrencyValue(document.getElementById('f-tx-valor').value),
     status: document.getElementById('f-tx-status').value,
   };
   if (!patch.data) { showToast('Informe a data do lançamento.', 'error'); return; }

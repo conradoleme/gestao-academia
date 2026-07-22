@@ -30,6 +30,27 @@ function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 function todayStr() { return new Date().toISOString().slice(0,10); }
+
+/* ---------------- Máscara monetária (R$ 1.234,56) para inputs ---------------- */
+function formatCurrencyValue(num) {
+  return (Number(num) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+function parseCurrencyValue(str) {
+  if (!str) return 0;
+  const cleaned = String(str).replace(/\./g, '').replace(',', '.');
+  return parseFloat(cleaned) || 0;
+}
+function maskCurrencyInput(el) {
+  if (!el) return;
+  el.addEventListener('input', () => {
+    let digits = el.value.replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+    if (!digits) { el.value = ''; return; }
+    while (digits.length < 3) digits = '0' + digits;
+    const cents = digits.slice(-2);
+    const intPart = digits.slice(0, -2).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    el.value = `${intPart},${cents}`;
+  });
+}
 function monthLabel(yearMonth) {
   if (!yearMonth) return '—';
   const [y,m] = yearMonth.split('-').map(Number);
