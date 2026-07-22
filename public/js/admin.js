@@ -31,6 +31,13 @@ function hideAdminLogin() {
   document.getElementById('admin-app').style.display = 'block';
 }
 
+function handleAdminLogout() {
+  clearAdminKey();
+  academiasCache = [];
+  document.getElementById('admin-key-input').value = '';
+  showAdminLogin();
+}
+
 async function handleAdminLogin() {
   const key = document.getElementById('admin-key-input').value.trim();
   if (!key) return;
