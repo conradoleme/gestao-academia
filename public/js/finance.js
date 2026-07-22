@@ -88,8 +88,16 @@ function transactionRow(t) {
   const badgeCls = isDone ? 'status-ok' : (t.data < todayStr() ? 'status-overdue' : 'status-pending');
   return `<tr>
     <td>${fmtDate(t.data)}</td>
-    <td style="text-align:left;"><span class="tag" style="background:rgba(108,99,255,.12);color:${GROUP_META[t.grupo].color};">${GROUP_META[t.grupo].label}</span></td>
-    <td style="text-align:left;">${escapeHtml(t.categoria)}</td>
+    <td style="text-align:left;">
+      <select class="mini-select" onchange="updateTransactionGrupo('${t.id}', this.value)">
+        ${Object.keys(GROUP_META).map(g => `<option value="${g}" ${g===t.grupo?'selected':''}>${GROUP_META[g].label}</option>`).join('')}
+      </select>
+    </td>
+    <td style="text-align:left;">
+      <select class="mini-select" onchange="updateTransactionCategoria('${t.id}', this.value)">
+        ${categorySelectOptions(t.grupo, t.categoria)}
+      </select>
+    </td>
     <td style="text-align:left;color:var(--text2);">${escapeHtml(t.descricao || '—')}</td>
     <td class="${isEntrada?'pos':'neg'}" style="font-weight:700;">${fmtFull(t.valor)}</td>
     <td><button class="status-toggle ${badgeCls}" title="Clique para alternar" onclick="toggleTransactionStatus('${t.id}')">${label}</button></td>
@@ -108,6 +116,29 @@ async function toggleTransactionStatus(id) {
     : (t.status === 'pago' ? 'a_pagar' : 'pago');
   await updateTransaction(id, { status: next });
   showToast('Status atualizado.');
+  renderFinancePage();
+  if (typeof refreshDashboard === 'function') refreshDashboard();
+}
+
+async function updateTransactionGrupo(id, novoGrupo) {
+  const t = data.transactions.find(x => x.id === id);
+  if (!t) return;
+  const novoTipo = GROUP_META[novoGrupo].tipo;
+  const isDone = t.status === 'recebido' || t.status === 'pago';
+  await updateTransaction(id, {
+    grupo: novoGrupo,
+    tipo: novoTipo,
+    categoria: (data.categoryGroups[novoGrupo] || [])[0] || '',
+    status: novoTipo === 'entrada' ? (isDone ? 'recebido' : 'a_receber') : (isDone ? 'pago' : 'a_pagar'),
+  });
+  showToast('Grupo atualizado.');
+  renderFinancePage();
+  if (typeof refreshDashboard === 'function') refreshDashboard();
+}
+
+async function updateTransactionCategoria(id, novaCategoria) {
+  await updateTransaction(id, { categoria: novaCategoria });
+  showToast('Categoria atualizada.');
   renderFinancePage();
   if (typeof refreshDashboard === 'function') refreshDashboard();
 }
