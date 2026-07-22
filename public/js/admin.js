@@ -100,7 +100,10 @@ function academiaRow(a) {
     <td><input type="text" inputmode="decimal" id="admin-valor-${a.id}" class="mini-input" style="width:90px;" value="${formatCurrencyValue(a.valorMensal)}"></td>
     <td><input type="date" id="admin-venc-${a.id}" class="mini-input" style="width:140px;" value="${a.proximoVencimento || ''}"></td>
     <td>${criada}</td>
-    <td><button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="salvarPagamento('${a.id}')">Salvar</button></td>
+    <td style="display:flex;gap:6px;">
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="salvarPagamento('${a.id}')">Salvar</button>
+      <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="confirmarExclusaoAcademia('${a.id}', '${escapeHtml(a.nome)}')">Excluir</button>
+    </td>
   </tr>`;
 }
 
@@ -161,6 +164,18 @@ async function salvarPagamento(id) {
   } catch (e) {
     showToast('Erro ao salvar: ' + e.message, 'error');
   }
+}
+
+function confirmarExclusaoAcademia(id, nome) {
+  confirmAction(`Excluir a academia <strong>${nome}</strong>? Isso apaga todos os alunos, turmas e lançamentos dela permanentemente.`, async () => {
+    try {
+      await adminFetch(`/admin/academias/${id}`, { method: 'DELETE' });
+      showToast('Academia excluída.');
+      await loadAcademias();
+    } catch (e) {
+      showToast('Erro ao excluir: ' + e.message, 'error');
+    }
+  });
 }
 
 window.addEventListener('DOMContentLoaded', async () => {

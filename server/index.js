@@ -121,6 +121,16 @@ app.put('/admin/academias/:id/pagamento', requireAdminKey, async (req, res) => {
   }
 });
 
+app.delete('/admin/academias/:id', requireAdminKey, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM academias WHERE id = ?', [req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao excluir academia.' });
+  }
+});
+
 /* ---------------- A partir daqui, exige token ---------------- */
 app.use('/api', requireAuth);
 app.use('/api', academiaRoutes);
