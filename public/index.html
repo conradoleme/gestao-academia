@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão da Academia</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="login-screen" style="display:none;"></div>
+
+<div class="app" style="display:none;">
+  <!-- BARRA SUPERIOR (só no celular) -->
+  <div class="mobile-topbar">
+    <button class="hamburger-btn" onclick="toggleMobileNav()" aria-label="Abrir menu">☰</button>
+    <div class="logo" style="font-size:15px;">🥋 <span id="app-empresa-nome-mobile">Gestão da Academia</span></div>
+  </div>
+  <div class="sidebar-backdrop" onclick="closeMobileNav()"></div>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">🥋 Gestão <span>da Academia</span></div>
+    <div class="logo-sub" id="app-empresa-nome">Carregando…</div>
+
+    <div class="nav-section">Visão Geral</div>
+    <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><span class="icon">🏁</span> Dashboard</button>
+
+    <div class="nav-section">Cadastros</div>
+    <button class="nav-btn" onclick="showPage('alunos')" id="nav-alunos"><span class="icon">🥋</span> Alunos</button>
+    <button class="nav-btn" onclick="showPage('turmas')" id="nav-turmas"><span class="icon">📅</span> Turmas &amp; Tatame</button>
+
+    <div class="nav-section">Financeiro</div>
+    <button class="nav-btn" onclick="showPage('financas')" id="nav-financas"><span class="icon">💵</span> Fluxo de Caixa</button>
+    <button class="nav-btn" onclick="showPage('inadimplencia')" id="nav-inadimplencia"><span class="icon">📋</span> Inadimplência</button>
+
+    <div class="nav-section">Simulação</div>
+    <button class="nav-btn" onclick="showPage('ganhos')" id="nav-ganhos"><span class="icon">📈</span> Simulação de Ganhos</button>
+    <button class="nav-btn" onclick="showPage('simulador')" id="nav-simulador"><span class="icon">🎛️</span> Cenários &amp; Projeção</button>
+
+    <div class="nav-section">Conta</div>
+    <button class="nav-btn" onclick="showPage('configuracoes')" id="nav-configuracoes"><span class="icon">⚙️</span> Configurações</button>
+
+    <div class="sidebar-footer">
+      <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme()">
+        <span id="theme-toggle-icon">🌙</span> <span id="theme-toggle-label">Modo Escuro</span>
+      </button>
+      <button class="theme-toggle" style="margin-top:8px;" onclick="handleLogout()">🚪 Sair</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div id="page-dashboard" class="page active"></div>
+    <div id="page-alunos" class="page"></div>
+    <div id="page-turmas" class="page"></div>
+    <div id="page-financas" class="page"></div>
+    <div id="page-inadimplencia" class="page"></div>
+    <div id="page-ganhos" class="page"></div>
+    <div id="page-simulador" class="page"></div>
+    <div id="page-configuracoes" class="page"></div>
+  </main>
+</div>
+
+<script src="js/api-client.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/store.js"></script>
+<script src="js/helpers.js"></script>
+<script src="js/students.js"></script>
+<script src="js/classes.js"></script>
+<script src="js/finance.js"></script>
+<script src="js/inadimplencia.js"></script>
+<script src="js/configuracoes.js"></script>
+<script src="js/earnings.js"></script>
+<script src="js/simulator.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

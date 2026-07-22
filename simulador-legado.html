@@ -1,0 +1,1239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de Fluxo de Caixa</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2d3148;
+    --accent: #6c63ff;
+    --accent2: #00d4aa;
+    --accent3: #ff6b6b;
+    --accent4: #ffd166;
+    --text: #e8eaf0;
+    --text2: #9ca3b8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }
+
+  /* Layout */
+  .app { display: grid; grid-template-columns: 280px 1fr; min-height: 100vh; }
+  .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 8px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .main { padding: 32px; overflow-x: hidden; }
+
+  /* Sidebar */
+  .logo { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .logo span { color: var(--accent2); }
+  .nav-section { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text2); margin: 16px 0 6px; }
+  .nav-btn { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; cursor: pointer; color: var(--text2); transition: all 0.15s; border: none; background: none; width: 100%; text-align: left; font-size: 13px; }
+  .nav-btn:hover, .nav-btn.active { background: var(--surface2); color: var(--text); }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn .icon { font-size: 16px; width: 20px; }
+
+  /* Headers */
+  h1 { font-size: 26px; font-weight: 700; margin-bottom: 6px; }
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; color: var(--text); }
+  h3 { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.8px; }
+  .subtitle { color: var(--text2); margin-bottom: 32px; }
+
+  /* Cards */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .card-grid { display: grid; gap: 16px; }
+  .card-grid-2 { grid-template-columns: 1fr 1fr; }
+  .card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .card-grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  /* KPI Cards */
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text2); margin-bottom: 8px; }
+  .kpi-value { font-size: 24px; font-weight: 700; }
+  .kpi-sub { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .kpi-green { border-top: 3px solid var(--green); }
+  .kpi-red { border-top: 3px solid var(--red); }
+  .kpi-yellow { border-top: 3px solid var(--yellow); }
+  .kpi-accent { border-top: 3px solid var(--accent); }
+
+  /* Tags */
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .tag-green { background: rgba(34,197,94,0.15); color: var(--green); }
+  .tag-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .tag-yellow { background: rgba(234,179,8,0.15); color: var(--yellow); }
+  .tag-accent { background: rgba(108,99,255,0.15); color: var(--accent); }
+  .tag-cyan { background: rgba(0,212,170,0.15); color: var(--accent2); }
+
+  /* Section */
+  .section { margin-bottom: 40px; }
+  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .section-num { background: var(--accent); color: white; width: 28px; height: 28px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  table { width: 100%; border-collapse: collapse; }
+  th { background: var(--surface2); padding: 10px 14px; text-align: right; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); white-space: nowrap; }
+  th:first-child { text-align: left; }
+  td { padding: 10px 14px; border-top: 1px solid var(--border); text-align: right; font-size: 13px; white-space: nowrap; }
+  td:first-child { text-align: left; font-weight: 500; }
+  tr:hover td { background: var(--surface2); }
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+  .neutral { color: var(--text2); }
+
+  /* Form */
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); font-weight: 600; }
+  input[type="number"], input[type="text"], select, textarea {
+    background: var(--surface2); border: 1px solid var(--border); color: var(--text);
+    padding: 10px 12px; border-radius: 8px; font-size: 13px; width: 100%;
+    outline: none; transition: border 0.15s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 80px; font-family: monospace; font-size: 12px; }
+
+  /* Buttons */
+  .btn { padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #5b52e0; }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-success { background: var(--green); color: white; }
+  .btn-danger { background: var(--red); color: white; }
+  .btn-row { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+  /* Bar chart */
+  .bar-chart { display: flex; align-items: flex-end; gap: 4px; height: 120px; padding: 0 8px; }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; }
+  .bar { width: 100%; border-radius: 4px 4px 0 0; transition: height 0.4s ease; min-height: 2px; }
+  .bar-label { font-size: 9px; color: var(--text2); }
+  .bar-val { font-size: 9px; font-weight: 600; }
+
+  /* Constraint box */
+  .constraint-box { background: linear-gradient(135deg, rgba(108,99,255,0.1), rgba(0,212,170,0.05)); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; }
+  .constraint-title { font-size: 16px; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .constraint-desc { color: var(--text2); font-size: 13px; line-height: 1.7; }
+  .constraint-impact { margin-top: 12px; padding: 12px; background: rgba(239,68,68,0.08); border-radius: 8px; border-left: 3px solid var(--red); }
+  .constraint-impact-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--red); margin-bottom: 4px; }
+
+  /* Scenario cards */
+  .scenario-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; cursor: pointer; transition: all 0.15s; }
+  .scenario-card:hover, .scenario-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .scenario-card.best { border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+  .scenario-name { font-weight: 700; margin-bottom: 4px; }
+  .scenario-badge { font-size: 10px; }
+  .scenario-num { font-size: 22px; font-weight: 700; margin: 12px 0 4px; }
+
+  /* Range slider */
+  .slider-row { display: flex; align-items: center; gap: 12px; }
+  .slider-row input[type=range] { flex: 1; accent-color: var(--accent); }
+  .slider-val { font-size: 13px; font-weight: 700; color: var(--accent); min-width: 50px; text-align: right; }
+
+  /* Progress */
+  .progress-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+
+  /* Executive summary */
+  .exec-box { background: linear-gradient(135deg, var(--surface2), var(--surface)); border: 1px solid var(--border); border-radius: 12px; padding: 24px; }
+  .exec-item { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+  .exec-item:last-child { border-bottom: none; }
+  .exec-q { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--accent2); min-width: 200px; }
+  .exec-a { color: var(--text); font-size: 13px; line-height: 1.6; }
+
+  /* Alert */
+  .alert { padding: 14px 18px; border-radius: 10px; font-size: 13px; margin-bottom: 16px; }
+  .alert-warning { background: rgba(234,179,8,0.1); border: 1px solid rgba(234,179,8,0.3); color: var(--yellow); }
+  .alert-danger { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: var(--red); }
+  .alert-success { background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); color: var(--green); }
+  .alert-info { background: rgba(108,99,255,0.1); border: 1px solid rgba(108,99,255,0.3); color: var(--accent); }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--surface2); padding: 4px; border-radius: 10px; }
+  .tab { flex: 1; padding: 8px; border-radius: 8px; border: none; background: none; color: var(--text2); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.15s; }
+  .tab.active { background: var(--surface); color: var(--text); font-weight: 600; }
+
+  /* Tooltip */
+  .help { color: var(--text2); cursor: help; border-bottom: 1px dashed; }
+
+  /* Page visibility */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Divider */
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* Input table */
+  .input-table { width: 100%; border-collapse: collapse; }
+  .input-table th { background: var(--surface2); padding: 8px 12px; text-align: center; font-size: 11px; color: var(--text2); }
+  .input-table th:first-child { text-align: left; }
+  .input-table td { padding: 4px 6px; border-top: 1px solid var(--border); }
+  .input-table td:first-child { padding-left: 12px; font-size: 12px; color: var(--text2); }
+  .input-table input { background: transparent; border: none; color: var(--text); padding: 6px 8px; width: 100%; text-align: right; font-size: 12px; border-radius: 4px; }
+  .input-table input:focus { background: var(--surface2); outline: 1px solid var(--accent); }
+  .input-table tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Projection chart */
+  .proj-chart { display: flex; align-items: flex-end; gap: 3px; height: 160px; padding: 0 4px; position: relative; }
+  .proj-bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 2px; }
+  .proj-bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; }
+  .proj-label { font-size: 8px; color: var(--text2); writing-mode: horizontal-tb; }
+  .chart-zero { position: absolute; left: 4px; right: 4px; border-top: 1px dashed rgba(255,255,255,0.15); }
+
+  @media (max-width: 900px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { height: auto; position: relative; }
+    .card-grid-4, .card-grid-3 { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .exec-item { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">Simulador <span>Financeiro</span><br><small style="font-size:10px;color:var(--text2);font-weight:400;">Fluxo de Caixa</small></div>
+    <div class="nav-section">Configuração</div>
+    <button class="nav-btn active" onclick="showPage('input')" id="nav-input">
+      <span class="icon">📊</span> Dados de Entrada
+    </button>
+    <div class="nav-section">Diagnóstico</div>
+    <button class="nav-btn" onclick="showPage('diagnostico')" id="nav-diagnostico">
+      <span class="icon">🔍</span> Etapa 1 — Diagnóstico
+    </button>
+    <button class="nav-btn" onclick="showPage('restricao')" id="nav-restricao">
+      <span class="icon">🎯</span> Etapa 2 — Gargalo Financeiro
+    </button>
+    <div class="nav-section">Simulação</div>
+    <button class="nav-btn" onclick="showPage('simulacao')" id="nav-simulacao">
+      <span class="icon">🎛️</span> Etapa 3 — Parâmetros
+    </button>
+    <button class="nav-btn" onclick="showPage('cenarios')" id="nav-cenarios">
+      <span class="icon">🗂️</span> Etapa 4 — Cenários
+    </button>
+    <button class="nav-btn" onclick="showPage('projecao')" id="nav-projecao">
+      <span class="icon">📈</span> Etapa 5 — Projeção 12M
+    </button>
+    <div class="nav-section">Estratégia</div>
+    <button class="nav-btn" onclick="showPage('recomendacao')" id="nav-recomendacao">
+      <span class="icon">🧠</span> Etapa 6 — Estratégia
+    </button>
+    <button class="nav-btn" onclick="showPage('dashboard')" id="nav-dashboard">
+      <span class="icon">🏁</span> Dashboard Final
+    </button>
+    <hr class="divider" style="margin-top:auto;">
+    <button class="btn btn-primary" onclick="runAnalysis()" style="width:100%;">▶ Analisar Agora</button>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- ======================== ENTRADA ======================== -->
+    <div id="page-input" class="page active">
+      <h1>Dados de Entrada</h1>
+      <p class="subtitle">Insira os dados mensais do fluxo de caixa. Use ponto ou vírgula como separador decimal.</p>
+
+      <div class="alert alert-info">💡 Preencha os meses disponíveis. Deixe em branco os meses sem dados. Clique em <strong>Analisar Agora</strong> para processar.</div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <h3>Importar Dados (CSV rápido)</h3>
+        <p style="color:var(--text2);font-size:12px;margin-bottom:10px;">Cole dados no formato: <code>Mês,Receita,Aportes/Reembolsos,Rendimentos,Despesas</code> — uma linha por mês</p>
+        <textarea id="csv-input" placeholder="Jan/24,50000,0,500,48000&#10;Fev/24,52000,0,520,47500&#10;Mar/24,55000,10000,600,49000"></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="importCSV()">📥 Importar CSV</button>
+          <button class="btn btn-secondary" onclick="loadSampleData()">📋 Carregar Exemplo</button>
+          <button class="btn btn-secondary" onclick="clearData()">🗑️ Limpar</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Tabela de Dados Mensais</h3>
+        <div class="table-wrap">
+          <table class="input-table">
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>Receita (R$)</th>
+                <th>Aportes/Reembolsos (R$)</th>
+                <th>Rendimentos (R$)</th>
+                <th>Despesas (R$)</th>
+                <th>Resultado</th>
+              </tr>
+            </thead>
+            <tbody id="input-body"></tbody>
+          </table>
+        </div>
+        <button class="btn btn-secondary" onclick="addRow()" style="margin-top:12px;">+ Adicionar Mês</button>
+      </div>
+
+      <div class="card" style="margin-top:20px;">
+        <h3>Nome da Empresa (opcional)</h3>
+        <input type="text" id="empresa-nome" placeholder="Ex: Empresa XYZ Ltda" style="max-width:400px;">
+      </div>
+    </div>
+
+    <!-- ======================== DIAGNÓSTICO ======================== -->
+    <div id="page-diagnostico" class="page">
+      <div class="section-header">
+        <div class="section-num">1</div>
+        <div><h1>Diagnóstico Automático</h1><p class="subtitle" style="margin:0;">Análise do histórico financeiro</p></div>
+      </div>
+
+      <div id="diag-alert"></div>
+
+      <div class="card-grid card-grid-4" style="margin-bottom:24px;" id="kpi-grid"></div>
+
+      <div class="card-grid card-grid-2" style="margin-bottom:24px;">
+        <div class="card">
+          <h3>Evolução de Receitas vs Despesas</h3>
+          <div class="bar-chart" id="chart-receita-desp" style="height:140px;"></div>
+          <div style="display:flex;gap:16px;margin-top:12px;font-size:11px;">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block;"></span>Receita</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--red);border-radius:2px;display:inline-block;"></span>Despesa</span>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Resultado Mensal</h3>
+          <div class="bar-chart" id="chart-resultado" style="height:140px;"></div>
+          <div style="display:flex;gap:16px;margin-top:12px;font-size:11px;">
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--green);border-radius:2px;display:inline-block;"></span>Superávit</span>
+            <span style="display:flex;align-items:center;gap:4px;"><span style="width:10px;height:10px;background:var(--red);border-radius:2px;display:inline-block;"></span>Déficit</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Classificação da Situação</h3>
+        <div id="situacao-box"></div>
+      </div>
+    </div>
+
+    <!-- ======================== RESTRIÇÃO ======================== -->
+    <div id="page-restricao" class="page">
+      <div class="section-header">
+        <div class="section-num">2</div>
+        <div><h1>Identificação do Gargalo</h1><p class="subtitle" style="margin:0;">Onde está o principal limitador da geração de caixa?</p></div>
+      </div>
+      <div id="restricao-content"></div>
+    </div>
+
+    <!-- ======================== SIMULAÇÃO ======================== -->
+    <div id="page-simulacao" class="page">
+      <div class="section-header">
+        <div class="section-num">3</div>
+        <div><h1>Parâmetros de Simulação</h1><p class="subtitle" style="margin:0;">Ajuste os parâmetros para gerar cenários personalizados</p></div>
+      </div>
+
+      <div class="card-grid card-grid-2">
+        <div class="card">
+          <h3>📈 Receita</h3>
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="form-group">
+              <label>Crescimento Mensal (%)</label>
+              <div class="slider-row">
+                <input type="range" id="s-receita-cresc" min="-10" max="30" value="0" step="0.5" oninput="updateSlider(this,'s-receita-cresc-val','%')">
+                <span class="slider-val" id="s-receita-cresc-val">0%</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Novos Clientes — Receita Adicional Mensal (R$)</label>
+              <input type="number" id="s-novos-clientes" value="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Reajuste de Preços (%)</label>
+              <div class="slider-row">
+                <input type="range" id="s-reajuste" min="0" max="30" value="0" step="0.5" oninput="updateSlider(this,'s-reajuste-val','%')">
+                <span class="slider-val" id="s-reajuste-val">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>💸 Despesas</h3>
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="form-group">
+              <label>Redução de Custos (%)</label>
+              <div class="slider-row">
+                <input type="range" id="s-reduz-custo" min="0" max="40" value="0" step="0.5" oninput="updateSlider(this,'s-reduz-custo-val','%')">
+                <span class="slider-val" id="s-reduz-custo-val">0%</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Corte de Despesas Fixas (R$/mês)</label>
+              <input type="number" id="s-corte-desp" value="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Ganho de Eficiência Operacional (%)</label>
+              <div class="slider-row">
+                <input type="range" id="s-eficiencia" min="0" max="30" value="0" step="0.5" oninput="updateSlider(this,'s-eficiencia-val','%')">
+                <span class="slider-val" id="s-eficiencia-val">0%</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>💰 Capital</h3>
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="form-group">
+              <label>Aporte de Investidor (R$)</label>
+              <input type="number" id="s-aporte" value="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Mês do Aporte</label>
+              <select id="s-aporte-mes">
+                <option value="1">Mês 1</option><option value="2">Mês 2</option><option value="3">Mês 3</option>
+                <option value="4">Mês 4</option><option value="5">Mês 5</option><option value="6">Mês 6</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Empréstimo (R$)</label>
+              <input type="number" id="s-emprestimo" value="0" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>Taxa de Juros do Empréstimo (% a.m.)</label>
+              <input type="number" id="s-juros" value="2" placeholder="2" step="0.1">
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>⚙️ Operação</h3>
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="form-group">
+              <label>Aumento de Produtividade (%)</label>
+              <div class="slider-row">
+                <input type="range" id="s-produt" min="0" max="50" value="0" step="1" oninput="updateSlider(this,'s-produt-val','%')">
+                <span class="slider-val" id="s-produt-val">0%</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Redução de Desperdícios (%)</label>
+              <div class="slider-row">
+                <input type="range" id="s-desperdicio" min="0" max="30" value="0" step="0.5" oninput="updateSlider(this,'s-desperdicio-val','%')">
+                <span class="slider-val" id="s-desperdicio-val">0%</span>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Automação — Economia Mensal (R$)</label>
+              <input type="number" id="s-automacao" value="0" placeholder="0">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:24px;">
+        <button class="btn btn-primary" onclick="runSimulation()">▶ Simular Cenário Personalizado</button>
+        <button class="btn btn-secondary" onclick="resetSimulation()">↺ Resetar</button>
+      </div>
+
+      <div id="sim-result" style="margin-top:24px;"></div>
+    </div>
+
+    <!-- ======================== CENÁRIOS ======================== -->
+    <div id="page-cenarios" class="page">
+      <div class="section-header">
+        <div class="section-num">4</div>
+        <div><h1>Cenários Padrão</h1><p class="subtitle" style="margin:0;">Projeções automáticas para 12 meses</p></div>
+      </div>
+      <div id="cenarios-grid" class="card-grid" style="grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px;"></div>
+      <div class="card">
+        <h3>Comparativo de Cenários — Caixa Acumulado 12M</h3>
+        <div class="bar-chart" id="chart-cenarios" style="height:180px;"></div>
+      </div>
+    </div>
+
+    <!-- ======================== PROJEÇÃO ======================== -->
+    <div id="page-projecao" class="page">
+      <div class="section-header">
+        <div class="section-num">5</div>
+        <div><h1>Projeção 12 Meses</h1><p class="subtitle" style="margin:0;">Selecione o cenário para visualizar a projeção detalhada</p></div>
+      </div>
+
+      <div class="tabs" id="proj-tabs"></div>
+
+      <div class="card-grid card-grid-4" id="proj-kpis" style="margin-bottom:24px;"></div>
+
+      <div class="card" style="margin-bottom:20px;">
+        <h3>Fluxo de Caixa Mensal Projetado</h3>
+        <div class="proj-chart" id="proj-chart" style="height:180px;"></div>
+      </div>
+
+      <div class="card">
+        <h3>Tabela de Projeção Detalhada</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Mês</th>
+                <th>Receita</th>
+                <th>Aportes</th>
+                <th>Rend.</th>
+                <th>Despesa</th>
+                <th>Resultado</th>
+                <th>Acumulado</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="proj-table"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ======================== RECOMENDAÇÃO ======================== -->
+    <div id="page-recomendacao" class="page">
+      <div class="section-header">
+        <div class="section-num">6</div>
+        <div><h1>Recomendação Estratégica</h1><p class="subtitle" style="margin:0;">Análise estratégica do negócio</p></div>
+      </div>
+      <div id="recomendacao-content"></div>
+    </div>
+
+    <!-- ======================== DASHBOARD ======================== -->
+    <div id="page-dashboard" class="page">
+      <h1>Dashboard Final</h1>
+      <p class="subtitle">Visão consolidada de todos os cenários e parecer executivo</p>
+
+      <div class="card" style="margin-bottom:24px;">
+        <h3>Comparativo de Cenários</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cenário</th>
+                <th>Receita Anual</th>
+                <th>Despesa Anual</th>
+                <th>Caixa Final</th>
+                <th>Cap. Externo</th>
+                <th>Retorno</th>
+                <th>Risco</th>
+                <th>Posição</th>
+              </tr>
+            </thead>
+            <tbody id="dashboard-table"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Parecer Executivo</h3>
+        <div id="parecer-exec" class="exec-box"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ==================== STATE ====================
+let data = [];
+let analysis = null;
+let scenarios = [];
+let activeScenario = 0;
+
+const MESES_LABELS = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+
+// ==================== NAVIGATION ====================
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+}
+
+// ==================== INPUT TABLE ====================
+function buildInputTable() {
+  const tbody = document.getElementById('input-body');
+  const html = data.map((row, i) => {
+    const receita = row.receita || 0;
+    const aportes = row.aportes || 0;
+    const rendimentos = row.rendimentos || 0;
+    const despesas = row.despesas || 0;
+    const resultado = receita + aportes + rendimentos - despesas;
+    const cls = resultado >= 0 ? 'pos' : 'neg';
+    return `<tr>
+      <td><input type="text" value="${row.mes}" onchange="updateRow(${i},'mes',this.value)" style="text-align:left;font-weight:600;"></td>
+      <td><input type="number" value="${receita}" onchange="updateRow(${i},'receita',this.value)"></td>
+      <td><input type="number" value="${aportes}" onchange="updateRow(${i},'aportes',this.value)"></td>
+      <td><input type="number" value="${rendimentos}" onchange="updateRow(${i},'rendimentos',this.value)"></td>
+      <td><input type="number" value="${despesas}" onchange="updateRow(${i},'despesas',this.value)"></td>
+      <td class="${cls}" style="font-weight:700;font-size:13px;">${fmt(resultado)}</td>
+    </tr>`;
+  }).join('');
+  tbody.innerHTML = html;
+}
+
+function updateRow(i, field, val) {
+  data[i][field] = field === 'mes' ? val : parseFloat(val.replace(',','.')) || 0;
+  buildInputTable();
+}
+
+function addRow() {
+  const n = data.length + 1;
+  const mesIdx = (data.length) % 12;
+  const yr = 24 + Math.floor(data.length / 12);
+  data.push({ mes: MESES_LABELS[mesIdx] + '/' + yr, receita: 0, aportes: 0, rendimentos: 0, despesas: 0 });
+  buildInputTable();
+}
+
+// ==================== DATA IMPORT ====================
+function importCSV() {
+  const raw = document.getElementById('csv-input').value.trim();
+  if (!raw) { showImportStatus('error', 'Cole o CSV no campo acima antes de importar.'); return; }
+  data = [];
+  raw.split(/\r?\n/).forEach(line => {
+    line = line.trim();
+    if (!line) return;
+    const parts = line.split(',').map(s => s.trim());
+    if (parts.length >= 2) {
+      data.push({
+        mes: parts[0],
+        receita:     parseFloat(parts[1]) || 0,
+        aportes:     parseFloat(parts[2]) || 0,
+        rendimentos: parseFloat(parts[3]) || 0,
+        despesas:    parseFloat(parts[4]) || 0,
+      });
+    }
+  });
+  if (data.length === 0) { showImportStatus('error', 'Nenhuma linha válida encontrada. Verifique o formato do CSV.'); return; }
+  buildInputTable();
+  showImportStatus('success', '✅ ' + data.length + ' meses importados! Clique em ▶ Analisar Agora para continuar.');
+}
+
+function showImportStatus(type, msg) {
+  const colors = { success: 'var(--green)', error: 'var(--red)', info: 'var(--accent)' };
+  const bg     = { success: 'rgba(34,197,94,.12)', error: 'rgba(239,68,68,.12)', info: 'rgba(108,99,255,.12)' };
+  // sempre exibe na página de entrada
+  showPage('input');
+  let el = document.getElementById('import-status');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'import-status';
+    el.style.cssText = 'padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;';
+    const anchor = document.getElementById('csv-input');
+    if (anchor) anchor.after(el);
+    else document.querySelector('#page-input .card').appendChild(el);
+  }
+  el.style.background = bg[type];
+  el.style.color = colors[type];
+  el.style.border = '1px solid ' + colors[type];
+  el.textContent = msg;
+  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function loadSampleData() {
+  const sample = [
+    {mes:'Jan/24',receita:85000,aportes:0,rendimentos:850,despesas:92000},
+    {mes:'Fev/24',receita:88000,aportes:15000,rendimentos:900,despesas:94000},
+    {mes:'Mar/24',receita:92000,aportes:0,rendimentos:920,despesas:96000},
+    {mes:'Abr/24',receita:95000,aportes:0,rendimentos:950,despesas:98000},
+    {mes:'Mai/24',receita:98000,aportes:20000,rendimentos:980,despesas:101000},
+    {mes:'Jun/24',receita:102000,aportes:0,rendimentos:1020,despesas:103000},
+    {mes:'Jul/24',receita:105000,aportes:0,rendimentos:1050,despesas:106000},
+    {mes:'Ago/24',receita:108000,aportes:0,rendimentos:1080,despesas:108500},
+    {mes:'Set/24',receita:112000,aportes:0,rendimentos:1120,despesas:110000},
+    {mes:'Out/24',receita:115000,aportes:0,rendimentos:1150,despesas:112000},
+    {mes:'Nov/24',receita:118000,aportes:0,rendimentos:1180,despesas:114000},
+    {mes:'Dez/24',receita:122000,aportes:0,rendimentos:1220,despesas:116000},
+  ];
+  data = sample;
+  buildInputTable();
+  document.getElementById('empresa-nome').value = 'Empresa Exemplo S.A.';
+}
+
+function clearData() {
+  data = [];
+  buildInputTable();
+}
+
+// ==================== HELPERS ====================
+function fmt(v, dec=0) {
+  if (v === null || v === undefined || isNaN(v)) return '—';
+  const abs = Math.abs(v);
+  let str;
+  if (abs >= 1000000) str = 'R$ ' + (v/1000000).toFixed(1) + 'M';
+  else if (abs >= 1000) str = 'R$ ' + (v/1000).toFixed(dec > 0 ? dec : 1) + 'k';
+  else str = 'R$ ' + v.toFixed(0);
+  return str;
+}
+function fmtFull(v) {
+  if (isNaN(v)) return '—';
+  return 'R$ ' + v.toLocaleString('pt-BR', {minimumFractionDigits:0,maximumFractionDigits:0});
+}
+function pct(v) { return (v >= 0 ? '+' : '') + v.toFixed(1) + '%'; }
+function clamp(v,a,b) { return Math.max(a, Math.min(b, v)); }
+function avg(arr) { return arr.reduce((a,b)=>a+b,0)/arr.length; }
+
+function updateSlider(el, valId, suffix) {
+  document.getElementById(valId).textContent = el.value + suffix;
+}
+
+// ==================== ANALYSIS ====================
+function runAnalysis() {
+  if (data.length < 2) { showImportStatus('error', '⚠️ Insira pelo menos 2 meses de dados antes de analisar.'); showPage('input'); return; }
+
+  const receitas = data.map(d => d.receita);
+  const despesas = data.map(d => d.despesas);
+  const aportes = data.map(d => d.aportes);
+  const rendimentos = data.map(d => d.rendimentos);
+  const resultados = data.map(d => d.receita + d.aportes + d.rendimentos - d.despesas);
+
+  const totalReceita = receitas.reduce((a,b)=>a+b,0);
+  const totalDesp = despesas.reduce((a,b)=>a+b,0);
+  const totalAportes = aportes.reduce((a,b)=>a+b,0);
+  const totalRend = rendimentos.reduce((a,b)=>a+b,0);
+  const totalResult = resultados.reduce((a,b)=>a+b,0);
+
+  const mesesDefi = resultados.filter(r=>r<0).length;
+  const mesesSuper = resultados.filter(r=>r>=0).length;
+
+  const melhorMes = data[resultados.indexOf(Math.max(...resultados))];
+  const piorMes = data[resultados.indexOf(Math.min(...resultados))];
+
+  // Growth rates
+  const receitaGrowth = receitas.length >= 2 ? ((receitas[receitas.length-1] - receitas[0]) / receitas[0]) * 100 : 0;
+  const despGrowth = despesas.length >= 2 ? ((despesas[despesas.length-1] - despesas[0]) / despesas[0]) * 100 : 0;
+
+  // Volatility (std dev of results)
+  const avgResult = avg(resultados);
+  const stdDev = Math.sqrt(resultados.map(r => Math.pow(r - avgResult, 2)).reduce((a,b)=>a+b,0) / resultados.length);
+
+  // Dependency ratios
+  const aporteDep = totalReceita > 0 ? (totalAportes / totalReceita) * 100 : 0;
+
+  // Classify situation
+  let situacao, situacaoCls;
+  if (receitaGrowth > 10 && totalResult > 0 && mesesDefi === 0) {
+    situacao = 'Crescimento Saudável'; situacaoCls = 'tag-green';
+  } else if (receitaGrowth > 5 && mesesDefi > 0) {
+    situacao = 'Crescimento com Consumo de Caixa'; situacaoCls = 'tag-yellow';
+  } else if (aporteDep > 20) {
+    situacao = 'Dependência de Capital Externo'; situacaoCls = 'tag-red';
+  } else if (mesesDefi > data.length * 0.5) {
+    situacao = 'Operação Deficitária'; situacaoCls = 'tag-red';
+  } else if (Math.abs(receitaGrowth) < 5) {
+    situacao = 'Estagnação'; situacaoCls = 'tag-yellow';
+  } else {
+    situacao = 'Crescimento Saudável'; situacaoCls = 'tag-green';
+  }
+
+  // Identify constraint
+  let restricao, restricaoTipo, restricaoImpacto, restricaoDesc, restricaoAcao;
+
+  const despGrowthFasterThanReceita = despGrowth > receitaGrowth + 5;
+  const receitaInsuficiente = avg(receitas) < avg(despesas);
+  const altaDependenciaAporte = aporteDep > 15;
+  const altaVolatilidade = stdDev > avg(receitas) * 0.15;
+
+  if (altaDependenciaAporte) {
+    restricao = 'Restrição Financeira';
+    restricaoTipo = 'Financeira';
+    restricaoDesc = 'A empresa depende de aportes externos para operar. Isso indica que o caixa gerado pela operação não é suficiente para cobrir as despesas recorrentes. A geração de caixa está limitada pela capacidade de captação de capital, não pela operação em si.';
+    restricaoImpacto = totalAportes;
+    restricaoAcao = 'Aumentar receita recorrente e reduzir dependência de aportes. Foco em contratos de longo prazo e receita previsível.';
+  } else if (receitaInsuficiente || mesesDefi > data.length * 0.4) {
+    restricao = 'Restrição Comercial';
+    restricaoTipo = 'Comercial';
+    restricaoDesc = 'A receita gerada é insuficiente para cobrir as despesas operacionais. O gargalo está no volume de vendas ou no preço praticado. Investir em qualquer outra área antes de resolver esse limitador comercial resulta em desperdício de recursos.';
+    restricaoImpacto = Math.abs(avg(receitas) - avg(despesas)) * 12;
+    restricaoAcao = 'Aumentar volume de vendas ou revisar precificação. Implementar processo comercial com meta clara de receita mensal.';
+  } else if (despGrowthFasterThanReceita) {
+    restricao = 'Restrição Operacional';
+    restricaoTipo = 'Operacional';
+    restricaoDesc = 'As despesas crescem mais rapidamente que as receitas, comprimindo as margens. A geração de caixa está sendo consumida por ineficiências operacionais. A empresa está crescendo de forma ineficiente.';
+    restricaoImpacto = (despGrowth - receitaGrowth) / 100 * avg(despesas) * 12;
+    restricaoAcao = 'Mapear e eliminar despesas que crescem sem gerar resultado proporcional. Revisar estrutura de custos variáveis.';
+  } else if (altaVolatilidade) {
+    restricao = 'Restrição de Gestão';
+    restricaoTipo = 'Gestão';
+    restricaoDesc = 'Alta volatilidade entre os meses indica falta de previsibilidade no negócio. Isso pode indicar concentração de clientes, sazonalidade não gerenciada ou dependência de projetos pontuais. A incerteza é o maior inimigo do planejamento de caixa.';
+    restricaoImpacto = stdDev * 12;
+    restricaoAcao = 'Criar receita recorrente e previsível. Diversificar base de clientes. Implementar contratos com pagamentos regulares.';
+  } else {
+    restricao = 'Restrição de Mercado';
+    restricaoTipo = 'Mercado';
+    restricaoDesc = 'A empresa opera de forma relativamente eficiente, mas o crescimento está limitado pelo tamanho ou acesso ao mercado. A geração máxima de caixa possível dentro do mercado atual já está próxima de ser atingida.';
+    restricaoImpacto = avg(receitas) * 0.3 * 12;
+    restricaoAcao = 'Expandir para novos segmentos de mercado, novos produtos ou novos canais de distribuição.';
+  }
+
+  analysis = {
+    receitas, despesas, aportes, rendimentos, resultados,
+    totalReceita, totalDesp, totalAportes, totalRend, totalResult,
+    mesesDefi, mesesSuper, melhorMes, piorMes,
+    receitaGrowth, despGrowth, avgResult, stdDev, aporteDep,
+    situacao, situacaoCls,
+    restricao, restricaoTipo, restricaoImpacto, restricaoDesc, restricaoAcao,
+    avgReceita: avg(receitas), avgDesp: avg(despesas),
+  };
+
+  buildScenarios();
+  renderDiagnostico();
+  renderRestricao();
+  renderCenarios();
+  renderProjecao();
+  renderRecomendacao();
+  renderDashboard();
+
+  showPage('diagnostico');
+}
+
+// ==================== BUILD SCENARIOS ====================
+function buildScenarios() {
+  const a = analysis;
+  const baseReceita = a.avgReceita;
+  const baseDesp = a.avgDesp;
+
+  function project(params, name) {
+    const months = [];
+    let receita = baseReceita * (1 + (params.receitaBoost || 0) / 100);
+    let desp = baseDesp * (1 - (params.despReducao || 0) / 100);
+    let acum = 0;
+
+    for (let i = 0; i < 12; i++) {
+      receita *= (1 + (params.crescMensal || 0) / 100);
+      const aporteEm = (i + 1 === (params.aporteMes || 1)) ? (params.aporte || 0) : 0;
+      const emprestimo = (i === 0) ? (params.emprestimo || 0) : 0;
+      const jurosDesp = i > 0 ? (params.emprestimo || 0) * (params.juros || 0) / 100 : 0;
+      const despTotal = desp + jurosDesp - (params.corteMensal || 0);
+      const rend = receita * 0.01;
+      const resultado = receita + aporteEm + rend + emprestimo - despTotal;
+      acum += resultado;
+      months.push({ mes: MESES_LABELS[i], receita, aportes: aporteEm, rendimentos: rend, despesas: despTotal, resultado, acum });
+    }
+    return { name, months, totalReceita: months.reduce((s,m)=>s+m.receita,0), totalDesp: months.reduce((s,m)=>s+m.despesas,0), caixaFinal: acum, capitalExterno: (params.aporte||0) + (params.emprestimo||0), params };
+  }
+
+  scenarios = [
+    project({ crescMensal: 0 }, 'Base Atual'),
+    project({ crescMensal: 0, despReducao: 0, aporte: 0, emprestimo: 0 }, 'Autofinanciamento'),
+    project({ crescMensal: 0, despReducao: 12, corteMensal: 2000 }, 'Eficiência Operacional'),
+    project({ crescMensal: 2.5, receitaBoost: 15 }, 'Crescimento Comercial'),
+    project({ aporte: 150000, aporteMes: 1, crescMensal: 1 }, 'Investimento Externo'),
+    project({ despReducao: 10, crescMensal: 1.5, receitaBoost: 10 }, 'Melhor Alocação de Recursos'),
+  ];
+}
+
+// ==================== RENDER DIAGNÓSTICO ====================
+function renderDiagnostico() {
+  const a = analysis;
+
+  // Alert
+  const alertBox = document.getElementById('diag-alert');
+  if (a.mesesDefi > 0) {
+    alertBox.innerHTML = `<div class="alert alert-warning">⚠️ <strong>${a.mesesDefi} mês(es) deficitário(s)</strong> identificado(s) no histórico. Atenção especial à restrição identificada.</div>`;
+  } else {
+    alertBox.innerHTML = `<div class="alert alert-success">✅ Todos os meses apresentaram resultado positivo no período analisado.</div>`;
+  }
+
+  // KPIs
+  const kpiData = [
+    { label: 'Receita Média Mensal', value: fmt(a.avgReceita), sub: `Total: ${fmt(a.totalReceita)}`, cls: 'kpi-green' },
+    { label: 'Despesa Média Mensal', value: fmt(a.avgDesp), sub: `Total: ${fmt(a.totalDesp)}`, cls: 'kpi-red' },
+    { label: 'Resultado Médio Mensal', value: fmt(a.avgResult), sub: a.avgResult >= 0 ? '✅ Superávit' : '❌ Déficit', cls: a.avgResult >= 0 ? 'kpi-green' : 'kpi-red' },
+    { label: 'Dependência de Aportes', value: a.aporteDep.toFixed(1) + '%', sub: `Total: ${fmt(a.totalAportes)}`, cls: a.aporteDep > 15 ? 'kpi-red' : 'kpi-yellow' },
+    { label: 'Crescimento Receita', value: pct(a.receitaGrowth), sub: 'Período completo', cls: a.receitaGrowth > 0 ? 'kpi-green' : 'kpi-red' },
+    { label: 'Crescimento Despesas', value: pct(a.despGrowth), sub: 'Período completo', cls: a.despGrowth > a.receitaGrowth ? 'kpi-red' : 'kpi-accent' },
+    { label: 'Volatilidade do Caixa', value: fmt(a.stdDev), sub: 'Desvio padrão', cls: a.stdDev > a.avgReceita * 0.15 ? 'kpi-red' : 'kpi-yellow' },
+    { label: 'Meses Superavitários', value: a.mesesSuper + '/' + data.length, sub: `${a.mesesDefi} deficitários`, cls: a.mesesDefi === 0 ? 'kpi-green' : 'kpi-yellow' },
+  ];
+
+  document.getElementById('kpi-grid').style.gridTemplateColumns = 'repeat(4, 1fr)';
+  document.getElementById('kpi-grid').innerHTML = kpiData.map(k => `
+    <div class="kpi ${k.cls}">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value">${k.value}</div>
+      <div class="kpi-sub">${k.sub}</div>
+    </div>`).join('');
+
+  // Charts
+  renderBarChart('chart-receita-desp', [
+    { values: a.receitas, color: 'var(--green)' },
+    { values: a.despesas, color: 'var(--red)' }
+  ], data.map(d => d.mes.split('/')[0]));
+
+  renderBarChart('chart-resultado', [
+    { values: a.resultados.map(r => r >= 0 ? r : 0), color: 'var(--green)' },
+    { values: a.resultados.map(r => r < 0 ? Math.abs(r) : 0), color: 'var(--red)' }
+  ], data.map(d => d.mes.split('/')[0]));
+
+  // Situação
+  document.getElementById('situacao-box').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;">
+      <span class="tag ${a.situacaoCls}" style="font-size:14px;padding:6px 16px;">${a.situacao}</span>
+    </div>
+    <div class="card-grid card-grid-2" style="gap:12px;">
+      <div style="padding:14px;background:var(--surface2);border-radius:8px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">MELHOR MÊS</div>
+        <div style="font-weight:700;">${a.melhorMes?.mes || '—'}</div>
+        <div class="pos">${fmt(Math.max(...a.resultados))}</div>
+      </div>
+      <div style="padding:14px;background:var(--surface2);border-radius:8px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">PIOR MÊS</div>
+        <div style="font-weight:700;">${a.piorMes?.mes || '—'}</div>
+        <div class="neg">${fmt(Math.min(...a.resultados))}</div>
+      </div>
+    </div>
+  `;
+}
+
+function renderBarChart(containerId, series, labels) {
+  const container = document.getElementById(containerId);
+  const n = labels.length;
+  const allVals = series.flatMap(s => s.values);
+  const maxVal = Math.max(...allVals);
+  const H = container.offsetHeight || 120;
+
+  container.innerHTML = labels.map((label, i) => {
+    const bars = series.map(s => {
+      const h = maxVal > 0 ? Math.max(2, (s.values[i] / maxVal) * (H - 24)) : 2;
+      return `<div class="bar" style="height:${h}px;background:${s.color};opacity:0.85;flex:1;"></div>`;
+    }).join('');
+    return `<div class="bar-wrap">
+      <div style="display:flex;gap:2px;width:100%;align-items:flex-end;">${bars}</div>
+      <div class="bar-label">${label}</div>
+    </div>`;
+  }).join('');
+}
+
+// ==================== RENDER RESTRIÇÃO ====================
+function renderRestricao() {
+  const a = analysis;
+  const icons = { Financeira: '💳', Comercial: '🛒', Operacional: '⚙️', Gestão: '📊', Mercado: '🌍' };
+  const colors = { Financeira: 'var(--red)', Comercial: 'var(--yellow)', Operacional: 'var(--accent)', Gestão: 'var(--accent2)', Mercado: 'var(--green)' };
+
+  document.getElementById('restricao-content').innerHTML = `
+    <div class="constraint-box" style="border-color:${colors[a.restricaoTipo]};margin-bottom:24px;">
+      <div style="font-size:32px;margin-bottom:8px;">${icons[a.restricaoTipo] || '🎯'}</div>
+      <div class="constraint-title" style="color:${colors[a.restricaoTipo]};">${a.restricao}</div>
+      <div class="constraint-desc">${a.restricaoDesc}</div>
+      <div class="constraint-impact">
+        <div class="constraint-impact-title">Impacto Financeiro Estimado</div>
+        <div style="font-size:20px;font-weight:700;">${fmtFull(a.restricaoImpacto)} / ano</div>
+      </div>
+    </div>
+
+    <div class="card-grid card-grid-2">
+      <div class="card">
+        <h3>As 5 Etapas do Método Aplicadas</h3>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:8px;">
+          ${[
+            ['1. Identificar', `Restrição: <strong>${a.restricaoTipo}</strong>`, 'var(--accent)'],
+            ['2. Explorar', 'Maximizar resultado dentro da restrição atual, sem custo adicional', 'var(--accent2)'],
+            ['3. Subordinar', 'Todas as outras áreas devem apoiar a eliminação da restrição', 'var(--yellow)'],
+            ['4. Elevar', 'Investir recursos para eliminar definitivamente a restrição', 'var(--green)'],
+            ['5. Repetir', 'Após eliminar, identificar a próxima restrição no sistema', 'var(--text2)'],
+          ].map(([step, desc, color]) => `
+            <div style="display:flex;gap:12px;align-items:flex-start;">
+              <span style="background:${color};color:white;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:700;white-space:nowrap;">${step}</span>
+              <span style="font-size:13px;color:var(--text2);">${desc}</span>
+            </div>`).join('')}
+        </div>
+      </div>
+      <div class="card">
+        <h3>Ação Recomendada</h3>
+        <div style="padding:16px;background:rgba(108,99,255,0.08);border-radius:8px;border-left:3px solid var(--accent);font-size:13px;line-height:1.7;color:var(--text);">
+          ${a.restricaoAcao}
+        </div>
+        <div style="margin-top:16px;">
+          <h3>Diagnóstico da Geração de Caixa</h3>
+          <div style="margin-top:8px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px;font-size:12px;">
+              <span>Resultado Operacional (Receita − Despesas)</span>
+              <span class="${a.avgResult >= 0 ? 'pos' : 'neg'}">${fmt(a.avgResult)}/mês</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${clamp(a.avgReceita > 0 ? (Math.max(0,a.avgResult)/a.avgReceita)*100 : 0, 0, 100)}%;background:var(--green);"></div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:8px;margin-bottom:6px;font-size:12px;">
+              <span>Eficiência Operacional</span>
+              <span>${a.avgReceita > 0 ? ((a.avgResult/a.avgReceita)*100).toFixed(1) : 0}%</span>
+            </div>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width:${clamp(a.avgReceita > 0 ? Math.max(0,(a.avgResult/a.avgReceita))*100 : 0, 0, 100)}%;background:var(--accent);"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ==================== RENDER CENÁRIOS ====================
+function renderCenarios() {
+  const bestIdx = scenarios.reduce((bi, s, i) => s.caixaFinal > scenarios[bi].caixaFinal ? i : bi, 0);
+
+  document.getElementById('cenarios-grid').innerHTML = scenarios.map((s, i) => `
+    <div class="scenario-card ${i === bestIdx ? 'best' : ''}" onclick="showScenario(${i})">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <div class="scenario-name">${s.name}</div>
+        ${i === bestIdx ? '<span class="tag tag-green">Melhor</span>' : ''}
+      </div>
+      <div class="scenario-num ${s.caixaFinal >= 0 ? 'pos' : 'neg'}">${fmt(s.caixaFinal)}</div>
+      <div style="font-size:11px;color:var(--text2);">Caixa Acumulado 12M</div>
+      <hr class="divider">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">
+        <div><div style="color:var(--text2);">Receita</div><div>${fmt(s.totalReceita)}</div></div>
+        <div><div style="color:var(--text2);">Despesa</div><div>${fmt(s.totalDesp)}</div></div>
+        <div><div style="color:var(--text2);">Cap. Externo</div><div>${fmt(s.capitalExterno)}</div></div>
+        <div><div style="color:var(--text2);">Retorno</div><div>${s.capitalExterno > 0 ? ((s.caixaFinal / s.capitalExterno) * 100).toFixed(0) + '%' : '—'}</div></div>
+      </div>
+    </div>`).join('');
+
+  // Bar chart
+  const maxCaixa = Math.max(...scenarios.map(s => Math.abs(s.caixaFinal)));
+  const el = document.getElementById('chart-cenarios');
+  const H = 160;
+  el.innerHTML = scenarios.map(s => {
+    const h = maxCaixa > 0 ? Math.max(4, (Math.abs(s.caixaFinal) / maxCaixa) * (H - 40)) : 4;
+    const color = s.caixaFinal >= 0 ? 'var(--green)' : 'var(--red)';
+    return `<div class="bar-wrap">
+      <div class="bar-val ${s.caixaFinal >= 0 ? 'pos' : 'neg'}">${fmt(s.caixaFinal)}</div>
+      <div class="bar" style="height:${h}px;background:${color};width:100%;"></div>
+      <div class="bar-label" style="font-size:9px;text-align:center;">${s.name.split(' ').join('\n')}</div>
+    </div>`;
+  }).join('');
+}
+
+function showScenario(i) {
+  activeScenario = i;
+  showPage('projecao');
+  renderProjecaoTab(i);
+}
+
+// ==================== RENDER PROJEÇÃO ====================
+function renderProjecao() {
+  const tabs = document.getElementById('proj-tabs');
+  tabs.innerHTML = scenarios.map((s, i) => `<button class="tab ${i === 0 ? 'active' : ''}" onclick="selectProjTab(${i})">${s.name}</button>`).join('');
+  renderProjecaoTab(0);
+}
+
+function selectProjTab(i) {
+  activeScenario = i;
+  document.querySelectorAll('#proj-tabs .tab').forEach((t, idx) => t.classList.toggle('active', idx === i));
+  renderProjecaoTab(i);
+}
+
+function renderProjecaoTab(i) {
+  const s = scenarios[i];
+  const months = s.months;
+
+  // KPIs
+  const melhor = months.reduce((a, b) => a.resultado > b.resultado ? a : b);
+  const pior = months.reduce((a, b) => a.resultado < b.resultado ? a : b);
+  const ruptura = months.findIndex(m => m.acum < 0);
+
+  document.getElementById('proj-kpis').innerHTML = [
+    { label: 'Caixa Acumulado 12M', value: fmt(s.caixaFinal), cls: s.caixaFinal >= 0 ? 'kpi-green' : 'kpi-red' },
+    { label: 'Melhor Mês Projetado', value: melhor.mes, sub: fmt(melhor.resultado), cls: 'kpi-green' },
+    { label: 'Mês de Maior Risco', value: pior.mes, sub: fmt(pior.resultado), cls: 'kpi-red' },
+    { label: 'Ponto de Ruptura', value: ruptura >= 0 ? 'Mês ' + (ruptura + 1) : 'Não Detectado', sub: ruptura >= 0 ? '⚠️ Risco de insolvência' : '✅ Caixa positivo', cls: ruptura >= 0 ? 'kpi-red' : 'kpi-green' },
+  ].map(k => `<div class="kpi ${k.cls}"><div class="kpi-label">${k.label}</div><div class="kpi-value">${k.value}</div>${k.sub ? `<div class="kpi-sub">${k.sub}</div>` : ''}</div>`).join('');
+
+  // Chart
+  const allRes = months.map(m => m.resultado);
+  const maxR = Math.max(...allRes.map(Math.abs));
+  const H = 160;
+  const chartEl = document.getElementById('proj-chart');
+  chartEl.innerHTML = months.map(m => {
+    const h = maxR > 0 ? Math.max(4, (Math.abs(m.resultado) / maxR) * (H - 30)) : 4;
+    const color = m.resultado >= 0 ? 'var(--accent2)' : 'var(--red)';
+    return `<div class="proj-bar-wrap">
+      <div style="font-size:8px;color:${color};font-weight:600;">${fmt(m.resultado)}</div>
+      <div class="proj-bar" style="height:${h}px;background:${color};width:100%;"></div>
+      <div class="proj-label">${m.mes}</div>
+    </div>`;
+  }).join('');
+
+  // Table
+  document.getElementById('proj-table').innerHTML = months.map(m => `<tr>
+    <td>${m.mes}</td>
+    <td class="pos">${fmtFull(m.receita)}</td>
+    <td class="${m.aportes > 0 ? 'neutral' : ''}">${m.aportes > 0 ? fmtFull(m.aportes) : '—'}</td>
+    <td class="neutral">${fmtFull(m.rendimentos)}</td>
+    <td class="neg">${fmtFull(m.despesas)}</td>
+    <td class="${m.resultado >= 0 ? 'pos' : 'neg'}" style="font-weight:700;">${fmtFull(m.resultado)}</td>
+    <td class="${m.acum >= 0 ? 'pos' : 'neg'}">${fmtFull(m.acum)}</td>
+    <td>${m.resultado >= 0 ? '<span class="tag tag-green">Superávit</span>' : '<span class="tag tag-red">Déficit</span>'}</td>
+  </tr>`).join('');
+}
+
+// ==================== RENDER RECOMENDAÇÃO ====================
+function renderRecomendacao() {
+  const a = analysis;
+  const bestS = scenarios.reduce((b, s) => s.caixaFinal > b.caixaFinal ? s : b);
+  const safeS = scenarios.reduce((b, s) => {
+    const defi = s.months.filter(m => m.resultado < 0).length;
+    const bDefi = b.months.filter(m => m.resultado < 0).length;
+    return defi < bDefi ? s : b;
+  });
+
+  const bootstrap = scenarios[1];
+  const canBootstrap = bootstrap.caixaFinal > 0 && bootstrap.months.filter(m => m.resultado < 0).length === 0;
+
+  const precisaInvest = scenarios[0].months.filter(m => m.resultado < 0).length > 2;
+
+  const qas = [
+    ['1. Qual é a principal restrição financeira?', `<strong>${a.restricao}</strong>. ${a.restricaoDesc.split('.')[0]}.`],
+    ['2. Qual ação gera maior impacto no caixa?', a.restricaoAcao],
+    ['3. A empresa precisa de investimento externo?', precisaInvest
+      ? `⚠️ <strong>Sim, há indicadores de necessidade.</strong> O cenário base apresenta ${scenarios[0].months.filter(m=>m.resultado<0).length} mês(es) deficitário(s). Investimento pode ser estratégico para cobrir a transição.`
+      : `✅ <strong>Não necessariamente.</strong> A operação demonstra capacidade de gerar caixa positivo sem capital externo, dado ajuste nas alavancas identificadas.`],
+    ['4. O crescimento pode ser autofinanciado?', canBootstrap
+      ? `✅ <strong>Sim.</strong> O cenário de Autofinanciamento projeta caixa acumulado de <strong>${fmt(bootstrap.caixaFinal)}</strong> em 12 meses sem dependência de capital externo.`
+      : `⚠️ <strong>Parcialmente.</strong> O autofinanciamento é viável apenas com redução de despesas ou aumento de receita antes do início da projeção.`],
+    ['5. Qual cenário gera maior caixa acumulado?', `<strong>${bestS.name}</strong> — Caixa de ${fmt(bestS.caixaFinal)} em 12 meses.`],
+    ['6. Qual cenário apresenta menor risco?', `<strong>${safeS.name}</strong> — Menor número de meses deficitários projetados.`],
+    ['7. Qual cenário maximiza a geração de caixa?', `<strong>${scenarios[5].name}</strong> — Direciona recursos para o gargalo identificado (${a.restricaoTipo}), gerando ${fmt(scenarios[5].caixaFinal)} em 12 meses.`],
+  ];
+
+  document.getElementById('recomendacao-content').innerHTML = `
+    <div class="exec-box">
+      ${qas.map(([q, a]) => `<div class="exec-item"><div class="exec-q">${q}</div><div class="exec-a">${a}</div></div>`).join('')}
+    </div>`;
+}
+
+// ==================== RENDER DASHBOARD ====================
+function renderDashboard() {
+  const riskLabels = ['Alto', 'Médio-Alto', 'Médio', 'Médio-Baixo', 'Baixo', 'Mínimo'];
+  const riskColors = ['neg', 'neg', 'neutral', 'neutral', 'pos', 'pos'];
+
+  const rows = scenarios.map((s, i) => {
+    const defiCount = s.months.filter(m => m.resultado < 0).length;
+    const riskScore = Math.min(5, defiCount + (s.capitalExterno > 0 ? 1 : 0));
+    const roi = s.capitalExterno > 0 ? ((s.caixaFinal / s.capitalExterno) * 100).toFixed(0) + '%' : '—';
+    const isBest = i === scenarios.reduce((bi, sc, idx) => sc.caixaFinal > scenarios[bi].caixaFinal ? idx : bi, 0);
+    return `<tr>
+      <td>${isBest ? '🥇 ' : ''}${s.name}</td>
+      <td class="pos">${fmtFull(s.totalReceita)}</td>
+      <td class="neg">${fmtFull(s.totalDesp)}</td>
+      <td class="${s.caixaFinal >= 0 ? 'pos' : 'neg'}" style="font-weight:700;">${fmtFull(s.caixaFinal)}</td>
+      <td class="${s.capitalExterno > 0 ? 'neutral' : 'pos'}">${s.capitalExterno > 0 ? fmtFull(s.capitalExterno) : '—'}</td>
+      <td>${roi}</td>
+      <td class="${riskColors[5 - riskScore]}">${riskLabels[riskScore]}</td>
+      <td>${isBest ? '<span class="tag tag-green">★ Recomendado</span>' : ''}</td>
+    </tr>`;
+  });
+
+  document.getElementById('dashboard-table').innerHTML = rows.join('');
+
+  const a = analysis;
+  const bestS = scenarios.reduce((b, s) => s.caixaFinal > b.caixaFinal ? s : b);
+  const empresa = document.getElementById('empresa-nome').value || 'A empresa';
+
+  document.getElementById('parecer-exec').innerHTML = `
+    <div class="alert alert-info" style="margin-bottom:20px;">
+      📋 <strong>Parecer Executivo</strong>
+    </div>
+    <div style="font-size:14px;line-height:1.9;color:var(--text);">
+      <p style="margin-bottom:12px;">
+        ${empresa} apresenta um histórico de <strong>${data.length} meses</strong> analisados, com receita média de
+        <strong>${fmt(a.avgReceita)}/mês</strong> e despesas médias de <strong>${fmt(a.avgDesp)}/mês</strong>,
+        resultando em resultado operacional médio de <strong class="${a.avgResult >= 0 ? 'pos' : 'neg'}">${fmt(a.avgResult)}/mês</strong>.
+      </p>
+      <p style="margin-bottom:12px;">
+        A análise identificou a <strong>${a.restricao}</strong> como principal gargalo financeiro do negócio,
+        com impacto estimado de <strong>${fmtFull(a.restricaoImpacto)}/ano</strong> na geração de caixa potencial.
+        Enquanto esse gargalo não for tratado, qualquer outro esforço de melhoria produzirá resultados abaixo do potencial.
+      </p>
+      <p style="margin-bottom:12px;">
+        Dentre os <strong>${scenarios.length} cenários</strong> simulados para os próximos 12 meses, o
+        <strong>${bestS.name}</strong> apresentou o melhor resultado, com caixa acumulado projetado de
+        <strong class="${bestS.caixaFinal >= 0 ? 'pos' : 'neg'}">${fmtFull(bestS.caixaFinal)}</strong>.
+        O cenário de <strong>Melhor Alocação de Recursos</strong> é o recomendado por equilibrar crescimento e
+        eliminação do gargalo identificado.
+      </p>
+      <p style="margin-bottom:0;">
+        <strong>Ação prioritária:</strong> ${a.restricaoAcao} Concentre os próximos 90 dias exclusivamente
+        nessa alavanca antes de expandir esforços para outras áreas do negócio.
+      </p>
+    </div>`;
+}
+
+// ==================== SIMULATION ====================
+function runSimulation() {
+  if (!analysis) { showPage('input'); showImportStatus('error', '⚠️ Execute a análise primeiro: importe os dados e clique em ▶ Analisar Agora.'); return; }
+  const params = {
+    crescMensal: parseFloat(document.getElementById('s-receita-cresc').value) || 0,
+    receitaBoost: parseFloat(document.getElementById('s-reajuste').value) || 0,
+    novosClientes: parseFloat(document.getElementById('s-novos-clientes').value) || 0,
+    despReducao: parseFloat(document.getElementById('s-reduz-custo').value) || 0,
+    corteMensal: (parseFloat(document.getElementById('s-corte-desp').value) || 0) + (parseFloat(document.getElementById('s-automacao').value) || 0),
+    eficiencia: parseFloat(document.getElementById('s-eficiencia').value) || 0,
+    aporte: parseFloat(document.getElementById('s-aporte').value) || 0,
+    aporteMes: parseInt(document.getElementById('s-aporte-mes').value) || 1,
+    emprestimo: parseFloat(document.getElementById('s-emprestimo').value) || 0,
+    juros: parseFloat(document.getElementById('s-juros').value) || 2,
+    produt: parseFloat(document.getElementById('s-produt').value) || 0,
+    desperdicio: parseFloat(document.getElementById('s-desperdicio').value) || 0,
+  };
+
+  const a = analysis;
+  const months = [];
+  let receita = a.avgReceita * (1 + params.receitaBoost / 100) * (1 + params.produt / 100);
+  let desp = a.avgDesp * (1 - params.despReducao / 100) * (1 - params.desperdicio / 100) * (1 - params.eficiencia / 100);
+  let acum = 0;
+
+  for (let i = 0; i < 12; i++) {
+    receita *= (1 + params.crescMensal / 100);
+    const extraReceita = params.novosClientes;
+    const aporteEm = (i + 1 === params.aporteMes) ? params.aporte : 0;
+    const emprestimo = (i === 0) ? params.emprestimo : 0;
+    const jurosDesp = i > 0 ? params.emprestimo * params.juros / 100 : 0;
+    const despTotal = desp - params.corteMensal + jurosDesp;
+    const rend = receita * 0.01;
+    const resultado = receita + extraReceita + aporteEm + rend + emprestimo - despTotal;
+    acum += resultado;
+    months.push({ mes: MESES_LABELS[i], receita: receita + extraReceita, despesas: despTotal, resultado, acum });
+  }
+
+  const box = document.getElementById('sim-result');
+  box.innerHTML = `
+    <div class="card">
+      <h3>Resultado da Simulação Personalizada</h3>
+      <div class="card-grid card-grid-4" style="margin-bottom:16px;">
+        <div class="kpi ${acum >= 0 ? 'kpi-green' : 'kpi-red'}"><div class="kpi-label">Caixa Acumulado 12M</div><div class="kpi-value">${fmtFull(acum)}</div></div>
+        <div class="kpi kpi-green"><div class="kpi-label">Receita Total Anual</div><div class="kpi-value">${fmtFull(months.reduce((s,m)=>s+m.receita,0))}</div></div>
+        <div class="kpi kpi-red"><div class="kpi-label">Despesa Total Anual</div><div class="kpi-value">${fmtFull(months.reduce((s,m)=>s+m.despesas,0))}</div></div>
+        <div class="kpi kpi-accent"><div class="kpi-label">Meses Deficitários</div><div class="kpi-value">${months.filter(m=>m.resultado<0).length}/12</div></div>
+      </div>
+      <div class="bar-chart" style="height:120px;">
+        ${(() => {
+          const maxR = Math.max(...months.map(m => Math.abs(m.resultado)));
+          return months.map(m => {
+            const h = maxR > 0 ? Math.max(2, (Math.abs(m.resultado) / maxR) * 96) : 2;
+            const c = m.resultado >= 0 ? 'var(--accent2)' : 'var(--red)';
+            return `<div class="bar-wrap"><div style="font-size:8px;color:${c};">${fmt(m.resultado)}</div><div class="bar" style="height:${h}px;background:${c};width:100%;"></div><div class="bar-label">${m.mes}</div></div>`;
+          }).join('');
+        })()}
+      </div>
+    </div>`;
+}
+
+function resetSimulation() {
+  ['s-receita-cresc','s-reajuste','s-reduz-custo','s-eficiencia','s-produt','s-desperdicio'].forEach(id => {
+    document.getElementById(id).value = 0;
+    const valId = id + '-val';
+    if (document.getElementById(valId)) document.getElementById(valId).textContent = '0%';
+  });
+  ['s-novos-clientes','s-corte-desp','s-aporte','s-emprestimo','s-automacao'].forEach(id => {
+    document.getElementById(id).value = 0;
+  });
+  document.getElementById('s-juros').value = 2;
+  document.getElementById('sim-result').innerHTML = '';
+}
+
+// ==================== INIT ====================
+window.onload = function() {
+  addRow(); addRow(); addRow(); addRow(); addRow(); addRow();
+  addRow(); addRow(); addRow(); addRow(); addRow(); addRow();
+};
+</script>
+</body>
+</html>
