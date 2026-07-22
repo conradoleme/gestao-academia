@@ -97,6 +97,49 @@ function academiaRow(a) {
   </tr>`;
 }
 
+function openCreateAcademiaModal() {
+  openModal('Nova Academia', `
+    <div class="form-group"><label>Nome da Academia</label><input type="text" id="new-academia-nome" placeholder="Ex: Goushi BJJ"></div>
+    <div class="form-group"><label>E-mail (login)</label><input type="email" id="new-academia-email" placeholder="contato@academia.com"></div>
+    <div class="form-group"><label>Senha</label><input type="password" id="new-academia-senha" placeholder="Senha inicial"></div>
+    <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="new-academia-turmas" style="width:auto;">
+      <label style="margin:0;">Criar com turmas padrão (T730 a T2000)</label>
+    </div>
+    <div id="new-academia-error"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="handleCreateAcademia()">Criar Academia</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    </div>
+  `, { width: '460px' });
+}
+
+async function handleCreateAcademia() {
+  const nome = document.getElementById('new-academia-nome').value.trim();
+  const email = document.getElementById('new-academia-email').value.trim();
+  const senha = document.getElementById('new-academia-senha').value;
+  const turmasPadrao = document.getElementById('new-academia-turmas').checked;
+  const errorEl = document.getElementById('new-academia-error');
+  errorEl.innerHTML = '';
+
+  if (!email || !senha) {
+    errorEl.innerHTML = `<div class="alert alert-danger">Informe e-mail e senha.</div>`;
+    return;
+  }
+
+  try {
+    await adminFetch('/admin/create-academia', {
+      method: 'POST',
+      body: JSON.stringify({ email, senha, nome, turmasPadrao }),
+    });
+    closeModal();
+    showToast('Academia criada com sucesso!');
+    await loadAcademias();
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
+}
+
 async function salvarPagamento(id) {
   const statusPagamento = document.getElementById(`admin-status-${id}`).value;
   const valorMensal = parseCurrencyValue(document.getElementById(`admin-valor-${id}`).value);
