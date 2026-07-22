@@ -491,3 +491,7 @@ async function updateAcademiaNome(nome) {
   data.meta.empresa = nome;
   await persistAcademiaSettings();
 }
+
+async function changeAcademiaSenha(senhaAtual, novaSenha) {
+  await api.put('/academia/senha', { senhaAtual, novaSenha });
+}

@@ -23,9 +23,48 @@ function renderConfiguracoesPage() {
       <hr class="divider">
 
       <h3>Conta</h3>
-      <div style="font-size:13px;color:var(--text2);">Login: <strong style="color:var(--text);">${escapeHtml(email)}</strong></div>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Login: <strong style="color:var(--text);">${escapeHtml(email)}</strong></div>
+
+      <div class="form-group">
+        <label>Senha atual</label>
+        <input type="password" id="cfg-senha-atual" autocomplete="current-password">
+      </div>
+      <div class="form-group">
+        <label>Nova senha</label>
+        <input type="password" id="cfg-senha-nova" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>Confirmar nova senha</label>
+        <input type="password" id="cfg-senha-confirmar" autocomplete="new-password">
+      </div>
+      <div id="cfg-senha-error"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="handleChangeSenha()">Trocar Senha</button>
+      </div>
     </div>
   `;
+}
+
+async function handleChangeSenha() {
+  const senhaAtual = document.getElementById('cfg-senha-atual').value;
+  const novaSenha = document.getElementById('cfg-senha-nova').value;
+  const confirmar = document.getElementById('cfg-senha-confirmar').value;
+  const errorEl = document.getElementById('cfg-senha-error');
+  errorEl.innerHTML = '';
+
+  if (!senhaAtual || !novaSenha) { errorEl.innerHTML = `<div class="alert alert-danger">Preencha a senha atual e a nova senha.</div>`; return; }
+  if (novaSenha.length < 6) { errorEl.innerHTML = `<div class="alert alert-danger">A nova senha precisa ter pelo menos 6 caracteres.</div>`; return; }
+  if (novaSenha !== confirmar) { errorEl.innerHTML = `<div class="alert alert-danger">A confirmação não bate com a nova senha.</div>`; return; }
+
+  try {
+    await changeAcademiaSenha(senhaAtual, novaSenha);
+    document.getElementById('cfg-senha-atual').value = '';
+    document.getElementById('cfg-senha-nova').value = '';
+    document.getElementById('cfg-senha-confirmar').value = '';
+    showToast('Senha alterada com sucesso!');
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
 }
 
 async function handleSaveAcademiaNome() {

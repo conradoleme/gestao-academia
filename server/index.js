@@ -121,6 +121,21 @@ app.put('/admin/academias/:id/pagamento', requireAdminKey, async (req, res) => {
   }
 });
 
+app.put('/admin/academias/:id/senha', requireAdminKey, async (req, res) => {
+  const { novaSenha } = req.body || {};
+  if (!novaSenha || novaSenha.length < 6) {
+    return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
+  }
+  try {
+    const novoHash = await bcrypt.hash(novaSenha, 10);
+    await pool.query('UPDATE academias SET senha_hash = ? WHERE id = ?', [novoHash, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao trocar senha.' });
+  }
+});
+
 app.delete('/admin/academias/:id', requireAdminKey, async (req, res) => {
   try {
     await pool.query('DELETE FROM academias WHERE id = ?', [req.params.id]);

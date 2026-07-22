@@ -102,6 +102,7 @@ function academiaRow(a) {
     <td>${criada}</td>
     <td style="display:flex;gap:6px;">
       <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="salvarPagamento('${a.id}')">Salvar</button>
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openTrocarSenhaModal('${a.id}', '${escapeHtml(a.nome)}')">Senha</button>
       <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="confirmarExclusaoAcademia('${a.id}', '${escapeHtml(a.nome)}')">Excluir</button>
     </td>
   </tr>`;
@@ -163,6 +164,34 @@ async function salvarPagamento(id) {
     await loadAcademias();
   } catch (e) {
     showToast('Erro ao salvar: ' + e.message, 'error');
+  }
+}
+
+function openTrocarSenhaModal(id, nome) {
+  openModal(`Trocar Senha — ${nome}`, `
+    <div class="form-group"><label>Nova senha</label><input type="password" id="new-senha-input" placeholder="Mínimo 6 caracteres"></div>
+    <div id="new-senha-error"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="handleTrocarSenha('${id}')">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    </div>
+  `, { width: '420px' });
+}
+
+async function handleTrocarSenha(id) {
+  const novaSenha = document.getElementById('new-senha-input').value;
+  const errorEl = document.getElementById('new-senha-error');
+  errorEl.innerHTML = '';
+  if (!novaSenha || novaSenha.length < 6) {
+    errorEl.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 6 caracteres.</div>`;
+    return;
+  }
+  try {
+    await adminFetch(`/admin/academias/${id}/senha`, { method: 'PUT', body: JSON.stringify({ novaSenha }) });
+    closeModal();
+    showToast('Senha atualizada!');
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
   }
 }
 

@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const bcrypt = require('bcryptjs');
 const pool = require('../db');
 const { studentToJSON, turmaToJSON, txToJSON, academiaToShape } = require('../mappers');
 
@@ -35,6 +36,22 @@ router.put('/academia', async (req, res) => {
      JSON.stringify(meta.generatedMonths || []), JSON.stringify(categoryGroups || {}), JSON.stringify(cobrancaTemplates || []),
      req.academiaId]
   );
+  res.json({ ok: true });
+});
+
+router.put('/academia/senha', async (req, res) => {
+  const { senhaAtual, novaSenha } = req.body || {};
+  if (!senhaAtual || !novaSenha) return res.status(400).json({ error: 'Informe a senha atual e a nova senha.' });
+  if (novaSenha.length < 6) return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
+
+  const [rows] = await pool.query('SELECT senha_hash FROM academias WHERE id = ?', [req.academiaId]);
+  if (!rows[0]) return res.status(404).json({ error: 'Academia não encontrada.' });
+
+  const ok = await bcrypt.compare(senhaAtual, rows[0].senha_hash);
+  if (!ok) return res.status(401).json({ error: 'Senha atual incorreta.' });
+
+  const novoHash = await bcrypt.hash(novaSenha, 10);
+  await pool.query('UPDATE academias SET senha_hash = ? WHERE id = ?', [novoHash, req.academiaId]);
   res.json({ ok: true });
 });
 
