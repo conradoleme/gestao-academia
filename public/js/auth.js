@@ -24,7 +24,6 @@ function renderLoginScreen(errorMsg) {
 
 function hideLoginScreen() {
   document.getElementById('login-screen').style.display = 'none';
-  document.querySelector('.app').style.display = 'grid';
 }
 
 async function handleLogin() {
@@ -36,7 +35,7 @@ async function handleLogin() {
     const result = await api.post('/api/auth/login', { email, senha });
     setAuthToken(result.token);
     hideLoginScreen();
-    await bootAppAfterLogin();
+    await bootByRole();
   } catch (e) {
     renderLoginScreen(e.message || 'Não foi possível entrar.');
   }
@@ -45,6 +44,19 @@ async function handleLogin() {
 function handleLogout() {
   clearAuthToken();
   location.reload();
+}
+
+/* Aluno tem uma experiência própria (portal restrito); admin/operação
+   entram no app de gestão completo (com restrições de menu pra operação,
+   ver applyRoleUI em main.js). */
+async function bootByRole() {
+  const role = decodeAuthToken()?.role;
+  if (role === 'aluno') {
+    await bootAlunoPortal();
+  } else {
+    document.querySelector('.app').style.display = 'grid';
+    await bootAppAfterLogin();
+  }
 }
 
 async function checkExistingSession() {

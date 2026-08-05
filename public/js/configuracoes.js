@@ -1,16 +1,27 @@
 /* ==========================================================================
-   CONFIGURAÇÕES — dados da academia logada (nome, conta)
+   CONFIGURAÇÕES — dados da academia logada (nome, conta) e, para o dono
+   (role 'admin'), gestão dos acessos de equipe (operação) e alunos.
    ========================================================================== */
 
-function renderConfiguracoesPage() {
+let usuariosCache = [];
+
+const ROLE_LABELS = { admin: 'Dono', operacao: 'Operação', aluno: 'Aluno' };
+
+async function renderConfiguracoesPage() {
   const email = decodeAuthToken()?.email || '—';
+  const role = decodeAuthToken()?.role;
+  const isAdmin = role === 'admin';
+
+  if (isAdmin) {
+    try { usuariosCache = await fetchUsuarios(); } catch (e) { usuariosCache = []; }
+  }
 
   document.getElementById('page-configuracoes').innerHTML = `
     <div class="section-header">
       <div><h1>Configurações</h1><p class="subtitle" style="margin:0;">Dados da sua academia</p></div>
     </div>
 
-    <div class="card" style="max-width:520px;">
+    <div class="card" style="max-width:520px;margin-bottom:24px;">
       <h3>Academia</h3>
       <div class="form-group">
         <label>Nome da Academia</label>
@@ -42,6 +53,26 @@ function renderConfiguracoesPage() {
         <button class="btn btn-primary" onclick="handleChangeSenha()">Trocar Senha</button>
       </div>
     </div>
+
+    ${isAdmin ? `
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+          <div>
+            <h3 style="margin:0;">Usuários</h3>
+            <p style="color:var(--text2);font-size:12.5px;margin:4px 0 0;">Acessos de equipe (operação) e de alunos, além do seu login de dono.</p>
+          </div>
+          <button class="btn btn-primary" onclick="openUsuarioForm()">+ Novo Usuário</button>
+        </div>
+        <div class="table-wrap table-responsive-cards">
+          <table>
+            <thead><tr>
+              <th style="text-align:left;">Nome</th><th style="text-align:left;">E-mail</th><th>Papel</th><th style="text-align:left;">Vínculo</th><th>Ações</th>
+            </tr></thead>
+            <tbody>${usuariosCache.map(usuarioRow).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text2);">Nenhum usuário adicional cadastrado ainda.</td></tr>`}</tbody>
+          </table>
+        </div>
+      </div>
+    ` : ''}
   `;
 }
 
@@ -74,4 +105,119 @@ async function handleSaveAcademiaNome() {
   document.getElementById('app-empresa-nome').textContent = nome;
   document.getElementById('app-empresa-nome-mobile').textContent = nome;
   showToast('Nome da academia atualizado!');
+}
+
+/* ---------------- Usuários (equipe/alunos) ---------------- */
+function usuarioRow(u) {
+  const aluno = u.alunoId ? data.students.find(s => s.id === u.alunoId) : null;
+  return `<tr>
+    <td data-label="Nome" style="text-align:left;">${escapeHtml(u.nome)}</td>
+    <td data-label="E-mail" style="text-align:left;color:var(--text2);">${escapeHtml(u.email)}</td>
+    <td data-label="Papel"><span class="tag" style="background:var(--surface2);">${ROLE_LABELS[u.role] || u.role}</span></td>
+    <td data-label="Vínculo" style="text-align:left;">${aluno ? escapeHtml(aluno.nome) : '—'}</td>
+    <td data-label="Ações" style="display:flex;gap:6px;flex-wrap:wrap;">
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openUsuarioForm('${u.id}')">✏️</button>
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openUsuarioSenhaModal('${u.id}', '${escapeHtml(u.nome).replace(/'/g, "\\'")}')">🔑</button>
+      <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="handleDeleteUsuario('${u.id}', '${escapeHtml(u.nome).replace(/'/g, "\\'")}')">🗑️</button>
+    </td>
+  </tr>`;
+}
+
+function alunoSelectOptions(selectedId) {
+  return data.students.map(s => `<option value="${s.id}" ${s.id === selectedId ? 'selected' : ''}>${escapeHtml(s.nome)}</option>`).join('');
+}
+
+function openUsuarioForm(id) {
+  const u = id ? usuariosCache.find(x => x.id === id) : null;
+  const role = u?.role || 'operacao';
+
+  openModal(id ? 'Editar Usuário' : 'Novo Usuário', `
+    <div class="form-group"><label>Nome</label><input type="text" id="us-nome" value="${escapeHtml(u?.nome || '')}"></div>
+    <div class="form-group" style="margin-top:12px;"><label>E-mail (login)</label><input type="email" id="us-email" value="${escapeHtml(u?.email || '')}" ${id ? 'disabled' : ''}></div>
+    ${!id ? `<div class="form-group" style="margin-top:12px;"><label>Senha inicial</label><input type="password" id="us-senha" placeholder="Mínimo 6 caracteres"></div>` : ''}
+    <div class="form-group" style="margin-top:12px;">
+      <label>Papel</label>
+      <select id="us-role" onchange="onUsuarioRoleChange()">
+        <option value="operacao" ${role === 'operacao' ? 'selected' : ''}>Operação — acesso à equipe (sem financeiro)</option>
+        <option value="aluno" ${role === 'aluno' ? 'selected' : ''}>Aluno — portal só com os próprios dados</option>
+      </select>
+    </div>
+    <div class="form-group" id="us-aluno-group" style="margin-top:12px;display:${role === 'aluno' ? 'block' : 'none'};">
+      <label>Aluno vinculado</label>
+      <select id="us-aluno-id">${alunoSelectOptions(u?.alunoId)}</select>
+    </div>
+    <div id="us-error"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="saveUsuarioForm(${id ? `'${id}'` : null})">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    </div>
+  `, { width: '460px' });
+}
+
+function onUsuarioRoleChange() {
+  const role = document.getElementById('us-role').value;
+  document.getElementById('us-aluno-group').style.display = role === 'aluno' ? 'block' : 'none';
+}
+
+async function saveUsuarioForm(id) {
+  const nome = document.getElementById('us-nome').value.trim();
+  const role = document.getElementById('us-role').value;
+  const alunoId = role === 'aluno' ? document.getElementById('us-aluno-id').value : null;
+  const errorEl = document.getElementById('us-error');
+  errorEl.innerHTML = '';
+
+  if (!nome) { errorEl.innerHTML = `<div class="alert alert-danger">Informe o nome.</div>`; return; }
+  if (role === 'aluno' && !alunoId) { errorEl.innerHTML = `<div class="alert alert-danger">Selecione o aluno vinculado.</div>`; return; }
+
+  try {
+    if (id) {
+      await updateUsuario(id, { nome, role, alunoId });
+    } else {
+      const email = document.getElementById('us-email').value.trim();
+      const senha = document.getElementById('us-senha').value;
+      if (!email || !senha) { errorEl.innerHTML = `<div class="alert alert-danger">Informe e-mail e senha.</div>`; return; }
+      await createUsuario({ nome, email, senha, role, alunoId });
+    }
+    closeModal();
+    showToast(id ? 'Usuário atualizado!' : 'Usuário criado!');
+    renderConfiguracoesPage();
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function openUsuarioSenhaModal(id, nome) {
+  openModal(`Trocar Senha — ${nome}`, `
+    <div class="form-group"><label>Nova senha</label><input type="password" id="us-nova-senha" placeholder="Mínimo 6 caracteres"></div>
+    <div id="us-senha-error"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="handleUsuarioSenha('${id}')">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    </div>
+  `, { width: '420px' });
+}
+
+async function handleUsuarioSenha(id) {
+  const novaSenha = document.getElementById('us-nova-senha').value;
+  const errorEl = document.getElementById('us-senha-error');
+  errorEl.innerHTML = '';
+  if (!novaSenha || novaSenha.length < 6) {
+    errorEl.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 6 caracteres.</div>`;
+    return;
+  }
+  try {
+    await updateUsuarioSenha(id, novaSenha);
+    closeModal();
+    showToast('Senha atualizada!');
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function handleDeleteUsuario(id, nome) {
+  confirmAction(`Remover o acesso de <strong>${nome}</strong>? A pessoa não conseguirá mais entrar no sistema.`, async () => {
+    await deleteUsuario(id);
+    showToast('Usuário removido.');
+    renderConfiguracoesPage();
+  });
 }

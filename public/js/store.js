@@ -529,5 +529,22 @@ async function updateAcademiaNome(nome) {
 }
 
 async function changeAcademiaSenha(senhaAtual, novaSenha) {
-  await api.put('/academia/senha', { senhaAtual, novaSenha });
+  await api.put('/api/academia/senha', { senhaAtual, novaSenha });
+}
+
+/* ---------------- Usuários (equipe/alunos com acesso próprio) ---------------- */
+async function fetchUsuarios() {
+  return api.get('/api/usuarios');
+}
+async function createUsuario(payload) {
+  return api.post('/api/usuarios', payload);
+}
+async function updateUsuario(id, payload) {
+  return api.put(`/api/usuarios/${id}`, payload);
+}
+async function updateUsuarioSenha(id, novaSenha) {
+  return api.put(`/api/usuarios/${id}/senha`, { novaSenha });
+}
+async function deleteUsuario(id) {
+  return api.del(`/api/usuarios/${id}`);
 }

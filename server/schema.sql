@@ -52,6 +52,20 @@ CREATE TABLE IF NOT EXISTS students (
   INDEX idx_students_academia (academia_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS usuarios (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  academia_id INT NOT NULL,
+  nome VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  senha_hash VARCHAR(255) NOT NULL,
+  role VARCHAR(20) NOT NULL, -- 'operacao' | 'aluno'
+  aluno_id INT NULL, -- só preenchido quando role = 'aluno': vincula ao cadastro em students
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_usuarios_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
+  CONSTRAINT fk_usuarios_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE CASCADE,
+  INDEX idx_usuarios_academia (academia_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
   academia_id INT NOT NULL,

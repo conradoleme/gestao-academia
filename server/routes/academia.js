@@ -44,14 +44,20 @@ router.put('/academia/senha', async (req, res) => {
   if (!senhaAtual || !novaSenha) return res.status(400).json({ error: 'Informe a senha atual e a nova senha.' });
   if (novaSenha.length < 6) return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
 
-  const [rows] = await pool.query('SELECT senha_hash FROM academias WHERE id = ?', [req.academiaId]);
-  if (!rows[0]) return res.status(404).json({ error: 'Academia não encontrada.' });
+  // Dono da academia (role 'admin') mora em "academias"; equipe (role
+  // 'operacao') mora em "usuarios" — cada papel troca a própria senha na
+  // tabela onde o login dele realmente vive.
+  const table = req.role === 'admin' ? 'academias' : 'usuarios';
+  const targetId = req.role === 'admin' ? req.academiaId : req.userId;
+
+  const [rows] = await pool.query(`SELECT senha_hash FROM ${table} WHERE id = ?`, [targetId]);
+  if (!rows[0]) return res.status(404).json({ error: 'Usuário não encontrado.' });
 
   const ok = await bcrypt.compare(senhaAtual, rows[0].senha_hash);
   if (!ok) return res.status(401).json({ error: 'Senha atual incorreta.' });
 
   const novoHash = await bcrypt.hash(novaSenha, 10);
-  await pool.query('UPDATE academias SET senha_hash = ? WHERE id = ?', [novoHash, req.academiaId]);
+  await pool.query(`UPDATE ${table} SET senha_hash = ? WHERE id = ?`, [novoHash, targetId]);
   res.json({ ok: true });
 });
 

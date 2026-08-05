@@ -33,6 +33,14 @@ function txToJSON(r) {
   };
 }
 
+function usuarioToJSON(r) {
+  return {
+    id: String(r.id), nome: r.nome, email: r.email, role: r.role,
+    alunoId: r.aluno_id === null || r.aluno_id === undefined ? null : String(r.aluno_id),
+    createdAt: r.created_at,
+  };
+}
+
 function academiaToShape(r) {
   return {
     meta: {
@@ -46,4 +54,4 @@ function academiaToShape(r) {
   };
 }
 
-module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape };
+module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON };

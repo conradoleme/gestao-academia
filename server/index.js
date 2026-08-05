@@ -6,12 +6,14 @@ const bcrypt = require('bcryptjs');
 
 const migrate = require('./migrate');
 const pool = require('./db');
-const { requireAuth, login } = require('./auth');
+const { requireAuth, requireRole, login } = require('./auth');
 const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions } = require('./seed-defaults');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
 const turmasRoutes = require('./routes/turmas');
 const transactionsRoutes = require('./routes/transactions');
+const usuariosRoutes = require('./routes/usuarios');
+const alunoRoutes = require('./routes/aluno');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -148,10 +150,18 @@ app.delete('/admin/academias/:id', requireAdminKey, async (req, res) => {
 
 /* ---------------- A partir daqui, exige token ---------------- */
 app.use('/api', requireAuth);
+
+/* Portal do aluno (role 'aluno') — só enxerga seus próprios dados, nunca a
+   academia inteira. Montado antes do bloqueio de papel abaixo. */
+app.use('/api/aluno', alunoRoutes);
+
+/* Daqui pra baixo é a área "de gestão": dono (admin) e equipe (operação). */
+app.use('/api', requireRole('admin', 'operacao'));
 app.use('/api', academiaRoutes);
 app.use('/api/students', studentsRoutes);
 app.use('/api/turmas', turmasRoutes);
 app.use('/api/transactions', transactionsRoutes);
+app.use('/api/usuarios', usuariosRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Rota de API não encontrada.' }));
 
 /* ---------------- Frontend estático ---------------- */

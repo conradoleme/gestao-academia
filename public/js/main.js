@@ -51,19 +51,34 @@ function initTheme() {
   applyTheme(localStorage.getItem(THEME_KEY) || 'light');
 }
 
+/* ---------------- Restrições de menu por papel ---------------- */
+// Operação (equipe) cuida do dia a dia — alunos, turmas, inadimplência e
+// simulação de ganhos — mas não tem acesso às telas financeiras/de conta.
+const OPERACAO_PAGINAS_OCULTAS = ['dashboard', 'financas', 'simulador', 'configuracoes'];
+
+function applyRoleUI(role) {
+  if (role !== 'operacao') return;
+  OPERACAO_PAGINAS_OCULTAS.forEach(id => {
+    const btn = document.getElementById('nav-' + id);
+    if (btn) btn.style.display = 'none';
+  });
+}
+
 /* ---------------- Boot pós-login ---------------- */
 async function bootAppAfterLogin() {
   await loadDataFromApi();
   await autoGenerateOnLoad();
   document.getElementById('app-empresa-nome').textContent = data.meta.empresa;
   document.getElementById('app-empresa-nome-mobile').textContent = data.meta.empresa;
-  showPage('dashboard');
+  const role = decodeAuthToken()?.role;
+  applyRoleUI(role);
+  showPage(role === 'operacao' ? 'alunos' : 'dashboard');
 }
 
 async function initApp() {
   initTheme();
   const hasSession = await checkExistingSession();
-  if (hasSession) await bootAppAfterLogin();
+  if (hasSession) await bootByRole();
 }
 
 window.addEventListener('DOMContentLoaded', initApp);
