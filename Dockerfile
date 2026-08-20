@@ -1,9 +1,5 @@
 FROM node:20-alpine
 
-# mariadb-client fornece o binário `mysqldump`, usado pelo backup automático
-# do banco (server/backup.js) — compatível com MySQL.
-RUN apk add --no-cache mariadb-client
-
 WORKDIR /app
 
 COPY package.json package-lock.json* ./

@@ -1,16 +1,21 @@
-/* Backup automático do banco: dump completo via mysqldump, comprimido e
-   enviado pro Cloudflare R2 (compatível com a API S3). Roda agendado
-   (backup-scheduler.js) e também pode ser disparado manualmente
-   (POST /admin/backup-now) pra testar sem esperar o horário agendado.
+/* Backup automático do banco: dump em SQL puro (via mysql2 — a mesma
+   conexão que o app já usa) comprimido e enviado pro Cloudflare R2
+   (compatível com a API S3). Roda agendado (backup-scheduler.js) e também
+   pode ser disparado manualmente (POST /admin/backup-now) pra testar sem
+   esperar o horário agendado.
+
+   Não usamos o binário `mysqldump`: o pacote mariadb-client do Alpine não
+   consegue carregar o plugin de autenticação caching_sha2_password que o
+   MySQL 8+/9 exige (falha ao conectar), e instalar esse plugin à parte é
+   mais frágil do que simplesmente gerar o dump em JS com o driver que já
+   sabemos que funciona.
 
    Guardamos os últimos RETENTION_DIAS dias e apagamos o resto — sem isso
    o bucket cresceria pra sempre. */
 
-const { execFile } = require('child_process');
-const fs = require('fs');
-const os = require('os');
-const path = require('path');
+const zlib = require('zlib');
 const { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const pool = require('./db');
 
 const RETENTION_DIAS = 14;
 
@@ -29,27 +34,31 @@ function getR2Client() {
   });
 }
 
-function runMysqldump({ host, port, user, password, database, outPath }) {
-  return new Promise((resolve, reject) => {
-    const args = ['-h', host, '-P', String(port), '-u', user, '--single-transaction', '--routines', '--triggers', database];
-    const dump = execFile('mysqldump', args, {
-      env: { ...process.env, MYSQL_PWD: password }, // evita senha visível em `ps`
-      maxBuffer: 1024 * 1024 * 1024, // 1GB — banco pequeno, mas dá margem
-    });
-    const gzip = require('zlib').createGzip();
-    const out = fs.createWriteStream(outPath);
+async function dumpDatabaseSQL() {
+  const [tableRows] = await pool.query('SHOW TABLES');
+  const tableNames = tableRows.map(row => Object.values(row)[0]);
 
-    let stderr = '';
-    dump.stderr.on('data', chunk => { stderr += chunk; });
-    dump.on('error', reject);
+  let sql = `-- Backup gerado em ${new Date().toISOString()}\nSET FOREIGN_KEY_CHECKS=0;\n\n`;
 
-    dump.stdout.pipe(gzip).pipe(out);
-    out.on('finish', resolve);
-    out.on('error', reject);
-    dump.on('close', code => {
-      if (code !== 0) reject(new Error(`mysqldump saiu com código ${code}: ${stderr}`));
-    });
-  });
+  for (const table of tableNames) {
+    const [[createRow]] = await pool.query(`SHOW CREATE TABLE \`${table}\``);
+    const createStmt = createRow['Create Table'];
+    sql += `DROP TABLE IF EXISTS \`${table}\`;\n${createStmt};\n\n`;
+
+    const [rows] = await pool.query(`SELECT * FROM \`${table}\``);
+    if (rows.length) {
+      const columns = Object.keys(rows[0]);
+      const colList = columns.map(c => `\`${c}\``).join(', ');
+      for (const row of rows) {
+        const values = columns.map(c => pool.escape(row[c])).join(', ');
+        sql += `INSERT INTO \`${table}\` (${colList}) VALUES (${values});\n`;
+      }
+      sql += '\n';
+    }
+  }
+
+  sql += 'SET FOREIGN_KEY_CHECKS=1;\n';
+  return sql;
 }
 
 async function limparBackupsAntigos(s3, prefix) {
@@ -70,36 +79,28 @@ async function runBackup() {
     return { ok: false, error: 'Backup não configurado (faltam variáveis R2_*).' };
   }
 
-  const host = process.env.MYSQLHOST || process.env.DB_HOST;
-  const port = process.env.MYSQLPORT || process.env.DB_PORT || 3306;
-  const user = process.env.MYSQLUSER || process.env.DB_USER;
-  const password = process.env.MYSQLPASSWORD || process.env.DB_PASSWORD;
   const database = process.env.MYSQLDATABASE || process.env.DB_NAME;
-
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const filename = `backup-${database}-${timestamp}.sql.gz`;
-  const tmpPath = path.join(os.tmpdir(), filename);
 
   try {
-    await runMysqldump({ host, port, user, password, database, outPath: tmpPath });
+    const sql = await dumpDatabaseSQL();
+    const gzipped = zlib.gzipSync(Buffer.from(sql, 'utf8'));
 
-    const stats = fs.statSync(tmpPath);
     const s3 = getR2Client();
     await s3.send(new PutObjectCommand({
       Bucket: process.env.R2_BUCKET,
       Key: filename,
-      Body: fs.readFileSync(tmpPath),
+      Body: gzipped,
     }));
 
     const removidos = await limparBackupsAntigos(s3, `backup-${database}-`);
 
-    console.log(`[backup] ${filename} enviado (${(stats.size / 1024 / 1024).toFixed(2)} MB). ${removidos} backup(s) antigo(s) removido(s).`);
-    return { ok: true, filename, sizeMB: +(stats.size / 1024 / 1024).toFixed(2), removidos };
+    console.log(`[backup] ${filename} enviado (${(gzipped.length / 1024 / 1024).toFixed(2)} MB). ${removidos} backup(s) antigo(s) removido(s).`);
+    return { ok: true, filename, sizeMB: +(gzipped.length / 1024 / 1024).toFixed(2), removidos };
   } catch (e) {
     console.error('[backup] Falha:', e.message);
     return { ok: false, error: e.message };
-  } finally {
-    if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath);
   }
 }
 
