@@ -186,7 +186,11 @@ function categorySelectOptions(grupo, selected) {
   return (data.categoryGroups[grupo] || []).map(c => `<option value="${escapeHtml(c)}" ${c===selected?'selected':''}>${escapeHtml(c)}</option>`).join('');
 }
 
+let txFormId = null;
+
 function openTransactionForm(id) {
+  autosaveTransactionDebounced.cancel?.();
+  txFormId = id || null;
   const t = id ? data.transactions.find(x => x.id === id) : {
     data: financeSelectedMonth + '-' + String(Math.min(new Date().getDate(),28)).padStart(2,'0'),
     grupo: 'receita', categoria: data.categoryGroups.receita[0], descricao: '', valor: 0,
@@ -219,11 +223,13 @@ function openTransactionForm(id) {
       <label style="margin:0;">🔁 Recorrente (repete automaticamente todo mês)</label>
     </div>
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="saveTransactionForm(${id ? `'${id}'` : null})">Salvar</button>
-      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTransactionForm()">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
     </div>
+    <div id="tx-autosave-status" style="font-size:11px;color:var(--text2);margin-top:10px;min-height:14px;"></div>
   `);
   maskCurrencyInput(document.getElementById('f-tx-valor'));
+  attachAutosaveListeners(['f-tx-data','f-tx-grupo','f-tx-categoria','f-tx-valor','f-tx-desc','f-tx-status','f-tx-recorrente'], autosaveTransactionDebounced);
 }
 
 function onTxGroupChange() {
@@ -233,9 +239,9 @@ function onTxGroupChange() {
   statusSel.value = GROUP_META[grupo].tipo === 'entrada' ? 'a_receber' : 'a_pagar';
 }
 
-async function saveTransactionForm(id) {
+function buildTransactionPatch() {
   const grupo = document.getElementById('f-tx-grupo').value;
-  const patch = {
+  return {
     data: document.getElementById('f-tx-data').value,
     grupo,
     categoria: document.getElementById('f-tx-categoria').value,
@@ -244,10 +250,30 @@ async function saveTransactionForm(id) {
     status: document.getElementById('f-tx-status').value,
     recorrente: document.getElementById('f-tx-recorrente').checked,
   };
+}
+
+// Só cria o lançamento quando já tem data + valor > 0 — antes disso não há
+// o que salvar de verdade (grupo/categoria já vêm com um padrão selecionado).
+const autosaveTransactionDebounced = debounce(async () => {
+  if (!document.getElementById('f-tx-valor')) return; // modal já foi fechado
+  const patch = buildTransactionPatch();
+  if (!patch.data || patch.valor <= 0) return;
+  if (txFormId) {
+    await updateTransaction(txFormId, patch);
+  } else {
+    const saved = await addTransaction(patch);
+    txFormId = saved.id;
+  }
+  showAutosaveIndicator('tx-autosave-status');
+});
+
+async function saveTransactionForm() {
+  const patch = buildTransactionPatch();
+  const id = txFormId;
   if (!patch.data) { showToast('Informe a data do lançamento.', 'error'); return; }
   if (patch.valor <= 0) { showToast('Informe um valor maior que zero.', 'error'); return; }
 
-  if (id) await updateTransaction(id, patch); else await addTransaction(patch);
+  if (id) { await updateTransaction(id, patch); } else { const saved = await addTransaction(patch); txFormId = saved.id; }
   closeModal();
   showToast(id ? 'Lançamento atualizado!' : 'Lançamento criado!');
   financeSelectedMonth = monthKey(patch.data);

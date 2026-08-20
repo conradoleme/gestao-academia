@@ -145,9 +145,14 @@ async function updateTurmaFreq(id, field, val) {
 }
 
 let tempTurmaHorarios = [];
+let turmaFormId = null;
+let turmaFormFreqAnterior = 0; // capturado uma vez ao abrir — não persegue o valor atual a cada autosave
 
 function openTurmaForm(id) {
+  autosaveTurmaDebounced.cancel?.();
+  turmaFormId = id || null;
   const t = id ? data.turmas.find(x => x.id === id) : { nome: '', horarios: [], freqAnterior: 0, freqAtual: 0 };
+  turmaFormFreqAnterior = id ? t.freqAtual : 0;
   tempTurmaHorarios = (t.horarios || []).map(h => ({ ...h }));
 
   openModal(id ? 'Editar Turma' : 'Nova Turma', `
@@ -161,11 +166,13 @@ function openTurmaForm(id) {
       <button class="btn btn-secondary" style="margin-top:10px;" onclick="addHorarioRow()">+ Adicionar Horário</button>
     </div>
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="saveTurmaForm(${id ? `'${id}'` : null})">Salvar</button>
-      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTurmaForm()">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
     </div>
+    <div id="turma-autosave-status" style="font-size:11px;color:var(--text2);margin-top:10px;min-height:14px;"></div>
   `);
   renderHorarioRows();
+  attachAutosaveListeners(['f-turma-nome','f-turma-freq'], autosaveTurmaDebounced);
 }
 
 function renderHorarioRows() {
@@ -184,27 +191,42 @@ function renderHorarioRows() {
 function addHorarioRow() {
   tempTurmaHorarios.push({ dia: 'Segunda', hora: '19:00' });
   renderHorarioRows();
+  autosaveTurmaDebounced();
 }
 function removeHorarioRow(i) {
   tempTurmaHorarios.splice(i, 1);
   renderHorarioRows();
+  autosaveTurmaDebounced();
 }
 function updateHorarioField(i, field, val) {
   tempTurmaHorarios[i][field] = val;
+  autosaveTurmaDebounced();
 }
 
-async function saveTurmaForm(id) {
+function buildTurmaPatch() {
   const nome = document.getElementById('f-turma-nome').value.trim();
-  if (!nome) { showToast('Informe o nome da turma.', 'error'); return; }
   const freqAtual = parseFloat(document.getElementById('f-turma-freq').value) || 0;
   const horarios = tempTurmaHorarios.filter(h => h.dia && h.hora);
+  return { nome, freqAnterior: turmaFormFreqAnterior, freqAtual, horarios };
+}
 
-  if (id) {
-    const t = data.turmas.find(x => x.id === id);
-    await updateTurma(id, { nome, freqAnterior: t.freqAtual, freqAtual, horarios });
+const autosaveTurmaDebounced = debounce(async () => {
+  if (!document.getElementById('f-turma-nome')) return; // modal já foi fechado
+  const patch = buildTurmaPatch();
+  if (!patch.nome) return;
+  if (turmaFormId) {
+    await updateTurma(turmaFormId, patch);
   } else {
-    await addTurma({ nome, freqAnterior: freqAtual, freqAtual, horarios });
+    const saved = await addTurma(patch);
+    turmaFormId = saved.id;
   }
+  showAutosaveIndicator('turma-autosave-status');
+});
+
+async function saveTurmaForm() {
+  const patch = buildTurmaPatch();
+  if (!patch.nome) { showToast('Informe o nome da turma.', 'error'); return; }
+  if (turmaFormId) await updateTurma(turmaFormId, patch); else { const saved = await addTurma(patch); turmaFormId = saved.id; }
   closeModal();
   showToast('Turma salva!');
   renderTurmasPage();

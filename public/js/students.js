@@ -59,7 +59,11 @@ function studentRow(s) {
   </tr>`;
 }
 
+let studentFormId = null;
+
 function openStudentForm(id) {
+  autosaveStudentDebounced.cancel?.();
+  studentFormId = id || null;
   const s = id ? data.students.find(x => x.id === id) : {
     nome: '', turma: data.turmas[0]?.nome || '', categoria: 'Adulto', status: 'Ativo',
     valorMensalidade: 0, diaVencimento: 5, valorMatricula: 0, mesMatricula: MESES_PT[new Date().getMonth()],
@@ -93,16 +97,21 @@ function openStudentForm(id) {
     </div>
     <div class="form-group" style="margin-top:12px;"><label>Observações</label><textarea id="f-obs" style="min-height:60px;">${escapeHtml(s.observacoes||'')}</textarea></div>
     <div class="btn-row">
-      <button class="btn btn-primary" onclick="saveStudentForm(${id ? `'${id}'` : null})">Salvar</button>
-      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveStudentForm()">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
     </div>
+    <div id="student-autosave-status" style="font-size:11px;color:var(--text2);margin-top:10px;min-height:14px;"></div>
   `);
   maskCurrencyInput(document.getElementById('f-mensalidade'));
   maskCurrencyInput(document.getElementById('f-matricula'));
+  attachAutosaveListeners(
+    ['f-nome','f-turma','f-categoria','f-status','f-mensalidade','f-vencimento','f-matricula','f-mes-matricula','f-dia-matricula','f-email','f-telefone','f-obs'],
+    autosaveStudentDebounced
+  );
 }
 
-async function saveStudentForm(id) {
-  const patch = {
+function buildStudentPatch() {
+  return {
     nome: document.getElementById('f-nome').value.trim(),
     turma: document.getElementById('f-turma').value,
     categoria: document.getElementById('f-categoria').value,
@@ -116,10 +125,29 @@ async function saveStudentForm(id) {
     telefone: document.getElementById('f-telefone').value.trim(),
     observacoes: document.getElementById('f-obs').value.trim(),
   };
+}
+
+// Assim que tiver um nome digitado, o registro já existe no banco — os
+// campos seguintes vão só atualizando ele, sem precisar clicar em Salvar.
+const autosaveStudentDebounced = debounce(async () => {
+  if (!document.getElementById('f-nome')) return; // modal já foi fechado
+  const patch = buildStudentPatch();
+  if (!patch.nome) return;
+  if (studentFormId) {
+    await updateStudent(studentFormId, patch);
+  } else {
+    const saved = await addStudent(patch);
+    studentFormId = saved.id;
+  }
+  showAutosaveIndicator('student-autosave-status');
+});
+
+async function saveStudentForm() {
+  const patch = buildStudentPatch();
   if (!patch.nome) { showToast('Informe o nome do aluno.', 'error'); return; }
-  if (id) await updateStudent(id, patch); else await addStudent(patch);
+  if (studentFormId) await updateStudent(studentFormId, patch); else { const saved = await addStudent(patch); studentFormId = saved.id; }
   closeModal();
-  showToast(id ? 'Aluno atualizado!' : 'Aluno cadastrado!');
+  showToast('Aluno salvo!');
   renderAlunosPage();
   if (typeof refreshDashboard === 'function') refreshDashboard();
 }

@@ -3,10 +3,14 @@ const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const migrate = require('./migrate');
 const pool = require('./db');
 const { requireAuth, requireRole, login } = require('./auth');
+const { sendEmail } = require('./mailer');
+const { runBackup } = require('./backup');
+const { scheduleBackups } = require('./backup-scheduler');
 const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions } = require('./seed-defaults');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
@@ -35,6 +39,76 @@ app.post('/api/auth/login', async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: 'Erro ao autenticar.' });
+  }
+});
+
+/* ---------------- Esqueci minha senha (rotas públicas) ---------------- */
+app.post('/api/auth/forgot-password', async (req, res) => {
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Informe o e-mail.' });
+
+  // Responde sempre a mesma coisa, exista ou não o e-mail — evita que alguém
+  // use esse endpoint pra descobrir quais e-mails estão cadastrados.
+  const mensagemPadrao = { ok: true, message: 'Se esse e-mail estiver cadastrado, enviamos um link de redefinição.' };
+
+  try {
+    const [aRows] = await pool.query('SELECT nome FROM academias WHERE email = ?', [email]);
+    const [uRows] = await pool.query('SELECT nome FROM usuarios WHERE email = ?', [email]);
+    const encontrado = aRows[0] || uRows[0];
+
+    if (encontrado) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1h
+      await pool.query('INSERT INTO password_resets (email, token, expires_at) VALUES (?,?,?)', [email, token, expiresAt]);
+
+      const resetUrl = `${req.protocol}://${req.get('host')}/reset-senha.html?token=${token}`;
+      await sendEmail({
+        to: email,
+        subject: 'Redefinir senha — Gestão de Academia',
+        html: `
+          <p>Oi ${encontrado.nome ? encontrado.nome : ''},</p>
+          <p>Alguém (esperamos que você) pediu pra redefinir a senha da sua conta. Clique no link abaixo pra criar uma senha nova — ele expira em 1 hora:</p>
+          <p><a href="${resetUrl}">${resetUrl}</a></p>
+          <p>Se você não pediu isso, pode ignorar este e-mail — sua senha continua a mesma.</p>
+        `,
+      });
+    }
+  } catch (e) {
+    console.error(e);
+  }
+
+  res.json(mensagemPadrao);
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  const { token, novaSenha } = req.body || {};
+  if (!token || !novaSenha) return res.status(400).json({ error: 'Dados incompletos.' });
+  if (novaSenha.length < 6) return res.status(400).json({ error: 'A senha precisa ter pelo menos 6 caracteres.' });
+
+  try {
+    const [rows] = await pool.query(
+      'SELECT * FROM password_resets WHERE token = ? AND used = 0 AND expires_at > NOW()',
+      [token]
+    );
+    if (!rows[0]) return res.status(400).json({ error: 'Link inválido ou expirado. Peça um novo link de redefinição.' });
+
+    const { email } = rows[0];
+    const senhaHash = await bcrypt.hash(novaSenha, 10);
+
+    const [aRows] = await pool.query('SELECT id FROM academias WHERE email = ?', [email]);
+    if (aRows[0]) {
+      await pool.query('UPDATE academias SET senha_hash = ? WHERE id = ?', [senhaHash, aRows[0].id]);
+    } else {
+      const [uRows] = await pool.query('SELECT id FROM usuarios WHERE email = ?', [email]);
+      if (!uRows[0]) return res.status(400).json({ error: 'Conta não encontrada.' });
+      await pool.query('UPDATE usuarios SET senha_hash = ? WHERE id = ?', [senhaHash, uRows[0].id]);
+    }
+
+    await pool.query('UPDATE password_resets SET used = 1 WHERE id = ?', [rows[0].id]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao redefinir a senha.' });
   }
 });
 
@@ -138,6 +212,13 @@ app.put('/admin/academias/:id/senha', requireAdminKey, async (req, res) => {
   }
 });
 
+// Dispara um backup imediatamente — pra testar a configuração sem esperar
+// o horário agendado (server/backup-scheduler.js).
+app.post('/admin/backup-now', requireAdminKey, async (req, res) => {
+  const result = await runBackup();
+  res.status(result.ok ? 200 : 500).json(result);
+});
+
 app.delete('/admin/academias/:id', requireAdminKey, async (req, res) => {
   try {
     await pool.query('DELETE FROM academias WHERE id = ?', [req.params.id]);
@@ -172,6 +253,7 @@ app.get('*', (req, res) => {
 
 migrate()
   .then(() => {
+    scheduleBackups();
     app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
   })
   .catch(err => {

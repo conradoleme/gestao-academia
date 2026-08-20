@@ -57,6 +57,36 @@ function monthLabel(yearMonth) {
   return `${MESES_ABREV[m-1]}/${String(y).slice(2)}`;
 }
 
+/* ---------------- Autosave de formulários em modal ---------------- */
+// Evita perder o que a pessoa digitou se ela fechar a aba, trocar de app ou
+// simplesmente esquecer de clicar em "Salvar" — os campos vão salvando
+// sozinhos enquanto digita, sem precisar de confirmação explícita.
+function debounce(fn, ms = 800) {
+  let timer;
+  const debounced = (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), ms);
+  };
+  debounced.cancel = () => clearTimeout(timer);
+  return debounced;
+}
+
+function attachAutosaveListeners(fieldIds, handler) {
+  fieldIds.forEach(fid => {
+    const el = document.getElementById(fid);
+    if (!el) return;
+    const evt = (el.tagName === 'SELECT' || el.type === 'checkbox' || el.type === 'date') ? 'change' : 'input';
+    el.addEventListener(evt, handler);
+  });
+}
+
+function showAutosaveIndicator(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const hora = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  el.textContent = `✓ Salvo automaticamente às ${hora}`;
+}
+
 /* ---------------- Toast / status messages ---------------- */
 function showToast(msg, type = 'success') {
   let el = document.getElementById('toast');
@@ -93,6 +123,13 @@ function openModal(title, bodyHtml, { width = '560px' } = {}) {
 function closeModal() {
   const el = document.getElementById('modal-overlay');
   if (el) el.remove();
+  // Com autosave, fechar o modal de qualquer jeito (✕, clique fora, Fechar)
+  // pode já ter salvo dado novo — atualiza a página de fundo pra refletir.
+  const activePage = document.querySelector('.page.active');
+  if (activePage && typeof PAGE_RENDERERS !== 'undefined') {
+    const pageId = activePage.id.replace('page-', '');
+    if (PAGE_RENDERERS[pageId]) PAGE_RENDERERS[pageId]();
+  }
 }
 
 /* ---------------- Bar chart simples (reutilizado nas páginas) ---------------- */
