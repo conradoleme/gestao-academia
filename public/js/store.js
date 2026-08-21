@@ -350,37 +350,21 @@ function allMonthsWithData() {
   return [...set].sort();
 }
 
-/* KPIs consolidados — janela móvel de 12 meses (já representa base anual) */
+/* KPIs do Dashboard — resultado do mês corrente, sem acumulado de 12 meses */
 function computeKPIs() {
-  const months = lastNMonthKeys(12);
-  let lucroLiquidoTotal = 0, investimentoTotal = 0, entradasTotal = 0, saidasTotal = 0;
-  months.forEach(mk => {
-    const s = getMonthSummary(mk);
-    lucroLiquidoTotal += s.lucroLiquido;
-    investimentoTotal += s.investimento;
-    entradasTotal += s.totalEntradas;
-    saidasTotal += s.totalSaidas;
-  });
-
-  const rsiAnual = investimentoTotal > 0 ? (lucroLiquidoTotal / investimentoTotal) * 100 : null;
-
+  const ym = currentYearMonth();
+  const mesAtual = getMonthSummary(ym);
+  const txMesAtual = transactionsInMonth(ym);
   const hoje = new Date().toISOString().slice(0,10);
-  const aReceberTotal = data.transactions.filter(t => t.status === 'a_receber').reduce((s,t) => s + t.valor, 0);
-  const aPagarTotal = data.transactions.filter(t => t.status === 'a_pagar').reduce((s,t) => s + t.valor, 0);
-  const aReceberVencido = data.transactions.filter(t => t.status === 'a_receber' && t.data < hoje).reduce((s,t) => s + t.valor, 0);
-  const aPagarVencido = data.transactions.filter(t => t.status === 'a_pagar' && t.data < hoje).reduce((s,t) => s + t.valor, 0);
 
-  const mesAtual = getMonthSummary(currentYearMonth());
-
-  const saldoCaixa = data.transactions
-    .filter(t => t.status === 'recebido' || t.status === 'pago')
-    .reduce((s,t) => s + (t.tipo === 'entrada' ? t.valor : -t.valor), 0);
+  const aReceberMes = txMesAtual.filter(t => t.status === 'a_receber').reduce((s,t) => s + t.valor, 0);
+  const aPagarMes = txMesAtual.filter(t => t.status === 'a_pagar').reduce((s,t) => s + t.valor, 0);
+  const aReceberVencido = txMesAtual.filter(t => t.status === 'a_receber' && t.data < hoje).reduce((s,t) => s + t.valor, 0);
+  const aPagarVencido = txMesAtual.filter(t => t.status === 'a_pagar' && t.data < hoje).reduce((s,t) => s + t.valor, 0);
 
   return {
-    rsiAnual, lucroLiquidoTotal, investimentoTotal, entradasTotal, saidasTotal,
     lucroLiquidoMesAtual: mesAtual.lucroLiquido,
-    aReceberTotal, aPagarTotal, aReceberVencido, aPagarVencido,
-    saldoCaixa,
+    aReceberMes, aPagarMes, aReceberVencido, aPagarVencido,
     alunosAtivos: activeStudents().length,
   };
 }

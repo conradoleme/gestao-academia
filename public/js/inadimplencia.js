@@ -22,7 +22,7 @@ async function renderInadimplenciaPage() {
 
   document.getElementById('page-inadimplencia').innerHTML = `
     <div class="section-header">
-      <div><h1>Inadimplência</h1><p class="subtitle" style="margin:0;">Controle de pagamento das mensalidades — clique no status para marcar como pago</p></div>
+      <div><h1>Cobrança</h1><p class="subtitle" style="margin:0;">Controle de pagamento das mensalidades — clique no status para marcar como pago</p></div>
     </div>
 
     <div class="card" style="margin-bottom:20px;">
