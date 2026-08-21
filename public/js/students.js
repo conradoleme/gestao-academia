@@ -33,10 +33,10 @@ function renderAlunosPage() {
     </div>
 
     <div class="card" style="margin-bottom:16px;padding:14px 16px;">
-      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
         <div><div class="kpi-label" style="margin-bottom:2px;">Ativos</div><div style="font-size:18px;font-weight:800;">${activeStudents().length}</div></div>
-        <div><div class="kpi-label" style="margin-bottom:2px;">Kids · Adulto · Particular</div><div style="font-size:18px;font-weight:800;">${kids} · ${adultos} · ${particulares}</div></div>
-        <div><div class="kpi-label" style="margin-bottom:2px;">Receita Recorrente / Mês</div><div style="font-size:18px;font-weight:800;">${fmt(receitaPrevista)}</div></div>
+        <div><div class="kpi-label" style="margin-bottom:2px;">Kids · Adulto · Part.</div><div style="font-size:18px;font-weight:800;">${kids} · ${adultos} · ${particulares}</div></div>
+        <div><div class="kpi-label" style="margin-bottom:2px;">Receita / Mês</div><div style="font-size:18px;font-weight:800;">${fmt(receitaPrevista)}</div></div>
       </div>
     </div>
 
