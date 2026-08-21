@@ -32,11 +32,18 @@ function renderAlunosPage() {
       <div><h1>Alunos</h1><p class="subtitle" style="margin:0;">Cadastro que alimenta automaticamente mensalidades e matrículas no fluxo de caixa</p></div>
     </div>
 
-    <div class="card" style="margin-bottom:16px;padding:14px 16px;">
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
-        <div><div class="kpi-label" style="margin-bottom:2px;">Ativos</div><div style="font-size:18px;font-weight:800;">${activeStudents().length}</div></div>
-        <div><div class="kpi-label" style="margin-bottom:2px;">Por Categoria</div><div style="font-size:18px;font-weight:800;">K${kids} · A${adultos} · P${particulares}</div></div>
-        <div><div class="kpi-label" style="margin-bottom:2px;">Receita / Mês</div><div style="font-size:18px;font-weight:800;">${fmt(receitaPrevista)}</div></div>
+    <div class="card" style="margin-bottom:16px;padding:4px 16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;">
+        <span class="kpi-label" style="margin:0;">Alunos Ativos</span>
+        <span style="font-size:16px;font-weight:800;white-space:nowrap;">${activeStudents().length}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border);">
+        <span class="kpi-label" style="margin:0;">Kids · Adulto · Particular</span>
+        <span style="font-size:16px;font-weight:800;white-space:nowrap;">${kids} · ${adultos} · ${particulares}</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border);">
+        <span class="kpi-label" style="margin:0;">Receita Recorrente / Mês</span>
+        <span style="font-size:16px;font-weight:800;white-space:nowrap;">${fmt(receitaPrevista)}</span>
       </div>
     </div>
 
