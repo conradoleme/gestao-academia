@@ -365,6 +365,35 @@ function computeKPIs() {
   };
 }
 
+/* Dica de gestão do Dashboard — um insight de decisão por vez, do mais
+   urgente pro mais tranquilo, derivado direto dos KPIs do mês corrente. */
+function computeGestaoDica(k) {
+  const margem = k.entradasMes > 0 ? (k.lucroLiquidoMesAtual / k.entradasMes) * 100 : null;
+
+  if (k.saidasMes > k.receitaRecorrentePrevista) {
+    return {
+      nivel: 'critico',
+      texto: `Suas saídas do mês (${fmtFull(k.saidasMes)}) já superam toda a receita recorrente prevista (${fmtFull(k.receitaRecorrentePrevista)}) — mesmo recebendo 100% das mensalidades, o mês fecharia no vermelho. Prioridade: cortar custo fixo ou captar mais alunos.`,
+    };
+  }
+  if (k.lucroLiquidoMesAtual < 0) {
+    return {
+      nivel: 'critico',
+      texto: `Prejuízo no mês: as saídas (${fmtFull(k.saidasMes)}) superaram as entradas (${fmtFull(k.entradasMes)}) em ${fmtFull(-k.lucroLiquidoMesAtual)}. Revise despesas variáveis antes de fechar o mês.`,
+    };
+  }
+  if (margem !== null && margem < 15) {
+    return {
+      nivel: 'atencao',
+      texto: `Margem apertada: só ${margem.toFixed(0)}% das entradas viram lucro. Qualquer imprevisto de despesa pode levar o mês ao prejuízo — vale revisar custos fixos antes de crescer.`,
+    };
+  }
+  return {
+    nivel: 'bom',
+    texto: `Margem saudável${margem !== null ? ` (${margem.toFixed(0)}% das entradas viram lucro)` : ''}. Bom momento para investir em crescimento: marketing, nova turma ou melhoria de estrutura.`,
+  };
+}
+
 /* ---------------- Planejamento de ocupação do tatame ---------------- */
 const DENSIDADE_NIVEIS = [
   { id: 'N1', descricao: 'Confortável — ideal para treino técnico', m2PorDupla: 10 },

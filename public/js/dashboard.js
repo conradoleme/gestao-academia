@@ -5,6 +5,7 @@
 function renderDashboardPage() {
   const k = computeKPIs();
   const diag = computePlanejamentoDiagnostico();
+  const dica = computeGestaoDica(k);
   const mesAtualLabel = monthLabel(currentYearMonth());
 
   document.getElementById('page-dashboard').innerHTML = `
@@ -39,6 +40,10 @@ function renderDashboardPage() {
         <div class="kpi-label">Número de Alunos Ativos</div>
         <div class="kpi-value">${k.alunosAtivos}</div>
       </div>
+    </div>
+
+    <div class="alert alert-${dica.nivel === 'critico' ? 'danger' : dica.nivel === 'atencao' ? 'warning' : 'success'}" style="margin-bottom:16px;">
+      ${dica.nivel === 'critico' ? '🔴' : dica.nivel === 'atencao' ? '🟡' : '🟢'} <strong>Dica de Gestão:</strong> ${dica.texto}
     </div>
 
     <div class="alert alert-${diag.alerta.nivel === 'critico' ? 'danger' : diag.alerta.nivel === 'atencao' ? 'warning' : 'success'}">
