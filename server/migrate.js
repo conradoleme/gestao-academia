@@ -34,6 +34,7 @@ async function migrate() {
   await addColumnIfMissing('transactions', 'recorrente', `TINYINT(1) NOT NULL DEFAULT 0`);
   await addColumnIfMissing('transactions', 'recorrencia_meses', `INT NULL`);
   await addColumnIfMissing('academias', 'logo_key', `VARCHAR(255) NULL`);
+  await addColumnIfMissing('academias', 'watermark_ativo', `TINYINT(1) NOT NULL DEFAULT 0`);
 }
 
 /* ALTER TABLE ... ADD COLUMN é seguro rodar de novo a cada boot só se a

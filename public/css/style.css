@@ -40,7 +40,10 @@ body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', syste
 /* Layout */
 .app { display: grid; grid-template-columns: 260px 1fr; min-height: 100vh; }
 .sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 24px 16px; display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-.main { padding: 32px; overflow-x: hidden; }
+.main { padding: 32px; overflow-x: hidden; position: relative; }
+.page.active { position: relative; z-index: 1; }
+.app-watermark { position: absolute; inset: 0; z-index: 0; pointer-events: none; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.app-watermark img { width: 60%; max-width: 480px; opacity: 0.05; object-fit: contain; }
 
 /* Sidebar */
 .logo { font-size: 17px; font-weight: 800; color: var(--accent); margin-bottom: 4px; }

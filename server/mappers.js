@@ -50,6 +50,7 @@ function academiaToShape(r) {
       concentracaoPico: Number(r.concentracao_pico),
       generatedMonths: r.generated_months || [],
       logoUrl: r.logo_key ? `/logo/${r.id}` : null,
+      watermarkAtivo: !!r.watermark_ativo,
     },
     categoryGroups: r.category_groups || {},
     cobrancaTemplates: r.cobranca_templates || [],

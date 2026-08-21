@@ -36,11 +36,11 @@ router.get('/academia', async (req, res) => {
 router.put('/academia', async (req, res) => {
   const { meta, categoryGroups, cobrancaTemplates } = req.body;
   await pool.query(
-    `UPDATE academias SET nome=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?
+    `UPDATE academias SET nome=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?
      WHERE id=?`,
     [meta.empresa, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
      JSON.stringify(meta.generatedMonths || []), JSON.stringify(categoryGroups || {}), JSON.stringify(cobrancaTemplates || []),
-     req.academiaId]
+     meta.watermarkAtivo ? 1 : 0, req.academiaId]
   );
   res.json({ ok: true });
 });

@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS academias (
   valor_mensal DECIMAL(10,2) NOT NULL DEFAULT 0,
   proximo_vencimento DATE NULL,
   logo_key VARCHAR(255) NULL,
+  watermark_ativo TINYINT(1) NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

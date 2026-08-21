@@ -31,6 +31,7 @@ function defaultData() {
       concentracaoPico: 0.1,
       generatedMonths: [],
       logoUrl: null,
+      watermarkAtivo: false,
     },
     categoryGroups: {
       receita: ['MATRICULA KIDS','MATRICULA ADULTO','MENSALIDADE KIDS','MENSALIDADE ADULTO','KIMONO','PATCHES','MASCOTE','AULA PARTICULAR'],
@@ -561,6 +562,11 @@ async function uploadAcademiaLogo(imageBase64) {
 async function removeAcademiaLogo() {
   await api.del('/api/academia/logo');
   data.meta.logoUrl = null;
+}
+
+async function updateWatermarkAtivo(ativo) {
+  data.meta.watermarkAtivo = ativo;
+  await persistAcademiaSettings();
 }
 
 /* ---------------- Usuários (equipe/alunos com acesso próprio) ---------------- */

@@ -75,6 +75,18 @@ function applyAcademiaLogo() {
   if (mobile) mobile.innerHTML = html;
 }
 
+function applyWatermark() {
+  const container = document.getElementById('app-watermark');
+  const img = document.getElementById('app-watermark-img');
+  if (!container || !img) return;
+  if (data.meta.watermarkAtivo && data.meta.logoUrl) {
+    img.src = data.meta.logoUrl;
+    container.style.display = 'flex';
+  } else {
+    container.style.display = 'none';
+  }
+}
+
 /* ---------------- Boot pós-login ---------------- */
 async function bootAppAfterLogin() {
   await loadDataFromApi();
@@ -82,6 +94,7 @@ async function bootAppAfterLogin() {
   document.getElementById('app-empresa-nome').textContent = data.meta.empresa;
   document.getElementById('app-empresa-nome-mobile').textContent = data.meta.empresa;
   applyAcademiaLogo();
+  applyWatermark();
   const role = decodeAuthToken()?.role;
   applyRoleUI(role);
   showPage(role === 'operacao' ? 'alunos' : 'dashboard');

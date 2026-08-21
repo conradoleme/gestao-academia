@@ -49,6 +49,13 @@ async function renderConfiguracoesPage() {
         ${data.meta.logoUrl ? `<button class="btn btn-secondary" onclick="handleRemoveLogo()">Remover Logo</button>` : ''}
       </div>
 
+      ${data.meta.logoUrl ? `
+        <div style="display:flex;align-items:center;gap:8px;margin-top:14px;">
+          <input type="checkbox" id="cfg-watermark-ativo" style="width:auto;" ${data.meta.watermarkAtivo ? 'checked' : ''} onchange="handleToggleWatermark()">
+          <label style="margin:0;">Usar como marca d'água no fundo do sistema</label>
+        </div>
+      ` : ''}
+
       <hr class="divider">
 
       <h3>Conta</h3>
@@ -159,6 +166,7 @@ async function handleUploadLogo() {
   try {
     await uploadAcademiaLogo(logoSelecionadaBase64);
     applyAcademiaLogo();
+    applyWatermark();
     showToast('Logo atualizada!');
     renderConfiguracoesPage();
   } catch (e) {
@@ -169,10 +177,19 @@ async function handleUploadLogo() {
 function handleRemoveLogo() {
   confirmAction('Remover a logo da academia? Volta a mostrar o ícone padrão.', async () => {
     await removeAcademiaLogo();
+    if (data.meta.watermarkAtivo) await updateWatermarkAtivo(false);
     applyAcademiaLogo();
+    applyWatermark();
     showToast('Logo removida.');
     renderConfiguracoesPage();
   });
+}
+
+async function handleToggleWatermark() {
+  const ativo = document.getElementById('cfg-watermark-ativo').checked;
+  await updateWatermarkAtivo(ativo);
+  applyWatermark();
+  showToast(ativo ? 'Marca d\'água ativada.' : 'Marca d\'água desativada.');
 }
 
 /* ---------------- Usuários (equipe/alunos) ---------------- */
