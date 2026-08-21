@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS transactions (
   aluno_id INT,
   origem VARCHAR(30),
   recorrente TINYINT(1) NOT NULL DEFAULT 0,
-  recorrencia_meses INT NULL, -- NULL = repete para sempre; número = repete só por N meses
+  recorrencia_meses INT NULL, -- NULL = repete para sempre, número = repete só por N meses
   CONSTRAINT fk_transactions_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
   CONSTRAINT fk_transactions_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE SET NULL,
   INDEX idx_transactions_academia_data (academia_id, data)

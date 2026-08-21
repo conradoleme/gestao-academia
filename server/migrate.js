@@ -8,13 +8,19 @@ const pool = require('./db');
 
 async function migrate() {
   const sql = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');
-  const statements = sql
+  // Remove comentários (linha inteira ou só o final da linha) ANTES de
+  // dividir por ";" — um ";" dentro de um comentário já quebrou isso antes
+  // (dividia uma única CREATE TABLE em dois pedaços inválidos).
+  const semComentarios = sql
+    .split('\n')
+    .map(line => {
+      const idx = line.indexOf('--');
+      return idx === -1 ? line : line.slice(0, idx);
+    })
+    .join('\n');
+  const statements = semComentarios
     .split(';')
-    .map(chunk => chunk
-      .split('\n')
-      .filter(line => !line.trim().startsWith('--')) // remove linhas de comentário antes de checar se sobrou SQL de verdade
-      .join('\n')
-      .trim())
+    .map(s => s.trim())
     .filter(s => s.length > 0);
 
   for (const statement of statements) {
