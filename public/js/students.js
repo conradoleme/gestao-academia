@@ -2,11 +2,25 @@
    ALUNOS — cadastro de alunos, turmas vinculadas, geração de mensalidades
    ========================================================================== */
 
+let alunosFiltro = { nome: '', turma: '', categoria: '', status: '' };
+
+function filteredStudents() {
+  return data.students.filter(s => {
+    if (alunosFiltro.nome && !s.nome.toLowerCase().includes(alunosFiltro.nome.toLowerCase())) return false;
+    if (alunosFiltro.turma && s.turma !== alunosFiltro.turma) return false;
+    if (alunosFiltro.categoria && s.categoria !== alunosFiltro.categoria) return false;
+    if (alunosFiltro.status && s.status !== alunosFiltro.status) return false;
+    return true;
+  });
+}
+
 function renderAlunosPage() {
   const kids = data.students.filter(s => s.categoria === 'Kids' && s.status === 'Ativo').length;
   const adultos = data.students.filter(s => s.categoria === 'Adulto' && s.status === 'Ativo').length;
   const particulares = data.students.filter(s => s.categoria === 'Particular' && s.status === 'Ativo').length;
   const receitaPrevista = activeStudents().reduce((s, a) => s + (a.valorMensalidade || 0), 0);
+  const turmaOptions = `<option value="">— Todas —</option>` +
+    data.turmas.map(t => `<option value="${escapeHtml(t.nome)}" ${t.nome===alunosFiltro.turma?'selected':''}>${escapeHtml(t.nome)}</option>`).join('');
 
   document.getElementById('page-alunos').innerHTML = `
     <div class="section-header">
@@ -23,24 +37,70 @@ function renderAlunosPage() {
     </div>
 
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
         <h3 style="margin:0;">Cadastro de Alunos</h3>
         <div class="btn-row" style="margin:0;">
           <button class="btn btn-secondary" onclick="gerarMensalidadesAgora()">🔄 Gerar mensalidades do mês</button>
           <button class="btn btn-primary" onclick="openStudentForm()">+ Novo Aluno</button>
         </div>
       </div>
+
+      <div class="form-grid" style="margin-bottom:16px;">
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Nome</label>
+          <input type="text" id="f-alunos-filtro-nome" placeholder="Buscar por nome..." value="${escapeHtml(alunosFiltro.nome)}" oninput="onAlunosFiltroChange()">
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Turma</label>
+          <select id="f-alunos-filtro-turma" onchange="onAlunosFiltroChange()">${turmaOptions}</select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Categoria</label>
+          <select id="f-alunos-filtro-categoria" onchange="onAlunosFiltroChange()">
+            <option value="">— Todas —</option>
+            <option value="Adulto" ${alunosFiltro.categoria==='Adulto'?'selected':''}>Adulto</option>
+            <option value="Kids" ${alunosFiltro.categoria==='Kids'?'selected':''}>Kids</option>
+            <option value="Particular" ${alunosFiltro.categoria==='Particular'?'selected':''}>Particular</option>
+          </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label>Status</label>
+          <select id="f-alunos-filtro-status" onchange="onAlunosFiltroChange()">
+            <option value="">— Todos —</option>
+            <option value="Ativo" ${alunosFiltro.status==='Ativo'?'selected':''}>Ativo</option>
+            <option value="Inativo" ${alunosFiltro.status==='Inativo'?'selected':''}>Inativo</option>
+          </select>
+        </div>
+      </div>
+
       <div class="table-wrap table-responsive-cards">
         <table>
           <thead><tr>
             <th style="text-align:left;">Nome</th><th>Turma</th><th>Categoria</th><th>Status</th>
             <th>Mensalidade</th><th>Vencimento</th><th>Matrícula</th><th>Ações</th>
           </tr></thead>
-          <tbody>${data.students.map(studentRow).join('') || `<tr><td colspan="8" style="text-align:center;color:var(--text2);">Nenhum aluno cadastrado.</td></tr>`}</tbody>
+          <tbody id="alunos-tbody"></tbody>
         </table>
       </div>
     </div>
   `;
+  renderAlunosTableBody();
+}
+
+function renderAlunosTableBody() {
+  const list = filteredStudents();
+  document.getElementById('alunos-tbody').innerHTML = list.map(studentRow).join('') ||
+    `<tr><td colspan="8" style="text-align:center;color:var(--text2);">${data.students.length ? 'Nenhum aluno encontrado com esses filtros.' : 'Nenhum aluno cadastrado.'}</td></tr>`;
+}
+
+function onAlunosFiltroChange() {
+  alunosFiltro = {
+    nome: document.getElementById('f-alunos-filtro-nome').value,
+    turma: document.getElementById('f-alunos-filtro-turma').value,
+    categoria: document.getElementById('f-alunos-filtro-categoria').value,
+    status: document.getElementById('f-alunos-filtro-status').value,
+  };
+  renderAlunosTableBody();
 }
 
 function studentRow(s) {
