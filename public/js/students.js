@@ -6,7 +6,7 @@ let alunosFiltro = { nome: '', turma: '', categoria: '', status: '' };
 let alunosFiltrosAbertos = false;
 
 function alunosFiltrosAvancadosAtivos() {
-  return ['turma', 'status'].filter(k => alunosFiltro[k]).length;
+  return ['nome', 'turma', 'status'].filter(k => alunosFiltro[k]).length;
 }
 
 function filteredStudents() {
@@ -32,41 +32,40 @@ function renderAlunosPage() {
       <div><h1>Alunos</h1><p class="subtitle" style="margin:0;">Cadastro que alimenta automaticamente mensalidades e matrículas no fluxo de caixa</p></div>
     </div>
 
-    <div class="card-grid card-grid-3" style="margin-bottom:24px;">
-      <div class="kpi kpi-accent"><div class="kpi-label">Alunos Ativos</div><div class="kpi-value">${activeStudents().length}</div></div>
-      <div class="kpi kpi-green">
-        <div class="kpi-label">Por Categoria</div>
-        <div class="kpi-value" style="font-size:18px;">Kids ${kids} · Adulto ${adultos} · Particular ${particulares}</div>
+    <div class="card" style="margin-bottom:16px;padding:14px 16px;">
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <div><div class="kpi-label" style="margin-bottom:2px;">Ativos</div><div style="font-size:18px;font-weight:800;">${activeStudents().length}</div></div>
+        <div><div class="kpi-label" style="margin-bottom:2px;">Kids · Adulto · Particular</div><div style="font-size:18px;font-weight:800;">${kids} · ${adultos} · ${particulares}</div></div>
+        <div><div class="kpi-label" style="margin-bottom:2px;">Receita Recorrente / Mês</div><div style="font-size:18px;font-weight:800;">${fmt(receitaPrevista)}</div></div>
       </div>
-      <div class="kpi kpi-green"><div class="kpi-label">Receita Recorrente Prevista</div><div class="kpi-value">${fmt(receitaPrevista)}</div><div class="kpi-sub">/mês</div></div>
     </div>
 
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
         <h3 style="margin:0;">Cadastro de Alunos</h3>
         <div class="btn-row" style="margin:0;">
-          <button class="btn btn-secondary" onclick="gerarMensalidadesAgora()">🔄 Gerar mensalidades do mês</button>
-          <button class="btn btn-primary" onclick="openStudentForm()">+ Novo Aluno</button>
+          <button class="btn btn-primary" style="flex:1;" onclick="openStudentForm()">+ Novo Aluno</button>
+          <button class="btn btn-secondary" onclick="gerarMensalidadesAgora()" title="Gerar mensalidades do mês">🔄</button>
         </div>
       </div>
 
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${alunosFiltrosAbertos ? '10px' : '16px'};">
-        <input type="text" id="f-alunos-filtro-nome" placeholder="🔍 Buscar por nome..." value="${escapeHtml(alunosFiltro.nome)}" oninput="onAlunosFiltroChange()" style="flex:2;min-width:160px;">
-        <select id="f-alunos-filtro-categoria" onchange="onAlunosFiltroChange()" style="flex:1;min-width:140px;">
+      <div style="display:flex;gap:8px;margin-bottom:${alunosFiltrosAbertos ? '10px' : '16px'};">
+        <select id="f-alunos-filtro-categoria" onchange="onAlunosFiltroChange()" style="flex:1;">
           <option value="">Categoria — Todas</option>
           <option value="Adulto" ${alunosFiltro.categoria==='Adulto'?'selected':''}>Adulto</option>
           <option value="Kids" ${alunosFiltro.categoria==='Kids'?'selected':''}>Kids</option>
           <option value="Particular" ${alunosFiltro.categoria==='Particular'?'selected':''}>Particular</option>
         </select>
-        <button class="btn btn-secondary" onclick="toggleAlunosFiltrosAvancados()">
-          ⚙️ Filtros${alunosFiltrosAvancadosAtivos() ? ` (${alunosFiltrosAvancadosAtivos()})` : ''} ${alunosFiltrosAbertos ? '▲' : '▼'}
+        <button class="btn btn-secondary" onclick="toggleAlunosFiltrosAvancados()" style="white-space:nowrap;flex-shrink:0;">
+          🔍 Filtros${alunosFiltrosAvancadosAtivos() ? ` (${alunosFiltrosAvancadosAtivos()})` : ''} ${alunosFiltrosAbertos ? '▲' : '▼'}
         </button>
       </div>
 
       ${alunosFiltrosAbertos ? `
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:10px;">
-          <select id="f-alunos-filtro-turma" onchange="onAlunosFiltroChange()" style="flex:1;min-width:140px;">${turmaOptions}</select>
-          <select id="f-alunos-filtro-status" onchange="onAlunosFiltroChange()" style="flex:1;min-width:140px;">
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:10px;">
+          <input type="text" id="f-alunos-filtro-nome" placeholder="🔍 Buscar por nome..." value="${escapeHtml(alunosFiltro.nome)}" oninput="onAlunosFiltroChange()">
+          <select id="f-alunos-filtro-turma" onchange="onAlunosFiltroChange()">${turmaOptions}</select>
+          <select id="f-alunos-filtro-status" onchange="onAlunosFiltroChange()">
             <option value="">Status — Todos</option>
             <option value="Ativo" ${alunosFiltro.status==='Ativo'?'selected':''}>Ativo</option>
             <option value="Inativo" ${alunosFiltro.status==='Inativo'?'selected':''}>Inativo</option>
@@ -96,12 +95,13 @@ function renderAlunosTableBody() {
 }
 
 function onAlunosFiltroChange() {
-  // Turma/Status só existem no DOM quando o painel avançado está aberto —
-  // preserva o valor já escolhido se o controle estiver escondido agora.
+  // Nome/Turma/Status só existem no DOM quando o painel avançado está
+  // aberto — preserva o valor já escolhido se o controle estiver escondido.
+  const nomeEl = document.getElementById('f-alunos-filtro-nome');
   const turmaEl = document.getElementById('f-alunos-filtro-turma');
   const statusEl = document.getElementById('f-alunos-filtro-status');
   alunosFiltro = {
-    nome: document.getElementById('f-alunos-filtro-nome').value,
+    nome: nomeEl ? nomeEl.value : alunosFiltro.nome,
     turma: turmaEl ? turmaEl.value : alunosFiltro.turma,
     categoria: document.getElementById('f-alunos-filtro-categoria').value,
     status: statusEl ? statusEl.value : alunosFiltro.status,

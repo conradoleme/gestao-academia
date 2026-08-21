@@ -298,7 +298,7 @@ async function saveTransactionForm() {
   const patch = buildTransactionPatch();
   const id = txFormId;
   if (!patch.data) { showToast('Informe a data do lançamento.', 'error'); return; }
-  if (patch.valor <= 0) { showToast('Informe um valor maior que zero.', 'error'); return; }
+  if (patch.valor < 0) { showToast('O valor não pode ser negativo.', 'error'); return; }
 
   if (id) { await updateTransaction(id, patch); } else { const saved = await addTransaction(patch); txFormId = saved.id; }
   closeModal();
