@@ -12,24 +12,31 @@ function renderDashboardPage() {
       <div><h1>Dashboard</h1><p class="subtitle" style="margin:0;">Visão geral de ${escapeHtml(data.meta.empresa)} — resultado de ${mesAtualLabel}</p></div>
     </div>
 
-    <div class="card-grid card-grid-4" style="margin-bottom:24px;">
-      <div class="kpi kpi-red">
-        <div class="kpi-label">A Pagar</div>
-        <div class="kpi-value">${fmt(k.aPagarMes)}</div>
-        <div class="kpi-sub">${k.aPagarVencido>0 ? '⚠️ ' + fmt(k.aPagarVencido) + ' vencido' : 'Nenhum vencido'}</div>
+    <div class="card-grid card-grid-3" style="margin-bottom:16px;">
+      <div class="kpi kpi-green">
+        <div class="kpi-label">Entradas</div>
+        <div class="kpi-value">${fmt(k.entradasMes)}</div>
+        <div class="kpi-sub">${mesAtualLabel}</div>
       </div>
-      <div class="kpi kpi-yellow">
-        <div class="kpi-label">A Receber</div>
-        <div class="kpi-value">${fmt(k.aReceberMes)}</div>
-        <div class="kpi-sub">${k.aReceberVencido>0 ? '⚠️ ' + fmt(k.aReceberVencido) + ' vencido' : 'Nenhum vencido'}</div>
+      <div class="kpi kpi-red">
+        <div class="kpi-label">Saídas</div>
+        <div class="kpi-value">${fmt(k.saidasMes)}</div>
+        <div class="kpi-sub">${mesAtualLabel}</div>
       </div>
       <div class="kpi ${k.lucroLiquidoMesAtual>=0?'kpi-green':'kpi-red'}">
         <div class="kpi-label">Lucro Líquido</div>
         <div class="kpi-value">${fmt(k.lucroLiquidoMesAtual)}</div>
         <div class="kpi-sub">${mesAtualLabel}</div>
       </div>
+    </div>
+
+    <div class="card-grid card-grid-2" style="margin-bottom:24px;">
       <div class="kpi kpi-accent">
-        <div class="kpi-label">Número de Alunos</div>
+        <div class="kpi-label">Receita Recorrente Prevista do Mês</div>
+        <div class="kpi-value">${fmt(k.receitaRecorrentePrevista)}</div>
+      </div>
+      <div class="kpi kpi-accent">
+        <div class="kpi-label">Número de Alunos Ativos</div>
         <div class="kpi-value">${k.alunosAtivos}</div>
       </div>
     </div>

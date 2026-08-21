@@ -354,17 +354,13 @@ function allMonthsWithData() {
 function computeKPIs() {
   const ym = currentYearMonth();
   const mesAtual = getMonthSummary(ym);
-  const txMesAtual = transactionsInMonth(ym);
-  const hoje = new Date().toISOString().slice(0,10);
-
-  const aReceberMes = txMesAtual.filter(t => t.status === 'a_receber').reduce((s,t) => s + t.valor, 0);
-  const aPagarMes = txMesAtual.filter(t => t.status === 'a_pagar').reduce((s,t) => s + t.valor, 0);
-  const aReceberVencido = txMesAtual.filter(t => t.status === 'a_receber' && t.data < hoje).reduce((s,t) => s + t.valor, 0);
-  const aPagarVencido = txMesAtual.filter(t => t.status === 'a_pagar' && t.data < hoje).reduce((s,t) => s + t.valor, 0);
+  const receitaRecorrentePrevista = activeStudents().reduce((s, a) => s + (a.valorMensalidade || 0), 0);
 
   return {
+    entradasMes: mesAtual.totalEntradas,
+    saidasMes: mesAtual.totalSaidas,
     lucroLiquidoMesAtual: mesAtual.lucroLiquido,
-    aReceberMes, aPagarMes, aReceberVencido, aPagarVencido,
+    receitaRecorrentePrevista,
     alunosAtivos: activeStudents().length,
   };
 }
