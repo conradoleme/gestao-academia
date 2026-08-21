@@ -103,7 +103,7 @@ function transactionRow(t) {
     <td class="${isEntrada?'pos':'neg'}" style="font-weight:700;">${fmtFull(t.valor)}</td>
     <td><button class="status-toggle ${badgeCls}" title="Clique para alternar" onclick="toggleTransactionStatus('${t.id}')">${label}</button></td>
     <td>
-      <button class="btn-icon" title="${t.recorrente ? 'Recorrente — clique para desativar' : 'Marcar como recorrente (repete todo mês)'}" style="opacity:${t.recorrente?'1':'0.35'};" onclick="toggleTransactionRecorrente('${t.id}')">🔁</button>
+      <button class="btn-icon" title="${t.recorrente ? `Recorrente (${t.recorrenciaMeses ? 'por ' + t.recorrenciaMeses + ' meses' : 'infinito'}) — clique para desativar` : 'Marcar como recorrente (repete todo mês)'}" style="opacity:${t.recorrente?'1':'0.35'};" onclick="toggleTransactionRecorrente('${t.id}')">🔁</button>
       <button class="btn-icon" title="Editar" onclick="openTransactionForm('${t.id}')">✏️</button>
       <button class="btn-icon" title="Excluir" onclick="handleDeleteTransaction('${t.id}')">🗑️</button>
     </td>
@@ -219,8 +219,17 @@ function openTransactionForm(id) {
       </select>
     </div>
     <div class="form-group" style="margin-top:12px;display:flex;align-items:center;gap:8px;">
-      <input type="checkbox" id="f-tx-recorrente" style="width:auto;" ${t.recorrente?'checked':''}>
+      <input type="checkbox" id="f-tx-recorrente" style="width:auto;" ${t.recorrente?'checked':''} onchange="onTxRecorrenteToggle()">
       <label style="margin:0;">🔁 Recorrente (repete automaticamente todo mês)</label>
+    </div>
+    <div class="form-group" id="f-tx-recorrencia-duracao" style="margin-top:8px;margin-left:26px;display:${t.recorrente?'flex':'none'};align-items:center;gap:16px;flex-wrap:wrap;">
+      <label style="margin:0;display:flex;align-items:center;gap:6px;font-weight:400;">
+        <input type="radio" name="tx-recorrencia-tipo" value="infinito" style="width:auto;" ${!t.recorrenciaMeses?'checked':''} onchange="onTxRecorrenciaTipoChange()"> Infinito
+      </label>
+      <label style="margin:0;display:flex;align-items:center;gap:6px;font-weight:400;">
+        <input type="radio" name="tx-recorrencia-tipo" value="limitado" style="width:auto;" ${t.recorrenciaMeses?'checked':''} onchange="onTxRecorrenciaTipoChange()"> Por
+        <input type="number" id="f-tx-recorrencia-meses" min="2" max="60" value="${t.recorrenciaMeses||3}" style="width:64px;" ${!t.recorrenciaMeses?'disabled':''} oninput="autosaveTransactionDebounced()"> meses
+      </label>
     </div>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="saveTransactionForm()">Salvar</button>
@@ -232,6 +241,18 @@ function openTransactionForm(id) {
   attachAutosaveListeners(['f-tx-data','f-tx-grupo','f-tx-categoria','f-tx-valor','f-tx-desc','f-tx-status','f-tx-recorrente'], autosaveTransactionDebounced);
 }
 
+function onTxRecorrenteToggle() {
+  const checked = document.getElementById('f-tx-recorrente').checked;
+  document.getElementById('f-tx-recorrencia-duracao').style.display = checked ? 'flex' : 'none';
+  autosaveTransactionDebounced();
+}
+
+function onTxRecorrenciaTipoChange() {
+  const limitado = document.querySelector('input[name="tx-recorrencia-tipo"]:checked')?.value === 'limitado';
+  document.getElementById('f-tx-recorrencia-meses').disabled = !limitado;
+  autosaveTransactionDebounced();
+}
+
 function onTxGroupChange() {
   const grupo = document.getElementById('f-tx-grupo').value;
   document.getElementById('f-tx-categoria').innerHTML = categorySelectOptions(grupo);
@@ -241,6 +262,12 @@ function onTxGroupChange() {
 
 function buildTransactionPatch() {
   const grupo = document.getElementById('f-tx-grupo').value;
+  const recorrente = document.getElementById('f-tx-recorrente').checked;
+  let recorrenciaMeses = null;
+  if (recorrente) {
+    const tipo = document.querySelector('input[name="tx-recorrencia-tipo"]:checked')?.value;
+    if (tipo === 'limitado') recorrenciaMeses = parseInt(document.getElementById('f-tx-recorrencia-meses').value) || null;
+  }
   return {
     data: document.getElementById('f-tx-data').value,
     grupo,
@@ -248,7 +275,7 @@ function buildTransactionPatch() {
     descricao: document.getElementById('f-tx-desc').value.trim(),
     valor: parseCurrencyValue(document.getElementById('f-tx-valor').value),
     status: document.getElementById('f-tx-status').value,
-    recorrente: document.getElementById('f-tx-recorrente').checked,
+    recorrente, recorrenciaMeses,
   };
 }
 

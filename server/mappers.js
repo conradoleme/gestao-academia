@@ -30,6 +30,7 @@ function txToJSON(r) {
     valor: Number(r.valor) || 0, status: r.status, tipo: r.tipo,
     alunoId: r.aluno_id === null || r.aluno_id === undefined ? null : String(r.aluno_id),
     origem: r.origem || '', recorrente: !!r.recorrente,
+    recorrenciaMeses: r.recorrencia_meses === null || r.recorrencia_meses === undefined ? null : Number(r.recorrencia_meses),
   };
 }
 

@@ -274,6 +274,12 @@ function recurringTemplates() {
   return [...map.values()];
 }
 
+function contarOcorrenciasSerie(tpl) {
+  return data.transactions.filter(t =>
+    t.recorrente && t.grupo === tpl.grupo && t.categoria === tpl.categoria && (t.descricao||'') === (tpl.descricao||'')
+  ).length;
+}
+
 async function ensureRecorrentesForMonth(yearMonth) {
   const [year, month] = yearMonth.split('-').map(Number);
   const daysInMonth = new Date(year, month, 0).getDate();
@@ -284,12 +290,16 @@ async function ensureRecorrentesForMonth(yearMonth) {
       t.grupo === tpl.grupo && t.categoria === tpl.categoria && (t.descricao||'') === (tpl.descricao||'') && monthKey(t.data) === yearMonth);
     if (already) continue;
 
+    // Série com prazo definido (ex: 6 meses) — para de gerar depois de
+    // atingir o total, em vez de repetir para sempre.
+    if (tpl.recorrenciaMeses && contarOcorrenciasSerie(tpl) >= tpl.recorrenciaMeses) continue;
+
     const dia = Math.min(Number(tpl.data.slice(-2)) || 5, daysInMonth);
     const dataStr = `${yearMonth}-${String(dia).padStart(2,'0')}`;
     await addTransaction({
       data: dataStr, grupo: tpl.grupo, categoria: tpl.categoria, descricao: tpl.descricao,
       valor: tpl.valor, status: tpl.tipo === 'entrada' ? 'a_receber' : 'a_pagar',
-      origem: 'auto-recorrente', recorrente: true,
+      origem: 'auto-recorrente', recorrente: true, recorrenciaMeses: tpl.recorrenciaMeses || null,
     });
     created++;
   }
