@@ -11,6 +11,8 @@ const { requireAuth, requireRole, login } = require('./auth');
 const { sendEmail } = require('./mailer');
 const { runBackup } = require('./backup');
 const { scheduleBackups } = require('./backup-scheduler');
+const { r2Configurado, getR2Client } = require('./r2');
+const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions } = require('./seed-defaults');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
@@ -23,10 +25,29 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '4mb' })); // acomoda a logo em base64 (upload de imagem)
 
 /* ---------------- Healthcheck (Railway) ---------------- */
 app.get('/health', (req, res) => res.status(200).json({ ok: true }));
+
+/* ---------------- Logo da academia (pública — precisa carregar sem login) ----------------
+   O bucket R2 continua privado: buscamos com nossas próprias credenciais e
+   repassamos os bytes, em vez de expor o bucket publicamente. */
+app.get('/logo/:academiaId', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT logo_key FROM academias WHERE id = ?', [req.params.academiaId]);
+    const logoKey = rows[0]?.logo_key;
+    if (!logoKey || !r2Configurado()) return res.status(404).end();
+
+    const s3 = getR2Client();
+    const obj = await s3.send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET, Key: logoKey }));
+    res.set('Content-Type', obj.ContentType || 'application/octet-stream');
+    res.set('Cache-Control', 'public, max-age=3600');
+    obj.Body.pipe(res);
+  } catch (e) {
+    res.status(404).end();
+  }
+});
 
 /* ---------------- Login (única rota pública) ---------------- */
 app.post('/api/auth/login', async (req, res) => {

@@ -64,12 +64,24 @@ function applyRoleUI(role) {
   });
 }
 
+/* ---------------- Logo personalizada da academia ---------------- */
+function applyAcademiaLogo() {
+  const html = data.meta.logoUrl
+    ? `<img src="${data.meta.logoUrl}" style="height:22px;vertical-align:middle;border-radius:4px;">`
+    : '🥋';
+  const desktop = document.getElementById('app-logo-emoji');
+  const mobile = document.getElementById('app-logo-emoji-mobile');
+  if (desktop) desktop.innerHTML = html;
+  if (mobile) mobile.innerHTML = html;
+}
+
 /* ---------------- Boot pós-login ---------------- */
 async function bootAppAfterLogin() {
   await loadDataFromApi();
   await autoGenerateOnLoad();
   document.getElementById('app-empresa-nome').textContent = data.meta.empresa;
   document.getElementById('app-empresa-nome-mobile').textContent = data.meta.empresa;
+  applyAcademiaLogo();
   const role = decodeAuthToken()?.role;
   applyRoleUI(role);
   showPage(role === 'operacao' ? 'alunos' : 'dashboard');

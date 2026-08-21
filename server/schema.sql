@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS academias (
   status_pagamento VARCHAR(20) NOT NULL DEFAULT 'ativo',
   valor_mensal DECIMAL(10,2) NOT NULL DEFAULT 0,
   proximo_vencimento DATE NULL,
+  logo_key VARCHAR(255) NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 

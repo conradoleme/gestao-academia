@@ -33,6 +33,24 @@ async function renderConfiguracoesPage() {
 
       <hr class="divider">
 
+      <h3>Logo da Academia</h3>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
+        <div id="cfg-logo-preview" style="width:56px;height:56px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
+          ${data.meta.logoUrl ? `<img src="${escapeHtml(data.meta.logoUrl)}" style="width:100%;height:100%;object-fit:contain;">` : `<span style="font-size:26px;">🥋</span>`}
+        </div>
+        <div style="font-size:12.5px;color:var(--text2);">PNG, JPG, WEBP ou SVG · até 2MB<br>Aparece no menu lateral do sistema.</div>
+      </div>
+      <div class="form-group">
+        <input type="file" id="cfg-logo-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="handleLogoFileSelected()">
+      </div>
+      <div id="cfg-logo-error"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="cfg-logo-upload-btn" onclick="handleUploadLogo()" disabled>Enviar Logo</button>
+        ${data.meta.logoUrl ? `<button class="btn btn-secondary" onclick="handleRemoveLogo()">Remover Logo</button>` : ''}
+      </div>
+
+      <hr class="divider">
+
       <h3>Conta</h3>
       <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Login: <strong style="color:var(--text);">${escapeHtml(email)}</strong></div>
 
@@ -105,6 +123,56 @@ async function handleSaveAcademiaNome() {
   document.getElementById('app-empresa-nome').textContent = nome;
   document.getElementById('app-empresa-nome-mobile').textContent = nome;
   showToast('Nome da academia atualizado!');
+}
+
+/* ---------------- Logo da Academia ---------------- */
+let logoSelecionadaBase64 = null;
+
+function handleLogoFileSelected() {
+  const input = document.getElementById('cfg-logo-input');
+  const errorEl = document.getElementById('cfg-logo-error');
+  errorEl.innerHTML = '';
+  logoSelecionadaBase64 = null;
+  document.getElementById('cfg-logo-upload-btn').disabled = true;
+
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) {
+    errorEl.innerHTML = `<div class="alert alert-danger">Imagem muito grande — máximo 2MB.</div>`;
+    input.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    logoSelecionadaBase64 = reader.result;
+    document.getElementById('cfg-logo-preview').innerHTML = `<img src="${logoSelecionadaBase64}" style="width:100%;height:100%;object-fit:contain;">`;
+    document.getElementById('cfg-logo-upload-btn').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function handleUploadLogo() {
+  if (!logoSelecionadaBase64) return;
+  const errorEl = document.getElementById('cfg-logo-error');
+  errorEl.innerHTML = '';
+  try {
+    await uploadAcademiaLogo(logoSelecionadaBase64);
+    applyAcademiaLogo();
+    showToast('Logo atualizada!');
+    renderConfiguracoesPage();
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function handleRemoveLogo() {
+  confirmAction('Remover a logo da academia? Volta a mostrar o ícone padrão.', async () => {
+    await removeAcademiaLogo();
+    applyAcademiaLogo();
+    showToast('Logo removida.');
+    renderConfiguracoesPage();
+  });
 }
 
 /* ---------------- Usuários (equipe/alunos) ---------------- */

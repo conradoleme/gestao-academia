@@ -14,25 +14,11 @@
    o bucket cresceria pra sempre. */
 
 const zlib = require('zlib');
-const { S3Client, PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
+const { PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const pool = require('./db');
+const { r2Configurado, getR2Client } = require('./r2');
 
 const RETENTION_DIAS = 14;
-
-function r2Configurado() {
-  return !!(process.env.R2_ENDPOINT && process.env.R2_ACCESS_KEY_ID && process.env.R2_SECRET_ACCESS_KEY && process.env.R2_BUCKET);
-}
-
-function getR2Client() {
-  return new S3Client({
-    region: 'auto',
-    endpoint: process.env.R2_ENDPOINT,
-    credentials: {
-      accessKeyId: process.env.R2_ACCESS_KEY_ID,
-      secretAccessKey: process.env.R2_SECRET_ACCESS_KEY,
-    },
-  });
-}
 
 async function dumpDatabaseSQL() {
   const [tableRows] = await pool.query('SHOW TABLES');

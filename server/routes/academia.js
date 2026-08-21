@@ -1,8 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
+const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const pool = require('../db');
 const { studentToJSON, turmaToJSON, txToJSON, academiaToShape } = require('../mappers');
+const { requireRole } = require('../auth');
+const { r2Configurado, getR2Client } = require('../r2');
+
+const LOGO_MIME_EXT = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/svg+xml': 'svg' };
+const LOGO_MAX_BYTES = 2 * 1024 * 1024; // 2MB
 
 /* Uma chamada só no login: tudo que o app precisa pra montar a tela inicial */
 router.get('/bootstrap', async (req, res) => {
@@ -59,6 +65,52 @@ router.put('/academia/senha', async (req, res) => {
   const novoHash = await bcrypt.hash(novaSenha, 10);
   await pool.query(`UPDATE ${table} SET senha_hash = ? WHERE id = ?`, [novoHash, targetId]);
   res.json({ ok: true });
+});
+
+/* Logo da academia — enviada como data URL (base64) direto do navegador,
+   sem precisar de multer/multipart. Guardada no mesmo bucket R2 do backup
+   (prefixo "logos/"), mas o bucket continua privado: quem serve a imagem
+   pro navegador é a rota pública GET /logo/:academiaId em index.js, que
+   busca com nossas próprias credenciais em vez de expor o bucket. */
+router.put('/academia/logo', requireRole('admin'), async (req, res) => {
+  if (!r2Configurado()) return res.status(503).json({ error: 'Upload de logo não configurado neste servidor.' });
+
+  const match = /^data:(image\/[a-zA-Z0-9+.-]+);base64,(.+)$/.exec((req.body || {}).imageBase64 || '');
+  if (!match) return res.status(400).json({ error: 'Envie uma imagem válida.' });
+
+  const mime = match[1];
+  const ext = LOGO_MIME_EXT[mime];
+  if (!ext) return res.status(400).json({ error: 'Formato não suportado. Use PNG, JPG, WEBP ou SVG.' });
+
+  const buffer = Buffer.from(match[2], 'base64');
+  if (buffer.length > LOGO_MAX_BYTES) return res.status(400).json({ error: 'Imagem muito grande — máximo 2MB.' });
+
+  const key = `logos/${req.academiaId}.${ext}`;
+  try {
+    const s3 = getR2Client();
+    await s3.send(new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key, Body: buffer, ContentType: mime }));
+    await pool.query('UPDATE academias SET logo_key = ? WHERE id = ?', [key, req.academiaId]);
+    res.json({ ok: true, logoUrl: `/logo/${req.academiaId}` });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao enviar a logo.' });
+  }
+});
+
+router.delete('/academia/logo', requireRole('admin'), async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT logo_key FROM academias WHERE id = ?', [req.academiaId]);
+    const logoKey = rows[0]?.logo_key;
+    await pool.query('UPDATE academias SET logo_key = NULL WHERE id = ?', [req.academiaId]);
+    if (logoKey && r2Configurado()) {
+      const s3 = getR2Client();
+      await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: logoKey })).catch(() => {});
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao remover a logo.' });
+  }
 });
 
 module.exports = router;

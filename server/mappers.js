@@ -49,6 +49,7 @@ function academiaToShape(r) {
       tatame: { comprimento: Number(r.tatame_comprimento), largura: Number(r.tatame_largura) },
       concentracaoPico: Number(r.concentracao_pico),
       generatedMonths: r.generated_months || [],
+      logoUrl: r.logo_key ? `/logo/${r.id}` : null,
     },
     categoryGroups: r.category_groups || {},
     cobrancaTemplates: r.cobranca_templates || [],
