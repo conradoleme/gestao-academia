@@ -3,6 +3,11 @@
    ========================================================================== */
 
 let alunosFiltro = { nome: '', turma: '', categoria: '', status: '' };
+let alunosFiltrosAbertos = false;
+
+function alunosFiltrosAvancadosAtivos() {
+  return ['turma', 'status'].filter(k => alunosFiltro[k]).length;
+}
 
 function filteredStudents() {
   return data.students.filter(s => {
@@ -19,7 +24,7 @@ function renderAlunosPage() {
   const adultos = data.students.filter(s => s.categoria === 'Adulto' && s.status === 'Ativo').length;
   const particulares = data.students.filter(s => s.categoria === 'Particular' && s.status === 'Ativo').length;
   const receitaPrevista = activeStudents().reduce((s, a) => s + (a.valorMensalidade || 0), 0);
-  const turmaOptions = `<option value="">— Todas —</option>` +
+  const turmaOptions = `<option value="">Turma — Todas</option>` +
     data.turmas.map(t => `<option value="${escapeHtml(t.nome)}" ${t.nome===alunosFiltro.turma?'selected':''}>${escapeHtml(t.nome)}</option>`).join('');
 
   document.getElementById('page-alunos').innerHTML = `
@@ -45,33 +50,30 @@ function renderAlunosPage() {
         </div>
       </div>
 
-      <div class="form-grid" style="margin-bottom:16px;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Nome</label>
-          <input type="text" id="f-alunos-filtro-nome" placeholder="Buscar por nome..." value="${escapeHtml(alunosFiltro.nome)}" oninput="onAlunosFiltroChange()">
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Turma</label>
-          <select id="f-alunos-filtro-turma" onchange="onAlunosFiltroChange()">${turmaOptions}</select>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Categoria</label>
-          <select id="f-alunos-filtro-categoria" onchange="onAlunosFiltroChange()">
-            <option value="">— Todas —</option>
-            <option value="Adulto" ${alunosFiltro.categoria==='Adulto'?'selected':''}>Adulto</option>
-            <option value="Kids" ${alunosFiltro.categoria==='Kids'?'selected':''}>Kids</option>
-            <option value="Particular" ${alunosFiltro.categoria==='Particular'?'selected':''}>Particular</option>
-          </select>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label>Status</label>
-          <select id="f-alunos-filtro-status" onchange="onAlunosFiltroChange()">
-            <option value="">— Todos —</option>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:${alunosFiltrosAbertos ? '10px' : '16px'};">
+        <input type="text" id="f-alunos-filtro-nome" placeholder="🔍 Buscar por nome..." value="${escapeHtml(alunosFiltro.nome)}" oninput="onAlunosFiltroChange()" style="flex:2;min-width:160px;">
+        <select id="f-alunos-filtro-categoria" onchange="onAlunosFiltroChange()" style="flex:1;min-width:140px;">
+          <option value="">Categoria — Todas</option>
+          <option value="Adulto" ${alunosFiltro.categoria==='Adulto'?'selected':''}>Adulto</option>
+          <option value="Kids" ${alunosFiltro.categoria==='Kids'?'selected':''}>Kids</option>
+          <option value="Particular" ${alunosFiltro.categoria==='Particular'?'selected':''}>Particular</option>
+        </select>
+        <button class="btn btn-secondary" onclick="toggleAlunosFiltrosAvancados()">
+          ⚙️ Filtros${alunosFiltrosAvancadosAtivos() ? ` (${alunosFiltrosAvancadosAtivos()})` : ''} ${alunosFiltrosAbertos ? '▲' : '▼'}
+        </button>
+      </div>
+
+      ${alunosFiltrosAbertos ? `
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:10px;">
+          <select id="f-alunos-filtro-turma" onchange="onAlunosFiltroChange()" style="flex:1;min-width:140px;">${turmaOptions}</select>
+          <select id="f-alunos-filtro-status" onchange="onAlunosFiltroChange()" style="flex:1;min-width:140px;">
+            <option value="">Status — Todos</option>
             <option value="Ativo" ${alunosFiltro.status==='Ativo'?'selected':''}>Ativo</option>
             <option value="Inativo" ${alunosFiltro.status==='Inativo'?'selected':''}>Inativo</option>
           </select>
+          ${(alunosFiltro.nome || alunosFiltro.turma || alunosFiltro.categoria || alunosFiltro.status) ? `<button class="btn btn-secondary" onclick="handleClearAlunosFiltros()">✕ Limpar filtros</button>` : ''}
         </div>
-      </div>
+      ` : ''}
 
       <div class="table-wrap table-responsive-cards">
         <table>
@@ -94,13 +96,27 @@ function renderAlunosTableBody() {
 }
 
 function onAlunosFiltroChange() {
+  // Turma/Status só existem no DOM quando o painel avançado está aberto —
+  // preserva o valor já escolhido se o controle estiver escondido agora.
+  const turmaEl = document.getElementById('f-alunos-filtro-turma');
+  const statusEl = document.getElementById('f-alunos-filtro-status');
   alunosFiltro = {
     nome: document.getElementById('f-alunos-filtro-nome').value,
-    turma: document.getElementById('f-alunos-filtro-turma').value,
+    turma: turmaEl ? turmaEl.value : alunosFiltro.turma,
     categoria: document.getElementById('f-alunos-filtro-categoria').value,
-    status: document.getElementById('f-alunos-filtro-status').value,
+    status: statusEl ? statusEl.value : alunosFiltro.status,
   };
   renderAlunosTableBody();
+}
+
+function toggleAlunosFiltrosAvancados() {
+  alunosFiltrosAbertos = !alunosFiltrosAbertos;
+  renderAlunosPage();
+}
+
+function handleClearAlunosFiltros() {
+  alunosFiltro = { nome: '', turma: '', categoria: '', status: '' };
+  renderAlunosPage();
 }
 
 function studentRow(s) {
