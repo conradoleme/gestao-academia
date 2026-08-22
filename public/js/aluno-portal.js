@@ -1,8 +1,9 @@
 /* ==========================================================================
    PORTAL DO ALUNO — tela própria e simplificada pra quem loga com um
-   acesso "aluno": só os dados dele (mensalidade, histórico, turmas) e
-   troca de senha. Não usa o objeto `data` nem o shell de navegação do app
-   de gestão — busca tudo direto de /api/aluno/me.
+   acesso "aluno": só os dados dele (mensalidade, histórico, turma e
+   evolução de graduação). Não usa o objeto `data` nem o shell de
+   navegação do app de gestão — busca tudo direto de /api/aluno/me.
+   Trocar senha fica na tela de login ("Esqueci minha senha"), não aqui.
    ========================================================================== */
 
 let alunoData = null;
@@ -25,7 +26,7 @@ function alunoMensalidadeDoMes() {
 }
 
 function renderAlunoPortal() {
-  const { aluno, academiaNome, pagamentos, turmas } = alunoData;
+  const { aluno, academiaNome, pagamentos, turmas, graduacao } = alunoData;
   const mensalidadeAtual = alunoMensalidadeDoMes();
 
   let statusBadge = '';
@@ -72,26 +73,88 @@ function renderAlunoPortal() {
         </div>
 
         <div class="card">
-          <h3>Grade de Turmas</h3>
+          <h3>Minha Turma</h3>
           ${turmas.length ? turmas.map(t => `
-            <div style="padding:8px 0;border-bottom:1px solid var(--border);">
+            <div style="padding:8px 0;">
               <strong>${escapeHtml(t.nome)}</strong>
               <div style="font-size:12px;color:var(--text2);">${(t.horarios || []).map(h => `${h.dia} ${h.hora}`).join(' · ') || '—'}</div>
             </div>
-          `).join('') : `<p style="color:var(--text2);">Nenhuma turma cadastrada.</p>`}
+          `).join('') : `<p style="color:var(--text2);">Você ainda não está matriculado(a) em nenhuma turma — fale com a academia.</p>`}
         </div>
 
-        <div class="card">
-          <h3>Trocar Senha</h3>
-          <div class="form-group"><label>Senha atual</label><input type="password" id="al-senha-atual" autocomplete="current-password"></div>
-          <div class="form-group"><label>Nova senha</label><input type="password" id="al-senha-nova" autocomplete="new-password"></div>
-          <div class="form-group"><label>Confirmar nova senha</label><input type="password" id="al-senha-confirmar" autocomplete="new-password"></div>
-          <div id="al-senha-error"></div>
-          <div class="btn-row"><button class="btn btn-primary" onclick="handleAlunoChangeSenha()">Trocar Senha</button></div>
-        </div>
+        ${renderAlunoGraduacaoCard(graduacao)}
       </div>
     </div>
   `;
+}
+
+function alunoBarra(pct, cor) {
+  return `<div style="background:var(--border);border-radius:999px;height:8px;overflow:hidden;">
+    <div style="width:${Math.round(Math.min(1, pct) * 100)}%;height:100%;background:${cor};border-radius:999px;"></div>
+  </div>`;
+}
+
+function renderAlunoGraduacaoCard(g) {
+  if (!g) return '';
+
+  const faixaTag = `<span class="tag" style="background:${g.cor}22;color:${g.cor};border:1px solid ${g.cor}55;font-size:13px;">${escapeHtml(g.faixaAtual)}</span>`;
+
+  if (g.semRegra) {
+    return `<div class="card">
+      <h3>🥋 Evolução</h3>
+      <div style="margin-top:8px;">${faixaTag}</div>
+      <p style="color:var(--text2);margin:12px 0 0;">Você está na faixa máxima configurada pela academia. 🏆</p>
+    </div>`;
+  }
+
+  if (g.semDataInicio) {
+    return `<div class="card">
+      <h3>🥋 Evolução</h3>
+      <div style="margin-top:8px;">${faixaTag}</div>
+      <p style="color:var(--text2);margin:12px 0 0;">Peça pro seu instrutor cadastrar sua data de início — assim dá pra acompanhar sua evolução até a faixa ${escapeHtml(g.proximaFaixa || 'seguinte')}.</p>
+    </div>`;
+  }
+
+  if (g.pronto) {
+    return `<div class="card">
+      <h3>🥋 Evolução</h3>
+      <div style="margin-top:8px;">${faixaTag} <span style="color:var(--text2);">→ rumo a <strong>${escapeHtml(g.proximaFaixa)}</strong></span></div>
+      <p style="margin:14px 0 0;font-weight:600;">🎉 Você já bateu os critérios pra próxima faixa! Fala com seu instrutor.</p>
+    </div>`;
+  }
+
+  const faltamMeses = Math.max(0, g.minMeses - g.meses);
+  const faltamAulas = Math.max(0, g.minAulas - g.totalAulas);
+
+  return `<div class="card">
+    <h3>🥋 Evolução</h3>
+    <div style="margin-top:8px;margin-bottom:14px;">${faixaTag} <span style="color:var(--text2);">→ rumo a <strong>${escapeHtml(g.proximaFaixa)}</strong></span></div>
+
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
+          <span>Tempo na faixa</span><span>${g.meses}/${g.minMeses} meses</span>
+        </div>
+        ${alunoBarra(g.meses / (g.minMeses || 1), g.okMeses ? 'var(--green)' : g.cor)}
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
+          <span>Aulas treinadas</span><span>${g.totalAulas}/${g.minAulas}</span>
+        </div>
+        ${alunoBarra(g.totalAulas / (g.minAulas || 1), g.okAulas ? 'var(--green)' : g.cor)}
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
+          <span>Frequência (últimos 90 dias)</span><span>${g.frequenciaSemanal.toFixed(1)}/${g.minFrequenciaSemanal}x por semana</span>
+        </div>
+        ${alunoBarra(g.frequenciaSemanal / (g.minFrequenciaSemanal || 1), g.okFrequencia ? 'var(--green)' : g.cor)}
+      </div>
+    </div>
+
+    <p style="color:var(--text2);font-size:12.5px;margin:14px 0 0;">
+      ${faltamAulas > 0 ? `Faltam <strong>${faltamAulas}</strong> aula(s)` : 'Aulas — feito ✓'}${faltamMeses > 0 ? ` e <strong>${faltamMeses}</strong> mês(es)` : ''} pra faixa ${escapeHtml(g.proximaFaixa)}.
+    </p>
+  </div>`;
 }
 
 function alunoPagamentoRow(t) {
@@ -104,24 +167,3 @@ function alunoPagamentoRow(t) {
   </tr>`;
 }
 
-async function handleAlunoChangeSenha() {
-  const senhaAtual = document.getElementById('al-senha-atual').value;
-  const novaSenha = document.getElementById('al-senha-nova').value;
-  const confirmar = document.getElementById('al-senha-confirmar').value;
-  const errorEl = document.getElementById('al-senha-error');
-  errorEl.innerHTML = '';
-
-  if (!senhaAtual || !novaSenha) { errorEl.innerHTML = `<div class="alert alert-danger">Preencha a senha atual e a nova senha.</div>`; return; }
-  if (novaSenha.length < 6) { errorEl.innerHTML = `<div class="alert alert-danger">A nova senha precisa ter pelo menos 6 caracteres.</div>`; return; }
-  if (novaSenha !== confirmar) { errorEl.innerHTML = `<div class="alert alert-danger">A confirmação não bate com a nova senha.</div>`; return; }
-
-  try {
-    await api.put('/api/aluno/senha', { senhaAtual, novaSenha });
-    document.getElementById('al-senha-atual').value = '';
-    document.getElementById('al-senha-nova').value = '';
-    document.getElementById('al-senha-confirmar').value = '';
-    showToast('Senha alterada com sucesso!');
-  } catch (e) {
-    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
-  }
-}
