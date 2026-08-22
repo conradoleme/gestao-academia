@@ -16,7 +16,12 @@ router.get('/bootstrap', async (req, res) => {
   if (!academiaRows[0]) return res.status(404).json({ error: 'Academia não encontrada.' });
   const [turmaRows] = await pool.query('SELECT * FROM turmas WHERE academia_id = ?', [req.academiaId]);
   const [studentRows] = await pool.query('SELECT * FROM students WHERE academia_id = ?', [req.academiaId]);
-  const [txRows] = await pool.query('SELECT * FROM transactions WHERE academia_id = ?', [req.academiaId]);
+  // Operação só enxerga lançamentos vinculados a aluno (mensalidade/matrícula)
+  // — o ledger completo (despesas, salários etc.) fica só com o dono.
+  const txQuery = req.role === 'operacao'
+    ? 'SELECT * FROM transactions WHERE academia_id = ? AND aluno_id IS NOT NULL'
+    : 'SELECT * FROM transactions WHERE academia_id = ?';
+  const [txRows] = await pool.query(txQuery, [req.academiaId]);
   const [presencaRows] = await pool.query('SELECT * FROM presencas WHERE academia_id = ?', [req.academiaId]);
   const [graduacaoRows] = await pool.query('SELECT * FROM graduacoes WHERE academia_id = ?', [req.academiaId]);
 

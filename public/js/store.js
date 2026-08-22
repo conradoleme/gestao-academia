@@ -193,6 +193,27 @@ async function updateTransaction(id, patch) {
     showToast('Erro ao atualizar lançamento: ' + e.message, 'error');
   }
 }
+// Fatia estreita de transactions que a operação também pode escrever —
+// só lançamento vinculado a aluno (mensalidade/matrícula), nunca despesa.
+async function addMensalidade(tx) {
+  try {
+    const saved = await api.post('/api/mensalidades', tx);
+    data.transactions.push(saved);
+    return saved;
+  } catch (e) {
+    showToast('Erro ao salvar lançamento: ' + e.message, 'error');
+    throw e;
+  }
+}
+async function updateMensalidadeStatus(id, status) {
+  const t = data.transactions.find(t => t.id === id);
+  if (t) t.status = status;
+  try {
+    await api.put(`/api/mensalidades/${id}/status`, { status });
+  } catch (e) {
+    showToast('Erro ao atualizar status: ' + e.message, 'error');
+  }
+}
 async function deleteTransaction(id) {
   data.transactions = data.transactions.filter(t => t.id !== id);
   try {
@@ -381,8 +402,8 @@ async function ensureMensalidadesForMonth(yearMonth) {
       if (!already) {
         const dia = Math.min(s.diaVencimento || 5, daysInMonth);
         const dataStr = `${yearMonth}-${String(dia).padStart(2,'0')}`;
-        await addTransaction({
-          data: dataStr, grupo: 'receita', categoria,
+        await addMensalidade({
+          data: dataStr, categoria,
           descricao: `Mensalidade ${mesNome} — ${s.nome}`,
           valor: s.valorMensalidade, status: 'a_receber',
           alunoId: s.id, origem: 'auto-mensalidade',
@@ -397,8 +418,8 @@ async function ensureMensalidadesForMonth(yearMonth) {
       if (!already) {
         const dia = Math.min(s.diaMatricula || 1, daysInMonth);
         const dataStr = `${yearMonth}-${String(dia).padStart(2,'0')}`;
-        await addTransaction({
-          data: dataStr, grupo: 'receita', categoria,
+        await addMensalidade({
+          data: dataStr, categoria,
           descricao: `Matrícula — ${s.nome}`,
           valor: s.valorMatricula, status: 'a_receber',
           alunoId: s.id, origem: 'auto-matricula',
@@ -467,9 +488,14 @@ function currentYearMonth() {
 
 async function autoGenerateOnLoad() {
   const ym = currentYearMonth();
+  // Mensalidade é operação (Cobrança); recorrentes (aluguel, salários...)
+  // são só do dono — não dá pra travar os dois atrás do mesmo flag de
+  // "mês já gerado", senão quem loga primeiro no mês decide pros dois.
   if (!data.meta.generatedMonths.includes(ym)) {
     await ensureMensalidadesForMonth(ym);
-    await ensureRecorrentesForMonth(ym);
+  }
+  if (decodeAuthToken()?.role === 'admin') {
+    await ensureRecorrentesForMonth(ym); // idempotente — já checa "already" por template
   }
 }
 

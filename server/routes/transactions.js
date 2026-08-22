@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { txToJSON } = require('../mappers');
+const { requireRole } = require('../auth');
+
+/* Ledger completo (despesas, salários, aluguel etc.) — só o dono vê. A
+   operação lida só com mensalidades de aluno, pela rota /api/mensalidades. */
+router.use(requireRole('admin'));
 
 router.get('/', async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM transactions WHERE academia_id = ?', [req.academiaId]);

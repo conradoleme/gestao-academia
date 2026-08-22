@@ -87,7 +87,7 @@ function inadimplenciaRow(item) {
 async function toggleMensalidadeStatus(studentId) {
   const tx = mensalidadeTransactionFor(studentId, inadimplenciaSelectedMonth);
   if (!tx) return;
-  await updateTransaction(tx.id, { status: tx.status === 'recebido' ? 'a_receber' : 'recebido' });
+  await updateMensalidadeStatus(tx.id, tx.status === 'recebido' ? 'a_receber' : 'recebido');
   showToast('Status de pagamento atualizado!');
   renderInadimplenciaPage();
   if (typeof refreshDashboard === 'function') refreshDashboard();

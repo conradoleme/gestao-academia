@@ -22,6 +22,7 @@ const usuariosRoutes = require('./routes/usuarios');
 const alunoRoutes = require('./routes/aluno');
 const presencasRoutes = require('./routes/presencas');
 const graduacoesRoutes = require('./routes/graduacoes');
+const mensalidadesRoutes = require('./routes/mensalidades');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -268,6 +269,7 @@ app.use('/api/transactions', transactionsRoutes);
 app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/presencas', presencasRoutes);
 app.use('/api/graduacoes', graduacoesRoutes);
+app.use('/api/mensalidades', mensalidadesRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Rota de API não encontrada.' }));
 
 /* ---------------- Frontend estático ---------------- */
