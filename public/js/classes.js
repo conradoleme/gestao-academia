@@ -99,7 +99,10 @@ function turmaRow(t) {
     <td style="font-size:11px;color:var(--text2);">${t.horarios.map(h=>`${h.dia.slice(0,3)} ${h.hora}`).join(', ') || '—'}</td>
     <td>${t.alunosMatriculados}</td>
     <td><input type="number" value="${t.freqAnterior}" class="mini-input" onchange="updateTurmaFreq('${t.id}','freqAnterior',this.value)"></td>
-    <td><input type="number" value="${t.freqAtual}" class="mini-input" onchange="updateTurmaFreq('${t.id}','freqAtual',this.value)"></td>
+    <td>${t.freqOrigemReal
+      ? `<span title="Calculado a partir de ${t.freqSessoes} chamadas reais nos últimos 30 dias — pra editar manualmente, pare de usar a Chamada nessa turma.">${t.freqAtual.toFixed(1)} <span class="tag tag-green" style="font-size:10px;padding:1px 5px;">📊 real</span></span>`
+      : `<input type="number" value="${t.freqAtual}" class="mini-input" onchange="updateTurmaFreq('${t.id}','freqAtual',this.value)">`
+    }</td>
     <td class="${t.crescimento>=0?'pos':'neg'}">${fmtPct(t.crescimento*100)}</td>
     <td style="font-weight:700;">${(t.pctCapacidade*100).toFixed(0)}%</td>
     <td><span class="tag" style="background:${t.faixa.cor}1a;color:${t.faixa.cor};">${t.faixa.label}</span></td>

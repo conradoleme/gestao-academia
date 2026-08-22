@@ -7,6 +7,7 @@ const PAGE_RENDERERS = {
   alunos: renderAlunosPage,
   turmas: renderTurmasPage,
   chamada: renderChamadaPage,
+  graduacao: renderGraduacaoPage,
   financas: renderFinancePage,
   inadimplencia: renderInadimplenciaPage,
   ganhos: renderGanhosPage,

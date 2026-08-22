@@ -587,17 +587,45 @@ function classifyFaixa(freqAtual, tatame) {
   return { id: 'acima', label: 'Acima do Limite', cor: 'var(--red)' };
 }
 
+/* Frequência real de uma turma (últimos 30 dias) a partir da presença de
+   verdade — média de alunos distintos por sessão. Exige pelo menos 3
+   sessões registradas pra confiar no número em vez da estimativa manual
+   (evita 1-2 chamadas isoladas derrubarem o planejamento do tatame). */
+function turmaFrequenciaReal(turmaNome, dias = 30) {
+  const hoje = new Date();
+  const desde = new Date(hoje.getTime() - dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const presencasTurma = data.presencas.filter(p => p.turma === turmaNome && p.data >= desde);
+  if (!presencasTurma.length) return null;
+
+  const porData = {};
+  presencasTurma.forEach(p => {
+    if (!porData[p.data]) porData[p.data] = new Set();
+    porData[p.data].add(p.alunoId);
+  });
+  const contagens = Object.values(porData).map(set => set.size);
+  if (contagens.length < 3) return null;
+
+  const media = contagens.reduce((a, b) => a + b, 0) / contagens.length;
+  return { media, sessoes: contagens.length };
+}
+
 function computeOcupacaoTurmas() {
   const tatame = computeTatameCapacity();
   const { capacidadeSeguranca } = tatame;
   return data.turmas.map(t => {
-    const crescimento = t.freqAnterior > 0 ? (t.freqAtual - t.freqAnterior) / t.freqAnterior : 0;
-    const pctCapacidade = capacidadeSeguranca > 0 ? t.freqAtual / capacidadeSeguranca : 0;
+    const real = turmaFrequenciaReal(t.nome);
+    const freqAtual = real ? real.media : t.freqAtual;
+    const crescimento = t.freqAnterior > 0 ? (freqAtual - t.freqAnterior) / t.freqAnterior : 0;
+    const pctCapacidade = capacidadeSeguranca > 0 ? freqAtual / capacidadeSeguranca : 0;
     let nivel = 'ok', label = 'OK';
     if (pctCapacidade > 1) { nivel = 'critico'; label = 'CRÍTICO'; }
     else if (pctCapacidade >= 0.7) { nivel = 'atencao'; label = 'ATENÇÃO'; }
-    const faixa = classifyFaixa(t.freqAtual, tatame);
-    return { ...t, crescimento, pctCapacidade, nivel, label, faixa, alunosMatriculados: studentsInTurma(t.nome).length };
+    const faixa = classifyFaixa(freqAtual, tatame);
+    return {
+      ...t, freqAtual, crescimento, pctCapacidade, nivel, label, faixa,
+      alunosMatriculados: studentsInTurma(t.nome).length,
+      freqOrigemReal: !!real, freqSessoes: real?.sessoes || 0,
+    };
   });
 }
 

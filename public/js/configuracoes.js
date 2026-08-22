@@ -4,8 +4,16 @@
    ========================================================================== */
 
 let usuariosCache = [];
+let graduacaoRegrasEdit = null;
+let graduacaoRegrasCategoriaAtiva = 'Adulto';
 
 const ROLE_LABELS = { admin: 'Dono', operacao: 'Operação', aluno: 'Aluno' };
+
+function initGraduacaoRegrasEdit() {
+  graduacaoRegrasEdit = JSON.parse(JSON.stringify(data.graduacaoRegras || {}));
+  if (!graduacaoRegrasEdit.Adulto) graduacaoRegrasEdit.Adulto = [];
+  if (!graduacaoRegrasEdit.Kids) graduacaoRegrasEdit.Kids = [];
+}
 
 async function renderConfiguracoesPage() {
   const email = decodeAuthToken()?.email || '—';
@@ -14,6 +22,7 @@ async function renderConfiguracoesPage() {
 
   if (isAdmin) {
     try { usuariosCache = await fetchUsuarios(); } catch (e) { usuariosCache = []; }
+    if (!graduacaoRegrasEdit) initGraduacaoRegrasEdit();
   }
 
   document.getElementById('page-configuracoes').innerHTML = `
@@ -80,7 +89,7 @@ async function renderConfiguracoesPage() {
     </div>
 
     ${isAdmin ? `
-      <div class="card">
+      <div class="card" style="margin-bottom:24px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <div>
             <h3 style="margin:0;">Usuários</h3>
@@ -97,8 +106,23 @@ async function renderConfiguracoesPage() {
           </table>
         </div>
       </div>
+
+      <div class="card">
+        <h3>Regras de Graduação</h3>
+        <p style="color:var(--text2);font-size:12.5px;margin-bottom:16px;">Defina a sequência de faixas de cada categoria e o critério pra avançar pra próxima. A última faixa da lista é o topo, sem critério.</p>
+        <div class="tabs" style="margin-bottom:16px;">
+          <button class="tab ${graduacaoRegrasCategoriaAtiva==='Adulto'?'active':''}" onclick="setGraduacaoRegrasCategoria('Adulto')">Adulto</button>
+          <button class="tab ${graduacaoRegrasCategoriaAtiva==='Kids'?'active':''}" onclick="setGraduacaoRegrasCategoria('Kids')">Kids</button>
+        </div>
+        <div id="graduacao-regras-lista"></div>
+        <div class="btn-row" style="margin-top:16px;">
+          <button class="btn btn-secondary" onclick="handleAddFaixaRegra()">+ Adicionar Faixa</button>
+          <button class="btn btn-primary" onclick="handleSalvarGraduacaoRegras()">Salvar Regras</button>
+        </div>
+      </div>
     ` : ''}
   `;
+  if (isAdmin) renderGraduacaoRegrasLista();
 }
 
 async function handleChangeSenha() {
@@ -305,4 +329,85 @@ function handleDeleteUsuario(id, nome) {
     showToast('Usuário removido.');
     renderConfiguracoesPage();
   });
+}
+
+/* ---------------- Regras de Graduação ---------------- */
+function setGraduacaoRegrasCategoria(categoria) {
+  graduacaoRegrasCategoriaAtiva = categoria;
+  renderConfiguracoesPage();
+}
+
+function renderGraduacaoRegrasLista() {
+  const container = document.getElementById('graduacao-regras-lista');
+  if (!container) return;
+  const faixas = graduacaoRegrasEdit[graduacaoRegrasCategoriaAtiva] || [];
+
+  container.innerHTML = faixas.length ? faixas.map((f, i) => {
+    const isUltima = i === faixas.length - 1;
+    return `
+      <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:${isUltima ? '0' : '10px'};">
+          <input type="color" value="${f.cor || '#94a3b8'}" style="width:36px;height:36px;padding:2px;flex-shrink:0;" onchange="handleFaixaFieldChange(${i},'cor',this.value)">
+          <input type="text" value="${escapeHtml(f.nome)}" style="flex:1;" onchange="handleFaixaFieldChange(${i},'nome',this.value)">
+          <button class="btn-icon" title="Mover pra cima" ${i===0?'disabled':''} onclick="handleMoverFaixa(${i},-1)">⬆️</button>
+          <button class="btn-icon" title="Mover pra baixo" ${isUltima?'disabled':''} onclick="handleMoverFaixa(${i},1)">⬇️</button>
+          <button class="btn-icon" title="Remover" onclick="handleRemoverFaixa(${i})">🗑️</button>
+        </div>
+        ${!isUltima ? `
+          <div class="form-grid">
+            <div class="form-group" style="margin-bottom:0;"><label>Mín. meses</label><input type="number" min="0" value="${f.regra?.minMeses ?? 0}" onchange="handleRegraFieldChange(${i},'minMeses',this.value)"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Mín. aulas</label><input type="number" min="0" value="${f.regra?.minAulas ?? 0}" onchange="handleRegraFieldChange(${i},'minAulas',this.value)"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Freq. mín./semana</label><input type="number" min="0" step="0.5" value="${f.regra?.minFrequenciaSemanal ?? 0}" onchange="handleRegraFieldChange(${i},'minFrequenciaSemanal',this.value)"></div>
+            <div class="form-group" style="margin-bottom:0;display:flex;align-items:center;gap:6px;margin-top:22px;">
+              <input type="checkbox" id="reg-aval-${i}" style="width:auto;" ${f.regra?.avaliacaoManual !== false ? 'checked' : ''} onchange="handleRegraFieldChange(${i},'avaliacaoManual',this.checked)">
+              <label style="margin:0;" for="reg-aval-${i}">Exige avaliação do instrutor</label>
+            </div>
+          </div>
+        ` : `<div style="color:var(--text2);font-size:12.5px;">Faixa máxima — sem critério pra avançar.</div>`}
+      </div>
+    `;
+  }).join('') : `<p style="color:var(--text2);">Nenhuma faixa cadastrada pra ${graduacaoRegrasCategoriaAtiva} ainda — clique em "+ Adicionar Faixa".</p>`;
+}
+
+function handleFaixaFieldChange(i, field, value) {
+  graduacaoRegrasEdit[graduacaoRegrasCategoriaAtiva][i][field] = value;
+}
+
+function handleRegraFieldChange(i, field, value) {
+  const faixa = graduacaoRegrasEdit[graduacaoRegrasCategoriaAtiva][i];
+  if (!faixa.regra) faixa.regra = {};
+  faixa.regra[field] = field === 'avaliacaoManual' ? value : (parseFloat(value) || 0);
+}
+
+function handleMoverFaixa(i, delta) {
+  const lista = graduacaoRegrasEdit[graduacaoRegrasCategoriaAtiva];
+  const novoIndex = i + delta;
+  if (novoIndex < 0 || novoIndex >= lista.length) return;
+  [lista[i], lista[novoIndex]] = [lista[novoIndex], lista[i]];
+  renderGraduacaoRegrasLista();
+}
+
+function handleRemoverFaixa(i) {
+  graduacaoRegrasEdit[graduacaoRegrasCategoriaAtiva].splice(i, 1);
+  renderGraduacaoRegrasLista();
+}
+
+function handleAddFaixaRegra() {
+  graduacaoRegrasEdit[graduacaoRegrasCategoriaAtiva].push({
+    nome: 'Nova Faixa', cor: '#94a3b8',
+    regra: { minMeses: 12, minAulas: 60, minFrequenciaSemanal: 1, avaliacaoManual: true },
+  });
+  renderGraduacaoRegrasLista();
+}
+
+async function handleSalvarGraduacaoRegras() {
+  // A última faixa de cada categoria é o topo — nunca deve carregar critério.
+  Object.keys(graduacaoRegrasEdit).forEach(cat => {
+    const lista = graduacaoRegrasEdit[cat];
+    if (lista.length) lista[lista.length - 1].regra = null;
+  });
+  data.graduacaoRegras = graduacaoRegrasEdit;
+  await persistAcademiaSettings();
+  showToast('Regras de graduação salvas!');
+  renderConfiguracoesPage();
 }
