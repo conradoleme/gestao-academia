@@ -162,24 +162,7 @@ function sendCobrancaWhatsapp(numero) {
   window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, '_blank');
 }
 function copyCobrancaMensagem() {
-  const el = document.getElementById('cob-mensagem');
-  const mensagem = el.value;
-
-  function fallbackCopy() {
-    el.focus();
-    el.select();
-    try {
-      if (document.execCommand('copy')) { showToast('Mensagem copiada!'); return; }
-    } catch (e) { /* segue para o aviso abaixo */ }
-    showToast('Não foi possível copiar automaticamente — selecione o texto e use Cmd+C.', 'error');
-  }
-
-  if (navigator.clipboard && window.isSecureContext) {
-    navigator.clipboard.writeText(mensagem).then(() => showToast('Mensagem copiada!')).catch(fallbackCopy);
-  } else {
-    // navigator.clipboard exige HTTPS/localhost — ao abrir via file://, cai aqui direto
-    fallbackCopy();
-  }
+  copyTextareaToClipboard('cob-mensagem');
 }
 
 /* ---------------- Gestão dos modelos da régua ---------------- */

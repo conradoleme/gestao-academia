@@ -225,11 +225,62 @@ function usuarioRow(u) {
     <td data-label="Papel"><span class="tag" style="background:var(--surface2);">${ROLE_LABELS[u.role] || u.role}</span></td>
     <td data-label="Vínculo" style="text-align:left;">${aluno ? escapeHtml(aluno.nome) : '—'}</td>
     <td data-label="Ações" style="display:flex;gap:6px;flex-wrap:wrap;">
+      ${u.role === 'aluno' ? `<button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" title="Compartilhar acesso" onclick="openCompartilharAcessoModal('${u.id}')">🔗</button>` : ''}
       <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openUsuarioForm('${u.id}')">✏️</button>
       <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openUsuarioSenhaModal('${u.id}', '${escapeHtml(u.nome).replace(/'/g, "\\'")}')">🔑</button>
       <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="handleDeleteUsuario('${u.id}', '${escapeHtml(u.nome).replace(/'/g, "\\'")}')">🗑️</button>
     </td>
   </tr>`;
+}
+
+/* ---------------- Compartilhar acesso do portal com o aluno ---------------- */
+function openCompartilharAcessoModal(usuarioId, senhaInicial) {
+  const u = usuariosCache.find(x => x.id === usuarioId);
+  if (!u) return;
+  const aluno = u.alunoId ? data.students.find(s => s.id === u.alunoId) : null;
+
+  const link = window.location.origin;
+  const linhaLogin = senhaInicial
+    ? `Login: ${u.email}\nSenha: ${senhaInicial}`
+    : `Login: ${u.email} (a senha é a que a academia combinou com você)`;
+  const mensagem = `Oi${aluno ? ', ' + aluno.nome : ''}! Seu acesso ao portal da ${data.meta.empresa} já está pronto 🥋
+
+Link: ${link}
+${linhaLogin}
+
+Lá você vê sua mensalidade, seu histórico de pagamento e sua evolução até a próxima faixa.`;
+
+  const whatsappNum = formatWhatsappNumber(aluno?.telefone);
+
+  openModal(`Compartilhar Acesso — ${escapeHtml(u.nome)}`, `
+    <div class="form-group">
+      <label>Mensagem</label>
+      <textarea id="compartilhar-mensagem" style="min-height:150px;">${escapeHtml(mensagem)}</textarea>
+    </div>
+    <div class="card" style="margin-top:12px;background:var(--surface2);">
+      <div style="font-size:12px;color:var(--text2);line-height:1.8;">
+        📧 E-mail de login: ${escapeHtml(u.email)}<br>
+        💬 WhatsApp: ${aluno?.telefone ? escapeHtml(aluno.telefone) : '<span style="color:var(--red);">não cadastrado — edite o aluno para adicionar</span>'}
+      </div>
+    </div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-success" ${!whatsappNum ? 'disabled style="opacity:.4;cursor:not-allowed;"' : ''} onclick="sendCompartilharWhatsapp('${whatsappNum}')">💬 Enviar por WhatsApp</button>
+      <button class="btn btn-primary" onclick="sendCompartilharEmail('${escapeHtml(u.email)}')">📧 Enviar por E-mail</button>
+      <button class="btn btn-secondary" onclick="copyCompartilharMensagem()">📋 Copiar</button>
+    </div>
+  `, { width: '520px' });
+}
+
+function sendCompartilharWhatsapp(numero) {
+  const mensagem = document.getElementById('compartilhar-mensagem').value;
+  window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, '_blank');
+}
+function sendCompartilharEmail(email) {
+  const mensagem = document.getElementById('compartilhar-mensagem').value;
+  window.open(`mailto:${encodeURIComponent(email)}?subject=${encodeURIComponent('Seu acesso ao portal')}&body=${encodeURIComponent(mensagem)}`, '_blank');
+}
+function copyCompartilharMensagem() {
+  copyTextareaToClipboard('compartilhar-mensagem');
 }
 
 function alunoSelectOptions(selectedId) {
@@ -279,17 +330,21 @@ async function saveUsuarioForm(id) {
   if (role === 'aluno' && !alunoId) { errorEl.innerHTML = `<div class="alert alert-danger">Selecione o aluno vinculado.</div>`; return; }
 
   try {
+    let novoAluno = null;
+    let senhaCriada = null;
     if (id) {
       await updateUsuario(id, { nome, role, alunoId });
     } else {
       const email = document.getElementById('us-email').value.trim();
       const senha = document.getElementById('us-senha').value;
       if (!email || !senha) { errorEl.innerHTML = `<div class="alert alert-danger">Informe e-mail e senha.</div>`; return; }
-      await createUsuario({ nome, email, senha, role, alunoId });
+      const saved = await createUsuario({ nome, email, senha, role, alunoId });
+      if (role === 'aluno') { novoAluno = saved.id; senhaCriada = senha; }
     }
     closeModal();
     showToast(id ? 'Usuário atualizado!' : 'Usuário criado!');
-    renderConfiguracoesPage();
+    await renderConfiguracoesPage();
+    if (novoAluno) openCompartilharAcessoModal(novoAluno, senhaCriada);
   } catch (e) {
     errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
   }

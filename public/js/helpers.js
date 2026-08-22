@@ -87,6 +87,29 @@ function showAutosaveIndicator(elId) {
   el.textContent = `✓ Salvo automaticamente às ${hora}`;
 }
 
+/* ---------------- Copiar texto de uma textarea/input pra área de transferência ---------------- */
+function copyTextareaToClipboard(elId) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  const texto = el.value;
+
+  function fallbackCopy() {
+    el.focus();
+    el.select();
+    try {
+      if (document.execCommand('copy')) { showToast('Copiado!'); return; }
+    } catch (e) { /* segue para o aviso abaixo */ }
+    showToast('Não foi possível copiar automaticamente — selecione o texto e use Cmd+C.', 'error');
+  }
+
+  if (navigator.clipboard && window.isSecureContext) {
+    navigator.clipboard.writeText(texto).then(() => showToast('Copiado!')).catch(fallbackCopy);
+  } else {
+    // navigator.clipboard exige HTTPS/localhost — ao abrir via file://, cai aqui direto
+    fallbackCopy();
+  }
+}
+
 /* ---------------- Toast / status messages ---------------- */
 function showToast(msg, type = 'success') {
   let el = document.getElementById('toast');
