@@ -6,13 +6,14 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { presencaToJSON } = require('../mappers');
+const asyncHandler = require('../asyncHandler');
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM presencas WHERE academia_id = ? ORDER BY data DESC', [req.academiaId]);
   res.json(rows.map(presencaToJSON));
-});
+}));
 
-router.post('/', async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   const { alunoId, data, turma } = req.body || {};
   if (!alunoId || !data) return res.status(400).json({ error: 'Informe o aluno e a data.' });
 
@@ -28,11 +29,11 @@ router.post('/', async (req, res) => {
   );
   const [rows] = await pool.query('SELECT * FROM presencas WHERE id = ?', [result.insertId]);
   res.json(presencaToJSON(rows[0]));
-});
+}));
 
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', asyncHandler(async (req, res) => {
   await pool.query('DELETE FROM presencas WHERE id=? AND academia_id=?', [req.params.id, req.academiaId]);
   res.json({ ok: true });
-});
+}));
 
 module.exports = router;

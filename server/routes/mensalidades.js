@@ -6,18 +6,19 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { txToJSON } = require('../mappers');
+const asyncHandler = require('../asyncHandler');
 
 const STATUS_VALIDOS = ['a_receber', 'recebido'];
 
-router.get('/', async (req, res) => {
+router.get('/', asyncHandler(async (req, res) => {
   const [rows] = await pool.query(
     'SELECT * FROM transactions WHERE academia_id = ? AND aluno_id IS NOT NULL',
     [req.academiaId]
   );
   res.json(rows.map(txToJSON));
-});
+}));
 
-router.post('/', async (req, res) => {
+router.post('/', asyncHandler(async (req, res) => {
   const t = req.body || {};
   if (!t.alunoId) return res.status(400).json({ error: 'Informe o aluno.' });
   if (!t.data || !t.categoria || !t.status) return res.status(400).json({ error: 'Dados incompletos para o lançamento.' });
@@ -31,9 +32,9 @@ router.post('/', async (req, res) => {
   );
   const [rows] = await pool.query('SELECT * FROM transactions WHERE id = ?', [result.insertId]);
   res.json(txToJSON(rows[0]));
-});
+}));
 
-router.put('/:id/status', async (req, res) => {
+router.put('/:id/status', asyncHandler(async (req, res) => {
   const { status } = req.body || {};
   if (!STATUS_VALIDOS.includes(status)) return res.status(400).json({ error: 'Status inválido.' });
 
@@ -45,6 +46,6 @@ router.put('/:id/status', async (req, res) => {
 
   await pool.query('UPDATE transactions SET status = ? WHERE id = ?', [status, req.params.id]);
   res.json({ ok: true });
-});
+}));
 
 module.exports = router;

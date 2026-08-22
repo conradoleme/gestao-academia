@@ -4,6 +4,7 @@ const path = require('path');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 
 const migrate = require('./migrate');
 const pool = require('./db');
@@ -27,11 +28,26 @@ const mensalidadesRoutes = require('./routes/mensalidades');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Railway fica atrás de um proxy reverso — sem isso, todo mundo apareceria
+// com o mesmo IP (o do proxy) pro rate limiter abaixo, e um limitaria todos.
+app.set('trust proxy', 1);
+
 app.use(cors());
 app.use(express.json({ limit: '4mb' })); // acomoda a logo em base64 (upload de imagem)
 
 /* ---------------- Healthcheck (Railway) ---------------- */
 app.get('/health', (req, res) => res.status(200).json({ ok: true }));
+
+/* ---------------- Limite de tentativas nas rotas de login/senha ----------------
+   Sem isso, login/esqueci-senha/redefinir-senha aceitavam tentativas
+   ilimitadas — abre pra força bruta e credential stuffing. */
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Muitas tentativas — aguarde alguns minutos e tente de novo.' },
+});
 
 /* ---------------- Logo da academia (pública — precisa carregar sem login) ----------------
    O bucket R2 continua privado: buscamos com nossas próprias credenciais e
@@ -53,7 +69,7 @@ app.get('/logo/:academiaId', async (req, res) => {
 });
 
 /* ---------------- Login (única rota pública) ---------------- */
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { email, senha } = req.body || {};
   if (!email || !senha) return res.status(400).json({ error: 'Informe e-mail e senha.' });
   try {
@@ -67,7 +83,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 /* ---------------- Esqueci minha senha (rotas públicas) ---------------- */
-app.post('/api/auth/forgot-password', async (req, res) => {
+app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Informe o e-mail.' });
 
@@ -104,7 +120,7 @@ app.post('/api/auth/forgot-password', async (req, res) => {
   res.json(mensagemPadrao);
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   const { token, novaSenha } = req.body || {};
   if (!token || !novaSenha) return res.status(400).json({ error: 'Dados incompletos.' });
   if (novaSenha.length < 6) return res.status(400).json({ error: 'A senha precisa ter pelo menos 6 caracteres.' });
@@ -137,7 +153,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 /* ---------------- Painel de admin (login próprio, fora do multi-tenant) ---------------- */
-app.post('/admin/auth/login', async (req, res) => {
+app.post('/admin/auth/login', authLimiter, async (req, res) => {
   const { email, senha } = req.body || {};
   if (!email || !senha) return res.status(400).json({ error: 'Informe e-mail e senha.' });
   try {
@@ -300,6 +316,13 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Rota de API não en
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+});
+
+/* ---------------- Rede de segurança — qualquer erro não tratado cai aqui,
+   em vez de derrubar o processo ou vazar stack trace pro cliente. ---------------- */
+app.use((err, req, res, next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Erro interno do servidor.' });
 });
 
 migrate()

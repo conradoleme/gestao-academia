@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { studentToJSON, turmaToJSON, txToJSON } = require('../mappers');
+const asyncHandler = require('../asyncHandler');
 
 router.use((req, res, next) => {
   if (req.role !== 'aluno') return res.status(403).json({ error: 'Acesso restrito ao portal do aluno.' });
@@ -66,7 +67,7 @@ function computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes) {
   };
 }
 
-router.get('/me', async (req, res) => {
+router.get('/me', asyncHandler(async (req, res) => {
   const [studentRows] = await pool.query('SELECT * FROM students WHERE id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
   if (!studentRows[0]) return res.status(404).json({ error: 'Aluno não encontrado.' });
   const aluno = studentToJSON(studentRows[0]);
@@ -96,6 +97,6 @@ router.get('/me', async (req, res) => {
     turmas: turmaRows.map(turmaToJSON),
     graduacao: computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes),
   });
-});
+}));
 
 module.exports = router;

@@ -47,10 +47,10 @@ async function renderConfiguracoesPage() {
         <div id="cfg-logo-preview" style="width:56px;height:56px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
           ${data.meta.logoUrl ? `<img src="${escapeHtml(data.meta.logoUrl)}" style="width:100%;height:100%;object-fit:contain;">` : `<span style="font-size:26px;">🥋</span>`}
         </div>
-        <div style="font-size:12.5px;color:var(--text2);">PNG, JPG, WEBP ou SVG · até 2MB<br>Aparece no menu lateral do sistema.</div>
+        <div style="font-size:12.5px;color:var(--text2);">PNG, JPG ou WEBP · até 2MB<br>Aparece no menu lateral do sistema.</div>
       </div>
       <div class="form-group">
-        <input type="file" id="cfg-logo-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="handleLogoFileSelected()">
+        <input type="file" id="cfg-logo-input" accept="image/png,image/jpeg,image/webp" onchange="handleLogoFileSelected()">
       </div>
       <div id="cfg-logo-error"></div>
       <div class="btn-row">
