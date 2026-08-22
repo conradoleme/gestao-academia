@@ -135,19 +135,19 @@ function renderAlunoGraduacaoCard(g) {
         <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
           <span>Tempo na faixa</span><span>${g.meses}/${g.minMeses} meses</span>
         </div>
-        ${alunoBarra(g.meses / (g.minMeses || 1), g.okMeses ? 'var(--green)' : g.cor)}
+        ${alunoBarra(g.meses / (g.minMeses || 1), g.okMeses ? 'var(--green)' : 'var(--accent)')}
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
           <span>Aulas treinadas</span><span>${g.totalAulas}/${g.minAulas}</span>
         </div>
-        ${alunoBarra(g.totalAulas / (g.minAulas || 1), g.okAulas ? 'var(--green)' : g.cor)}
+        ${alunoBarra(g.totalAulas / (g.minAulas || 1), g.okAulas ? 'var(--green)' : 'var(--accent)')}
       </div>
       <div>
         <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
           <span>Frequência (últimos 90 dias)</span><span>${g.frequenciaSemanal.toFixed(1)}/${g.minFrequenciaSemanal}x por semana</span>
         </div>
-        ${alunoBarra(g.frequenciaSemanal / (g.minFrequenciaSemanal || 1), g.okFrequencia ? 'var(--green)' : g.cor)}
+        ${alunoBarra(g.frequenciaSemanal / (g.minFrequenciaSemanal || 1), g.okFrequencia ? 'var(--green)' : 'var(--accent)')}
       </div>
     </div>
 
