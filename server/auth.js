@@ -13,6 +13,9 @@ function requireAuth(req, res, next) {
   if (!token) return res.status(401).json({ error: 'Não autenticado.' });
   try {
     const payload = jwt.verify(token, JWT_SECRET);
+    // Um token de super-admin (sem academiaId) não é um login de tenant —
+    // rejeita aqui em vez de deixar academia_id=undefined vazar pras queries.
+    if (!payload.academiaId) return res.status(401).json({ error: 'Não autenticado.' });
     req.academiaId = payload.academiaId;
     req.role = payload.role;
     req.userId = payload.userId || null;
@@ -21,6 +24,32 @@ function requireAuth(req, res, next) {
   } catch (e) {
     return res.status(401).json({ error: 'Sessão expirada — faça login novamente.' });
   }
+}
+
+/* Painel super-admin (fora do multi-tenant — gerencia as academias em si).
+   Token próprio, marcado com superAdmin:true, pra nunca ser confundido
+   com um JWT de academia/usuário/aluno. */
+function requireSuperAdmin(req, res, next) {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  if (!token) return res.status(401).json({ error: 'Não autenticado.' });
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    if (!payload.superAdmin) return res.status(403).json({ error: 'Sem permissão para essa ação.' });
+    req.superAdminId = payload.superAdminId;
+    next();
+  } catch (e) {
+    return res.status(401).json({ error: 'Sessão expirada — faça login novamente.' });
+  }
+}
+
+async function loginSuperAdmin(email, senha) {
+  const [rows] = await pool.query('SELECT * FROM super_admins WHERE email = ?', [email]);
+  if (!rows[0]) return null;
+  const ok = await bcrypt.compare(senha, rows[0].senha_hash);
+  if (!ok) return null;
+  const token = jwt.sign({ superAdminId: rows[0].id, email: rows[0].email, superAdmin: true }, JWT_SECRET, { expiresIn: '30d' });
+  return { token };
 }
 
 /* Só permite seguir se o papel do token estiver entre os informados. */
@@ -59,4 +88,4 @@ async function login(email, senha) {
   return null;
 }
 
-module.exports = { requireAuth, requireRole, login, JWT_SECRET };
+module.exports = { requireAuth, requireRole, login, requireSuperAdmin, loginSuperAdmin, JWT_SECRET };

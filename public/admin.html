@@ -12,9 +12,10 @@
   <div class="login-wrap">
     <div class="card login-card">
       <div class="logo" style="margin-bottom:2px;">🔑 Painel <span>Admin</span></div>
-      <p class="subtitle" style="margin-bottom:24px;">Acesso restrito — chave de administrador</p>
+      <p class="subtitle" style="margin-bottom:24px;">Acesso restrito — conta de super-admin</p>
       <div id="admin-login-error"></div>
-      <div class="form-group"><label>Chave de Admin</label><input type="password" id="admin-key-input" placeholder="••••••••"></div>
+      <div class="form-group"><label>E-mail</label><input type="email" id="admin-email-input" placeholder="voce@email.com"></div>
+      <div class="form-group" style="margin-top:14px;"><label>Senha</label><input type="password" id="admin-senha-input" placeholder="••••••••"></div>
       <button class="btn btn-primary" style="width:100%;margin-top:20px;" onclick="handleAdminLogin()">Entrar</button>
     </div>
   </div>
@@ -24,7 +25,10 @@
   <main class="main" style="max-width:1200px;margin:0 auto;">
     <div class="section-header" style="justify-content:space-between;">
       <div><h1>Painel Admin</h1><p class="subtitle" style="margin:0;">Controle de academias cadastradas e status de pagamento</p></div>
-      <button class="btn btn-secondary" onclick="handleAdminLogout()">Sair</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" onclick="openAdminTrocarSenhaModal()">Minha Senha</button>
+        <button class="btn btn-secondary" onclick="handleAdminLogout()">Sair</button>
+      </div>
     </div>
 
     <div class="card-grid card-grid-4" id="admin-kpis" style="margin-bottom:24px;"></div>

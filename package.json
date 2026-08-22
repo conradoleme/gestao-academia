@@ -6,7 +6,8 @@
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js",
-    "create-academia": "node server/scripts/create-academia.js"
+    "create-academia": "node server/scripts/create-academia.js",
+    "create-super-admin": "node server/scripts/create-super-admin.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.600.0",

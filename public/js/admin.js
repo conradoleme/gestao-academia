@@ -1,20 +1,27 @@
 /* ==========================================================================
    PAINEL ADMIN — visão de todas as academias cadastradas + status de
-   pagamento. Autenticação separada do login das academias: usa a mesma
-   ADMIN_SETUP_KEY do backend, guardada só em sessionStorage (some ao
-   fechar a aba).
+   pagamento. Login próprio (e-mail+senha, conta em super_admins), separado
+   do login das academias. Token guardado só em sessionStorage — some ao
+   fechar a aba, de propósito: é a credencial mais sensível do sistema.
    ========================================================================== */
 
-const ADMIN_KEY_STORAGE = 'admin_panel_key';
+const ADMIN_TOKEN_STORAGE = 'admin_panel_token';
 let academiasCache = [];
 
-function getAdminKey() { return sessionStorage.getItem(ADMIN_KEY_STORAGE); }
-function setAdminKey(k) { sessionStorage.setItem(ADMIN_KEY_STORAGE, k); }
-function clearAdminKey() { sessionStorage.removeItem(ADMIN_KEY_STORAGE); }
+function getAdminToken() { return sessionStorage.getItem(ADMIN_TOKEN_STORAGE); }
+function setAdminToken(t) { sessionStorage.setItem(ADMIN_TOKEN_STORAGE, t); }
+function clearAdminToken() { sessionStorage.removeItem(ADMIN_TOKEN_STORAGE); }
 
 async function adminFetch(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', 'X-Admin-Key': getAdminKey() || '', ...(options.headers || {}) };
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
+  const token = getAdminToken();
+  if (token) headers['Authorization'] = 'Bearer ' + token;
   const res = await fetch(path, { ...options, headers });
+  if (res.status === 401) {
+    clearAdminToken();
+    showAdminLogin('Sessão expirada — faça login novamente.');
+    throw new Error('Não autenticado.');
+  }
   const body = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(body.error || `Erro (${res.status}).`);
   return body;
@@ -32,22 +39,50 @@ function hideAdminLogin() {
 }
 
 function handleAdminLogout() {
-  clearAdminKey();
+  clearAdminToken();
   academiasCache = [];
-  document.getElementById('admin-key-input').value = '';
   showAdminLogin();
 }
 
 async function handleAdminLogin() {
-  const key = document.getElementById('admin-key-input').value.trim();
-  if (!key) return;
-  setAdminKey(key);
+  const email = document.getElementById('admin-email-input').value.trim();
+  const senha = document.getElementById('admin-senha-input').value;
+  if (!email || !senha) return;
   try {
+    const { token } = await adminFetch('/admin/auth/login', { method: 'POST', body: JSON.stringify({ email, senha }) });
+    setAdminToken(token);
     await loadAcademias();
     hideAdminLogin();
   } catch (e) {
-    clearAdminKey();
-    showAdminLogin('Chave incorreta ou erro de conexão.');
+    clearAdminToken();
+    showAdminLogin(e.message || 'Erro ao entrar.');
+  }
+}
+
+function openAdminTrocarSenhaModal() {
+  openModal('Trocar Minha Senha', `
+    <div class="form-group"><label>Senha atual</label><input type="password" id="admin-senha-atual-input" autocomplete="current-password"></div>
+    <div class="form-group" style="margin-top:14px;"><label>Nova senha</label><input type="password" id="admin-senha-nova-input" autocomplete="new-password" placeholder="Mínimo 6 caracteres"></div>
+    <div id="admin-senha-error"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="handleAdminTrocarSenha()">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+    </div>
+  `, { width: '420px' });
+}
+
+async function handleAdminTrocarSenha() {
+  const senhaAtual = document.getElementById('admin-senha-atual-input').value;
+  const novaSenha = document.getElementById('admin-senha-nova-input').value;
+  const errorEl = document.getElementById('admin-senha-error');
+  errorEl.innerHTML = '';
+  if (!senhaAtual || !novaSenha) { errorEl.innerHTML = `<div class="alert alert-danger">Preencha a senha atual e a nova senha.</div>`; return; }
+  try {
+    await adminFetch('/admin/auth/senha', { method: 'PUT', body: JSON.stringify({ senhaAtual, novaSenha }) });
+    closeModal();
+    showToast('Senha atualizada!');
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -208,16 +243,15 @@ function confirmarExclusaoAcademia(id, nome) {
 }
 
 window.addEventListener('DOMContentLoaded', async () => {
-  if (getAdminKey()) {
+  if (getAdminToken()) {
     try {
       await loadAcademias();
       hideAdminLogin();
       return;
     } catch (e) {
-      clearAdminKey();
+      clearAdminToken();
     }
   }
   showAdminLogin();
-  const input = document.getElementById('admin-key-input');
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') handleAdminLogin(); });
+  document.getElementById('admin-senha-input').addEventListener('keydown', e => { if (e.key === 'Enter') handleAdminLogin(); });
 });

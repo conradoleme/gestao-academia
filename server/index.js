@@ -7,7 +7,7 @@ const crypto = require('crypto');
 
 const migrate = require('./migrate');
 const pool = require('./db');
-const { requireAuth, requireRole, login } = require('./auth');
+const { requireAuth, requireRole, login, requireSuperAdmin, loginSuperAdmin } = require('./auth');
 const { sendEmail } = require('./mailer');
 const { runBackup } = require('./backup');
 const { scheduleBackups } = require('./backup-scheduler');
@@ -136,15 +136,39 @@ app.post('/api/auth/reset-password', async (req, res) => {
   }
 });
 
-/* ---------------- Painel de admin (só eu, com a chave de admin) ---------------- */
-function requireAdminKey(req, res, next) {
-  if (!process.env.ADMIN_SETUP_KEY || req.headers['x-admin-key'] !== process.env.ADMIN_SETUP_KEY) {
-    return res.status(401).json({ error: 'Não autorizado.' });
+/* ---------------- Painel de admin (login próprio, fora do multi-tenant) ---------------- */
+app.post('/admin/auth/login', async (req, res) => {
+  const { email, senha } = req.body || {};
+  if (!email || !senha) return res.status(400).json({ error: 'Informe e-mail e senha.' });
+  try {
+    const result = await loginSuperAdmin(email, senha);
+    if (!result) return res.status(400).json({ error: 'E-mail ou senha incorretos.' });
+    res.json(result);
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao autenticar.' });
   }
-  next();
-}
+});
 
-app.post('/admin/create-academia', requireAdminKey, async (req, res) => {
+app.put('/admin/auth/senha', requireSuperAdmin, async (req, res) => {
+  const { senhaAtual, novaSenha } = req.body || {};
+  if (!senhaAtual || !novaSenha) return res.status(400).json({ error: 'Informe a senha atual e a nova senha.' });
+  if (novaSenha.length < 6) return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
+  try {
+    const [rows] = await pool.query('SELECT senha_hash FROM super_admins WHERE id = ?', [req.superAdminId]);
+    if (!rows[0]) return res.status(404).json({ error: 'Conta não encontrada.' });
+    const ok = await bcrypt.compare(senhaAtual, rows[0].senha_hash);
+    if (!ok) return res.status(400).json({ error: 'Senha atual incorreta.' });
+    const novoHash = await bcrypt.hash(novaSenha, 10);
+    await pool.query('UPDATE super_admins SET senha_hash = ? WHERE id = ?', [novoHash, req.superAdminId]);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: 'Erro ao trocar senha.' });
+  }
+});
+
+app.post('/admin/create-academia', requireSuperAdmin, async (req, res) => {
   const { email, senha, nome, turmasPadrao } = req.body || {};
   if (!email || !senha) return res.status(400).json({ error: 'Informe email e senha.' });
 
@@ -183,7 +207,7 @@ app.post('/admin/create-academia', requireAdminKey, async (req, res) => {
   }
 });
 
-app.get('/admin/academias', requireAdminKey, async (req, res) => {
+app.get('/admin/academias', requireSuperAdmin, async (req, res) => {
   try {
     const [rows] = await pool.query(`
       SELECT a.id, a.nome, a.email, a.status_pagamento, a.valor_mensal, a.proximo_vencimento, a.created_at,
@@ -203,7 +227,7 @@ app.get('/admin/academias', requireAdminKey, async (req, res) => {
   }
 });
 
-app.put('/admin/academias/:id/pagamento', requireAdminKey, async (req, res) => {
+app.put('/admin/academias/:id/pagamento', requireSuperAdmin, async (req, res) => {
   const { statusPagamento, valorMensal, proximoVencimento } = req.body || {};
   const statusesValidos = ['ativo', 'pendente', 'inadimplente'];
   if (statusPagamento && !statusesValidos.includes(statusPagamento)) {
@@ -221,7 +245,7 @@ app.put('/admin/academias/:id/pagamento', requireAdminKey, async (req, res) => {
   }
 });
 
-app.put('/admin/academias/:id/senha', requireAdminKey, async (req, res) => {
+app.put('/admin/academias/:id/senha', requireSuperAdmin, async (req, res) => {
   const { novaSenha } = req.body || {};
   if (!novaSenha || novaSenha.length < 6) {
     return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
@@ -238,12 +262,12 @@ app.put('/admin/academias/:id/senha', requireAdminKey, async (req, res) => {
 
 // Dispara um backup imediatamente — pra testar a configuração sem esperar
 // o horário agendado (server/backup-scheduler.js).
-app.post('/admin/backup-now', requireAdminKey, async (req, res) => {
+app.post('/admin/backup-now', requireSuperAdmin, async (req, res) => {
   const result = await runBackup();
   res.status(result.ok ? 200 : 500).json(result);
 });
 
-app.delete('/admin/academias/:id', requireAdminKey, async (req, res) => {
+app.delete('/admin/academias/:id', requireSuperAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM academias WHERE id = ?', [req.params.id]);
     res.json({ ok: true });

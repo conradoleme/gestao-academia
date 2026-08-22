@@ -128,3 +128,12 @@ CREATE TABLE IF NOT EXISTS transactions (
   CONSTRAINT fk_transactions_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE SET NULL,
   INDEX idx_transactions_academia_data (academia_id, data)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Fora do multi-tenant: quem gerencia as academias em si (painel
+-- /admin.html). Semeado por script de linha de comando, nunca por HTTP.
+CREATE TABLE IF NOT EXISTS super_admins (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  senha_hash VARCHAR(255) NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
