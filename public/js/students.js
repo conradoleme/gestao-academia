@@ -150,7 +150,7 @@ function openStudentForm(id) {
   const s = id ? data.students.find(x => x.id === id) : {
     nome: '', turma: data.turmas[0]?.nome || '', categoria: 'Adulto', status: 'Ativo',
     valorMensalidade: 0, diaVencimento: 5, valorMatricula: 0, mesMatricula: MESES_PT[new Date().getMonth()],
-    diaMatricula: 1, observacoes: '', email: '', telefone: '',
+    diaMatricula: 1, observacoes: '', email: '', telefone: '', dataInicio: '', faixa: '', grau: 0,
   };
   const turmaOptions = `<option value="" ${!s.turma?'selected':''}>— Nenhuma —</option>` +
     data.turmas.map(t => `<option value="${t.nome}" ${t.nome===s.turma?'selected':''}>${t.nome}</option>`).join('');
@@ -161,7 +161,7 @@ function openStudentForm(id) {
       <div class="form-group"><label>Nome</label><input type="text" id="f-nome" value="${escapeHtml(s.nome)}"></div>
       <div class="form-group"><label>Turma</label><select id="f-turma">${turmaOptions}</select></div>
       <div class="form-group"><label>Categoria</label>
-        <select id="f-categoria">
+        <select id="f-categoria" onchange="onStudentCategoriaChange()">
           <option value="Adulto" ${s.categoria==='Adulto'?'selected':''}>Adulto</option>
           <option value="Kids" ${s.categoria==='Kids'?'selected':''}>Kids</option>
           <option value="Particular" ${s.categoria==='Particular'?'selected':''}>Particular</option>
@@ -177,6 +177,9 @@ function openStudentForm(id) {
       <div class="form-group"><label>Dia Matrícula</label><input type="number" id="f-dia-matricula" value="${s.diaMatricula||1}" min="1" max="31"></div>
       <div class="form-group"><label>E-mail</label><input type="email" id="f-email" value="${escapeHtml(s.email||'')}" placeholder="aluno@email.com"></div>
       <div class="form-group"><label>WhatsApp / Telefone</label><input type="tel" id="f-telefone" value="${escapeHtml(s.telefone||'')}" placeholder="11987654321"></div>
+      <div class="form-group"><label>Data de Início (treino)</label><input type="date" id="f-data-inicio" value="${s.dataInicio||''}"></div>
+      <div class="form-group"><label>Faixa Atual</label><select id="f-faixa">${faixaOptionsFor(s.categoria, s.faixa)}</select></div>
+      <div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-grau" value="${s.grau||0}" min="0" max="10"></div>
     </div>
     <div class="form-group" style="margin-top:12px;"><label>Observações</label><textarea id="f-obs" style="min-height:60px;">${escapeHtml(s.observacoes||'')}</textarea></div>
     <div class="btn-row">
@@ -188,9 +191,21 @@ function openStudentForm(id) {
   maskCurrencyInput(document.getElementById('f-mensalidade'));
   maskCurrencyInput(document.getElementById('f-matricula'));
   attachAutosaveListeners(
-    ['f-nome','f-turma','f-categoria','f-status','f-mensalidade','f-vencimento','f-matricula','f-mes-matricula','f-dia-matricula','f-email','f-telefone','f-obs'],
+    ['f-nome','f-turma','f-categoria','f-status','f-mensalidade','f-vencimento','f-matricula','f-mes-matricula','f-dia-matricula','f-email','f-telefone','f-obs','f-data-inicio','f-faixa','f-grau'],
     autosaveStudentDebounced
   );
+}
+
+function faixaOptionsFor(categoria, faixaAtual) {
+  const faixas = regrasFaixaDaCategoria(categoria === 'Kids' ? 'Kids' : 'Adulto');
+  if (!faixas.length) return `<option value="">— Nenhuma faixa configurada —</option>`;
+  return `<option value="">— Não definida —</option>` +
+    faixas.map(f => `<option value="${escapeHtml(f.nome)}" ${f.nome===faixaAtual?'selected':''}>${escapeHtml(f.nome)}</option>`).join('');
+}
+
+function onStudentCategoriaChange() {
+  const categoria = document.getElementById('f-categoria').value;
+  document.getElementById('f-faixa').innerHTML = faixaOptionsFor(categoria, null);
 }
 
 function buildStudentPatch() {
@@ -207,6 +222,9 @@ function buildStudentPatch() {
     email: document.getElementById('f-email').value.trim(),
     telefone: document.getElementById('f-telefone').value.trim(),
     observacoes: document.getElementById('f-obs').value.trim(),
+    dataInicio: document.getElementById('f-data-inicio').value || null,
+    faixa: document.getElementById('f-faixa').value || null,
+    grau: parseInt(document.getElementById('f-grau').value) || 0,
   };
 }
 

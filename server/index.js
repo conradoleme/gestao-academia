@@ -13,13 +13,15 @@ const { runBackup } = require('./backup');
 const { scheduleBackups } = require('./backup-scheduler');
 const { r2Configurado, getR2Client } = require('./r2');
 const { GetObjectCommand } = require('@aws-sdk/client-s3');
-const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions } = require('./seed-defaults');
+const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS } = require('./seed-defaults');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
 const turmasRoutes = require('./routes/turmas');
 const transactionsRoutes = require('./routes/transactions');
 const usuariosRoutes = require('./routes/usuarios');
 const alunoRoutes = require('./routes/aluno');
+const presencasRoutes = require('./routes/presencas');
+const graduacoesRoutes = require('./routes/graduacoes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -151,9 +153,9 @@ app.post('/admin/create-academia', requireAdminKey, async (req, res) => {
 
     const senhaHash = await bcrypt.hash(senha, 10);
     const [result] = await pool.query(
-      `INSERT INTO academias (email, senha_hash, nome, generated_months, category_groups, cobranca_templates)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [email, senhaHash, nome || 'Minha Academia', JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES)]
+      `INSERT INTO academias (email, senha_hash, nome, generated_months, category_groups, cobranca_templates, graduacao_regras)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [email, senhaHash, nome || 'Minha Academia', JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES), JSON.stringify(DEFAULT_GRADUACAO_REGRAS)]
     );
 
     if (turmasPadrao) {
@@ -264,6 +266,8 @@ app.use('/api/students', studentsRoutes);
 app.use('/api/turmas', turmasRoutes);
 app.use('/api/transactions', transactionsRoutes);
 app.use('/api/usuarios', usuariosRoutes);
+app.use('/api/presencas', presencasRoutes);
+app.use('/api/graduacoes', graduacoesRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Rota de API não encontrada.' }));
 
 /* ---------------- Frontend estático ---------------- */

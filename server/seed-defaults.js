@@ -63,4 +63,27 @@ function buildDefaultTransactions() {
   }));
 }
 
-module.exports = { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions };
+/* Faixas + critério padrão pra graduar pra próxima, por categoria — cada
+   academia pode reordenar, adicionar/remover faixas e editar os números
+   livremente em Configurações. minMeses/minAulas/minFrequenciaSemanal são
+   contados a partir da última graduação (ou de data_inicio, se o aluno
+   nunca graduou). avaliacaoManual só lembra que o critério numérico é uma
+   recomendação — quem graduar de fato é sempre o instrutor. */
+const DEFAULT_GRADUACAO_REGRAS = {
+  Adulto: [
+    { nome: 'Branca', cor: '#f5f5f4', regra: { minMeses: 12, minAulas: 80, minFrequenciaSemanal: 2, avaliacaoManual: true } },
+    { nome: 'Azul', cor: '#2563eb', regra: { minMeses: 24, minAulas: 150, minFrequenciaSemanal: 2, avaliacaoManual: true } },
+    { nome: 'Roxa', cor: '#7c3aed', regra: { minMeses: 18, minAulas: 120, minFrequenciaSemanal: 2, avaliacaoManual: true } },
+    { nome: 'Marrom', cor: '#78350f', regra: { minMeses: 12, minAulas: 100, minFrequenciaSemanal: 2, avaliacaoManual: true } },
+    { nome: 'Preta', cor: '#1c1917', regra: null },
+  ],
+  Kids: [
+    { nome: 'Branca', cor: '#f5f5f4', regra: { minMeses: 6, minAulas: 40, minFrequenciaSemanal: 1, avaliacaoManual: true } },
+    { nome: 'Cinza', cor: '#9ca3af', regra: { minMeses: 6, minAulas: 40, minFrequenciaSemanal: 1, avaliacaoManual: true } },
+    { nome: 'Amarela', cor: '#eab308', regra: { minMeses: 6, minAulas: 40, minFrequenciaSemanal: 1, avaliacaoManual: true } },
+    { nome: 'Laranja', cor: '#f97316', regra: { minMeses: 6, minAulas: 40, minFrequenciaSemanal: 1, avaliacaoManual: true } },
+    { nome: 'Verde', cor: '#16a34a', regra: null },
+  ],
+};
+
+module.exports = { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS };

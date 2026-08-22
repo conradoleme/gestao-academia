@@ -6,6 +6,7 @@ const PAGE_RENDERERS = {
   dashboard: renderDashboardPage,
   alunos: renderAlunosPage,
   turmas: renderTurmasPage,
+  chamada: renderChamadaPage,
   financas: renderFinancePage,
   inadimplencia: renderInadimplenciaPage,
   ganhos: renderGanhosPage,

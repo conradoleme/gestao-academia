@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS academias (
   proximo_vencimento DATE NULL,
   logo_key VARCHAR(255) NULL,
   watermark_ativo TINYINT(1) NOT NULL DEFAULT 0,
+  graduacao_regras JSON NULL, -- lista de faixas + critério pra próxima, por categoria (Adulto/Kids)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -50,8 +51,39 @@ CREATE TABLE IF NOT EXISTS students (
   email VARCHAR(255),
   telefone VARCHAR(30),
   observacoes TEXT,
+  data_inicio DATE NULL, -- quando começou a treinar (não é a matrícula financeira)
+  faixa VARCHAR(30) NULL,
+  grau INT NOT NULL DEFAULT 0,
   CONSTRAINT fk_students_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
   INDEX idx_students_academia (academia_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS presencas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  academia_id INT NOT NULL,
+  aluno_id INT NOT NULL,
+  data DATE NOT NULL,
+  turma VARCHAR(100), -- informativo — não trava quem pode ser marcado presente
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_presencas_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
+  CONSTRAINT fk_presencas_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE CASCADE,
+  INDEX idx_presencas_academia_data (academia_id, data),
+  INDEX idx_presencas_aluno (aluno_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS graduacoes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  academia_id INT NOT NULL,
+  aluno_id INT NOT NULL,
+  data DATE NOT NULL,
+  faixa_anterior VARCHAR(30),
+  faixa_nova VARCHAR(30) NOT NULL,
+  grau INT NOT NULL DEFAULT 0,
+  observacoes TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_graduacoes_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
+  CONSTRAINT fk_graduacoes_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE CASCADE,
+  INDEX idx_graduacoes_aluno (aluno_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS usuarios (

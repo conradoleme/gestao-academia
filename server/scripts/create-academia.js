@@ -9,7 +9,7 @@
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
-const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions } = require('../seed-defaults');
+const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS } = require('../seed-defaults');
 
 function parseArgs() {
   const args = {};
@@ -35,9 +35,9 @@ async function main() {
 
   const senhaHash = await bcrypt.hash(senha, 10);
   const [result] = await pool.query(
-    `INSERT INTO academias (email, senha_hash, nome, generated_months, category_groups, cobranca_templates)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [email, senhaHash, nome || 'Minha Academia', JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES)]
+    `INSERT INTO academias (email, senha_hash, nome, generated_months, category_groups, cobranca_templates, graduacao_regras)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [email, senhaHash, nome || 'Minha Academia', JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES), JSON.stringify(DEFAULT_GRADUACAO_REGRAS)]
   );
 
   if (turmasPadrao === 'true' || turmasPadrao === '1') {

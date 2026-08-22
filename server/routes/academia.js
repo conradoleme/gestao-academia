@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const pool = require('../db');
-const { studentToJSON, turmaToJSON, txToJSON, academiaToShape } = require('../mappers');
+const { studentToJSON, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, graduacaoToJSON } = require('../mappers');
 const { requireRole } = require('../auth');
 const { r2Configurado, getR2Client } = require('../r2');
 
@@ -17,6 +17,8 @@ router.get('/bootstrap', async (req, res) => {
   const [turmaRows] = await pool.query('SELECT * FROM turmas WHERE academia_id = ?', [req.academiaId]);
   const [studentRows] = await pool.query('SELECT * FROM students WHERE academia_id = ?', [req.academiaId]);
   const [txRows] = await pool.query('SELECT * FROM transactions WHERE academia_id = ?', [req.academiaId]);
+  const [presencaRows] = await pool.query('SELECT * FROM presencas WHERE academia_id = ?', [req.academiaId]);
+  const [graduacaoRows] = await pool.query('SELECT * FROM graduacoes WHERE academia_id = ?', [req.academiaId]);
 
   const shape = academiaToShape(academiaRows[0]);
   res.json({
@@ -24,6 +26,8 @@ router.get('/bootstrap', async (req, res) => {
     turmas: turmaRows.map(turmaToJSON),
     students: studentRows.map(studentToJSON),
     transactions: txRows.map(txToJSON),
+    presencas: presencaRows.map(presencaToJSON),
+    graduacoes: graduacaoRows.map(graduacaoToJSON),
   });
 });
 
@@ -34,13 +38,13 @@ router.get('/academia', async (req, res) => {
 });
 
 router.put('/academia', async (req, res) => {
-  const { meta, categoryGroups, cobrancaTemplates } = req.body;
+  const { meta, categoryGroups, cobrancaTemplates, graduacaoRegras } = req.body;
   await pool.query(
-    `UPDATE academias SET nome=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?
+    `UPDATE academias SET nome=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?
      WHERE id=?`,
     [meta.empresa, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
      JSON.stringify(meta.generatedMonths || []), JSON.stringify(categoryGroups || {}), JSON.stringify(cobrancaTemplates || []),
-     meta.watermarkAtivo ? 1 : 0, req.academiaId]
+     meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), req.academiaId]
   );
   res.json({ ok: true });
 });

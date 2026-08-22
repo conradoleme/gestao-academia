@@ -14,6 +14,21 @@ function studentToJSON(r) {
     valorMatricula: Number(r.valor_matricula) || 0, mesMatricula: r.mes_matricula,
     diaMatricula: r.dia_matricula, email: r.email || '', telefone: r.telefone || '',
     observacoes: r.observacoes || '',
+    dataInicio: r.data_inicio || null, faixa: r.faixa || null, grau: Number(r.grau) || 0,
+  };
+}
+
+function presencaToJSON(r) {
+  return {
+    id: String(r.id), alunoId: String(r.aluno_id), data: r.data, turma: r.turma || '',
+  };
+}
+
+function graduacaoToJSON(r) {
+  return {
+    id: String(r.id), alunoId: String(r.aluno_id), data: r.data,
+    faixaAnterior: r.faixa_anterior || null, faixaNova: r.faixa_nova, grau: Number(r.grau) || 0,
+    observacoes: r.observacoes || '',
   };
 }
 
@@ -54,7 +69,8 @@ function academiaToShape(r) {
     },
     categoryGroups: r.category_groups || {},
     cobrancaTemplates: r.cobranca_templates || [],
+    graduacaoRegras: r.graduacao_regras || {},
   };
 }
 
-module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON };
+module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON, presencaToJSON, graduacaoToJSON };

@@ -44,6 +44,9 @@ function defaultData() {
     turmas: [],
     students: [],
     transactions: [],
+    presencas: [],
+    graduacoes: [],
+    graduacaoRegras: {},
     cobrancaTemplates: [
       { id: 'c1', nome: 'Lembrete', diasRelativoVencimento: -3, assunto: 'Lembrete: mensalidade {mes} vence em breve — {academia}',
         mensagem: 'Oi {nome}! Passando para lembrar que sua mensalidade de {valor} vence em {vencimento}. Qualquer dúvida, é só chamar. Bons treinos! 🥋' },
@@ -76,7 +79,7 @@ async function loadDataFromApi() {
 /* Salva no banco tudo que hoje vive na configuração da academia (não entidades) */
 async function persistAcademiaSettings() {
   try {
-    await api.put('/api/academia', { meta: data.meta, categoryGroups: data.categoryGroups, cobrancaTemplates: data.cobrancaTemplates });
+    await api.put('/api/academia', { meta: data.meta, categoryGroups: data.categoryGroups, cobrancaTemplates: data.cobrancaTemplates, graduacaoRegras: data.graduacaoRegras });
   } catch (e) {
     showToast('Erro ao salvar configurações: ' + e.message, 'error');
   }
@@ -203,6 +206,155 @@ function monthKey(dateStr) {
 }
 function transactionsInMonth(yearMonth) {
   return data.transactions.filter(t => monthKey(t.data) === yearMonth);
+}
+
+/* ---------------- Presenças (chamada) ---------------- */
+async function addPresenca(alunoId, dataStr, turma) {
+  try {
+    const saved = await api.post('/api/presencas', { alunoId, data: dataStr, turma: turma || null });
+    if (!data.presencas.some(p => p.id === saved.id)) data.presencas.push(saved);
+    return saved;
+  } catch (e) {
+    showToast('Erro ao marcar presença: ' + e.message, 'error');
+    throw e;
+  }
+}
+async function removePresenca(id) {
+  data.presencas = data.presencas.filter(p => p.id !== id);
+  try {
+    await api.del(`/api/presencas/${id}`);
+  } catch (e) {
+    showToast('Erro ao remover presença: ' + e.message, 'error');
+  }
+}
+function presencasDoAluno(alunoId) {
+  return data.presencas.filter(p => p.alunoId === alunoId);
+}
+function presencaExistente(alunoId, dataStr, turma) {
+  return data.presencas.find(p => p.alunoId === alunoId && p.data === dataStr && (p.turma || '') === (turma || ''));
+}
+
+/* ---------------- Graduação ---------------- */
+async function addGraduacao(payload) {
+  try {
+    const saved = await api.post('/api/graduacoes', payload);
+    data.graduacoes.unshift(saved);
+    const aluno = data.students.find(s => s.id === payload.alunoId);
+    if (aluno) { aluno.faixa = payload.faixaNova; aluno.grau = payload.grau || 0; }
+    return saved;
+  } catch (e) {
+    showToast('Erro ao registrar graduação: ' + e.message, 'error');
+    throw e;
+  }
+}
+async function removeGraduacao(id) {
+  const grad = data.graduacoes.find(g => g.id === id);
+  data.graduacoes = data.graduacoes.filter(g => g.id !== id);
+  try {
+    await api.del(`/api/graduacoes/${id}`);
+    if (grad) {
+      const aluno = data.students.find(s => s.id === grad.alunoId);
+      if (aluno) { aluno.faixa = grad.faixaAnterior; aluno.grau = 0; }
+    }
+  } catch (e) {
+    showToast('Erro ao remover graduação: ' + e.message, 'error');
+  }
+}
+function graduacoesDoAluno(alunoId) {
+  return data.graduacoes.filter(g => g.alunoId === alunoId).sort((a, b) => b.data.localeCompare(a.data));
+}
+
+function regrasFaixaDaCategoria(categoria) {
+  return (data.graduacaoRegras && data.graduacaoRegras[categoria]) || [];
+}
+
+/* Progresso de um aluno rumo à próxima faixa, a partir da presença real e
+   da regra configurada pra faixa atual dele. Nunca promove sozinho — só
+   calcula "atingiu o critério", quem graduar de fato é o instrutor. */
+function computeGraduacaoStatus(aluno) {
+  const faixas = regrasFaixaDaCategoria(aluno.categoria === 'Kids' ? 'Kids' : 'Adulto');
+  if (!faixas.length) return null;
+
+  const faixaAtualNome = aluno.faixa || faixas[0].nome;
+  const idx = faixas.findIndex(f => f.nome === faixaAtualNome);
+  const faixaAtual = idx >= 0 ? faixas[idx] : faixas[0];
+  const proximaFaixa = idx >= 0 && idx + 1 < faixas.length ? faixas[idx + 1] : null;
+  const regra = faixaAtual.regra;
+
+  if (!regra) {
+    return { faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, proximaFaixa: null, semRegra: true };
+  }
+
+  const graduacoesAluno = graduacoesDoAluno(aluno.id);
+  const ultimaGraduacao = graduacoesAluno.find(g => g.faixaNova === faixaAtualNome);
+  const dataAncora = ultimaGraduacao?.data || aluno.dataInicio;
+
+  if (!dataAncora) {
+    return {
+      faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, proximaFaixa: proximaFaixa?.nome || null,
+      semDataInicio: true, regra,
+    };
+  }
+
+  const hoje = new Date();
+  const [ay, am, ad] = dataAncora.split('-').map(Number);
+  const ancora = new Date(ay, am - 1, ad);
+  const meses = (hoje.getFullYear() - ancora.getFullYear()) * 12 + (hoje.getMonth() - ancora.getMonth());
+
+  const presencasDesde = presencasDoAluno(aluno.id).filter(p => p.data >= dataAncora);
+  const totalAulas = presencasDesde.length;
+
+  const noventaDiasAtras = new Date(hoje.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const presencasRecentes = presencasDoAluno(aluno.id).filter(p => p.data >= noventaDiasAtras).length;
+  const frequenciaSemanal = presencasRecentes / (90 / 7);
+
+  const okMeses = meses >= regra.minMeses;
+  const okAulas = totalAulas >= regra.minAulas;
+  const okFrequencia = frequenciaSemanal >= regra.minFrequenciaSemanal;
+  const pronto = okMeses && okAulas && okFrequencia;
+
+  return {
+    faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, proximaFaixa: proximaFaixa?.nome || null,
+    dataAncora, meses, minMeses: regra.minMeses, okMeses,
+    totalAulas, minAulas: regra.minAulas, okAulas,
+    frequenciaSemanal, minFrequenciaSemanal: regra.minFrequenciaSemanal, okFrequencia,
+    pronto, avaliacaoManual: !!regra.avaliacaoManual,
+  };
+}
+
+/* ---------------- Risco de evasão — frequência recente caiu vs o próprio
+   histórico do aluno (sinal de alerta antes de virar cancelamento). ---------------- */
+function computeRiscoEvasao(aluno) {
+  const presencas = presencasDoAluno(aluno.id).map(p => p.data).sort();
+  if (presencas.length < 4) return null; // pouco histórico pra comparar com confiança
+
+  const hoje = new Date();
+  const diasAtras = n => new Date(hoje.getTime() - n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const janela90 = diasAtras(90);
+  const janela21 = diasAtras(21);
+
+  const presencas90 = presencas.filter(d => d >= janela90);
+  const presencas21 = presencas.filter(d => d >= janela21);
+
+  const baselineSemanal = presencas90.length / (90 / 7);
+  if (baselineSemanal < 0.5) return null; // já treinava pouco — não é queda, é padrão
+
+  const recenteSemanal = presencas21.length / (21 / 7);
+  const quedaPercentual = 1 - (recenteSemanal / baselineSemanal);
+  const ultimaPresenca = presencas[presencas.length - 1];
+  const diasSemTreinar = Math.floor((hoje - new Date(ultimaPresenca + 'T00:00:00')) / 86400000);
+
+  if (quedaPercentual >= 0.5 || diasSemTreinar >= 21) {
+    return { baselineSemanal, recenteSemanal, quedaPercentual, diasSemTreinar, ultimaPresenca };
+  }
+  return null;
+}
+
+function computeAlunosEmRisco() {
+  return activeStudents()
+    .map(s => ({ student: s, risco: computeRiscoEvasao(s) }))
+    .filter(r => r.risco)
+    .sort((a, b) => b.risco.diasSemTreinar - a.risco.diasSemTreinar);
 }
 
 /* ---------------- Geração automática de mensalidades/matrículas ---------------- */
