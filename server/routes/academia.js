@@ -64,7 +64,7 @@ router.put('/academia/senha', async (req, res) => {
   if (!rows[0]) return res.status(404).json({ error: 'Usuário não encontrado.' });
 
   const ok = await bcrypt.compare(senhaAtual, rows[0].senha_hash);
-  if (!ok) return res.status(401).json({ error: 'Senha atual incorreta.' });
+  if (!ok) return res.status(400).json({ error: 'Senha atual incorreta.' });
 
   const novoHash = await bcrypt.hash(novaSenha, 10);
   await pool.query(`UPDATE ${table} SET senha_hash = ? WHERE id = ?`, [novoHash, targetId]);

@@ -57,7 +57,7 @@ app.post('/api/auth/login', async (req, res) => {
   if (!email || !senha) return res.status(400).json({ error: 'Informe e-mail e senha.' });
   try {
     const result = await login(email, senha);
-    if (!result) return res.status(401).json({ error: 'E-mail ou senha incorretos.' });
+    if (!result) return res.status(400).json({ error: 'E-mail ou senha incorretos.' });
     res.json(result);
   } catch (e) {
     console.error(e);
