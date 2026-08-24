@@ -148,6 +148,12 @@ function closeModal() {
   if (el) el.remove();
   // Com autosave, fechar o modal de qualquer jeito (✕, clique fora, Fechar)
   // pode já ter salvo dado novo — atualiza a página de fundo pra refletir.
+  // Só faz sentido no app de gestão: o portal do aluno usa o mesmo HTML
+  // (com #page-dashboard "active" de fábrica, só escondido), mas não
+  // carrega o `data` global — recarregar a página aqui quebraria.
+  const appShell = document.querySelector('.app');
+  if (!appShell || appShell.style.display === 'none') return;
+
   const activePage = document.querySelector('.page.active');
   if (activePage && typeof PAGE_RENDERERS !== 'undefined') {
     const pageId = activePage.id.replace('page-', '');
