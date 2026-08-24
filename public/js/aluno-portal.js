@@ -147,6 +147,7 @@ function renderAlunoGraduacaoCard(g) {
       <h3>🥋 Evolução</h3>
       <div style="margin-top:8px;">${faixaTag} <span style="color:var(--text2);">→ rumo a <strong>${escapeHtml(g.proximaFaixa)}</strong></span></div>
       <p style="margin:14px 0 0;font-weight:600;">🎉 Você já bateu os critérios pra próxima faixa! Fala com seu instrutor.</p>
+      ${alunoAvaliacaoDisclaimer()}
     </div>`;
   }
 
@@ -181,7 +182,51 @@ function renderAlunoGraduacaoCard(g) {
     <p style="color:var(--text2);font-size:12.5px;margin:14px 0 0;">
       ${faltamAulas > 0 ? `Faltam <strong>${faltamAulas}</strong> aula(s)` : 'Aulas — feito ✓'}${faltamMeses > 0 ? ` e <strong>${faltamMeses}</strong> mês(es)` : ''} pra faixa ${escapeHtml(g.proximaFaixa)}.
     </p>
+
+    ${alunoSimulacaoGraduacao(g)}
+    ${alunoAvaliacaoDisclaimer()}
   </div>`;
+}
+
+function alunoAvaliacaoDisclaimer() {
+  return `<p style="font-size:11.5px;color:var(--text2);background:var(--surface2);border-radius:8px;padding:8px 10px;margin:14px 0 0;">
+    ⚠️ Bater esses números não garante a graduação automaticamente — a decisão final é sempre do seu instrutor, que avalia técnica e postura no tatame.
+  </p>`;
+}
+
+/* Estático — três cenários fixos (1x/2x/3x por semana), não é algo que o
+   aluno escolhe ou ajusta. Meses não acelera com mais frequência (é tempo
+   de calendário); aulas sim. O gargalo de cada cenário é o maior dos dois. */
+function alunoSimulacaoGraduacao(g) {
+  const faltamAulas = Math.max(0, g.minAulas - g.totalAulas);
+  const faltamMeses = Math.max(0, g.minMeses - g.meses);
+  const semanasParaMeses = faltamMeses * (52 / 12);
+
+  const cenarios = [1, 2, 3].map(freq => {
+    const atendeFrequencia = freq >= g.minFrequenciaSemanal;
+    const semanasParaAulas = faltamAulas > 0 ? Math.ceil(faltamAulas / freq) : 0;
+    const semanasTotal = Math.max(semanasParaAulas, Math.ceil(semanasParaMeses));
+    const previsao = new Date(Date.now() + semanasTotal * 7 * 24 * 60 * 60 * 1000);
+    return { freq, atendeFrequencia, semanasTotal, previsaoLabel: previsao.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) };
+  });
+
+  return `
+    <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Simulação — se você mantiver essa frequência a partir de hoje:</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        ${cenarios.map(c => `
+          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 12px;">
+            <span style="font-size:13px;font-weight:600;">${c.freq}x por semana</span>
+            <span style="font-size:12px;color:var(--text2);text-align:right;">
+              ${c.atendeFrequencia
+                ? (c.semanasTotal > 0 ? `bate os números em ~${c.semanasTotal} semana(s) (${c.previsaoLabel})` : 'já bateria os números hoje')
+                : `<span style="color:var(--yellow);">abaixo da frequência mínima exigida (${g.minFrequenciaSemanal}x)</span>`}
+            </span>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
 }
 
 function alunoPagamentoRow(t) {
