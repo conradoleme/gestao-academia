@@ -182,8 +182,67 @@ function openHistoricoGraduacao(alunoId) {
         </table>
       </div>
     ` : `<p style="color:var(--text2);">Nenhuma graduação registrada ainda.</p>`}
-    <div class="btn-row" style="margin-top:16px;"><button class="btn btn-secondary" onclick="closeModal()">Fechar</button></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-secondary" onclick="openRegistrarGraduacaoModal('${alunoId}')">+ Registrar Graduação</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+    </div>
   `, { width: '520px' });
+}
+
+/* Diferente do 🎓 Graduar (que só aparece quando o aluno bate os
+   critérios da faixa atual), esse aqui é lançamento manual e livre — serve
+   pra registrar um histórico que já aconteceu antes de a academia usar o
+   sistema (ex: aluno que começou faixa branca em 2024 mas só virou azul
+   em 2025 — sem isso, o "tempo na faixa atual" contaria desde 2024 em vez
+   de 2025, porque não existe nenhum evento de graduação pra ancorar). */
+function openRegistrarGraduacaoModal(alunoId) {
+  const aluno = data.students.find(s => s.id === alunoId);
+  const faixasCategoria = regrasFaixaDaCategoria(aluno.categoria === 'Kids' ? 'Kids' : 'Adulto');
+  const faixaOptions = faixasCategoria.map(f => `<option value="${escapeHtml(f.nome)}">${escapeHtml(f.nome)}</option>`).join('');
+
+  openModal(`Registrar Graduação — ${escapeHtml(aluno.nome)}`, `
+    <p style="color:var(--text2);font-size:13px;margin-bottom:14px;">
+      Use isso pra lançar uma graduação que já aconteceu antes de vocês usarem o sistema — a data escolhida vira o novo marco pra contar "tempo na faixa".
+    </p>
+    <div class="form-grid">
+      <div class="form-group"><label>Data da graduação</label><input type="date" id="f-reg-data" value="${todayStr()}"></div>
+      <div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-reg-grau" value="0" min="0" max="10"></div>
+      <div class="form-group"><label>Faixa anterior</label><select id="f-reg-faixa-anterior">${faixaOptions}</select></div>
+      <div class="form-group"><label>Faixa nova</label><select id="f-reg-faixa-nova">${faixaOptions}</select></div>
+    </div>
+    <div class="form-group" style="margin-top:12px;"><label>Observações</label><textarea id="f-reg-obs" style="min-height:60px;" placeholder="Opcional"></textarea></div>
+    <div id="f-reg-error"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="handleRegistrarGraduacao('${alunoId}')">Registrar</button>
+      <button class="btn btn-secondary" onclick="openHistoricoGraduacao('${alunoId}')">Voltar</button>
+    </div>
+  `, { width: '480px' });
+
+  // Pré-seleciona algo sensato: anterior = faixa mais antiga configurada,
+  // nova = faixa atual do aluno (o caso mais comum — o exemplo do
+  // parágrafo acima).
+  const selAnterior = document.getElementById('f-reg-faixa-anterior');
+  const selNova = document.getElementById('f-reg-faixa-nova');
+  if (faixasCategoria[0]) selAnterior.value = faixasCategoria[0].nome;
+  if (aluno.faixa) selNova.value = aluno.faixa;
+}
+
+async function handleRegistrarGraduacao(alunoId) {
+  const errorEl = document.getElementById('f-reg-error');
+  errorEl.innerHTML = '';
+  const data_ = document.getElementById('f-reg-data').value;
+  const faixaAnterior = document.getElementById('f-reg-faixa-anterior').value;
+  const faixaNova = document.getElementById('f-reg-faixa-nova').value;
+  const grau = parseInt(document.getElementById('f-reg-grau').value) || 0;
+  const observacoes = document.getElementById('f-reg-obs').value.trim();
+
+  if (!data_) { errorEl.innerHTML = `<div class="alert alert-danger">Escolha a data.</div>`; return; }
+  if (faixaAnterior === faixaNova) { errorEl.innerHTML = `<div class="alert alert-danger">Faixa anterior e faixa nova não podem ser iguais.</div>`; return; }
+
+  await addGraduacao({ alunoId, data: data_, faixaAnterior, faixaNova, grau, observacoes });
+  showToast('Graduação registrada!');
+  closeModal();
+  renderGraduacaoPage();
 }
 
 function handleDesfazerGraduacao(id) {
