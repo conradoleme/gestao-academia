@@ -286,6 +286,14 @@ function graduacoesDoAluno(alunoId) {
   return data.graduacoes.filter(g => g.alunoId === alunoId).sort((a, b) => b.data.localeCompare(a.data));
 }
 
+/* ---------------- Ficha médica — buscada sob demanda, nunca no bootstrap ---------------- */
+async function fetchFichaMedica(alunoId) {
+  return api.get(`/api/fichas-medicas/${alunoId}`);
+}
+async function saveFichaMedica(alunoId, payload) {
+  return api.put(`/api/fichas-medicas/${alunoId}`, payload);
+}
+
 /* ---------------- Mural de recados ---------------- */
 async function addRecado(payload) {
   try {

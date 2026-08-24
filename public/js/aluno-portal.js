@@ -46,7 +46,10 @@ function renderAlunoPortal() {
             <div class="logo" style="font-size:18px;">🥋 ${escapeHtml(academiaNome)}</div>
             <div class="subtitle" style="margin:2px 0 0;">Olá, ${escapeHtml(aluno.nome)}</div>
           </div>
-          <button class="btn btn-secondary" onclick="handleLogout()">🚪 Sair</button>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-secondary" onclick="openAlunoFichaMedicaModal()">🏥 Ficha Médica</button>
+            <button class="btn btn-secondary" onclick="handleLogout()">🚪 Sair</button>
+          </div>
         </div>
 
         ${renderAlunoMural(recados)}
@@ -187,5 +190,37 @@ function alunoPagamentoRow(t) {
     <td data-label="Valor">${fmtFull(t.valor)}</td>
     <td data-label="Status"><span class="status-toggle ${pago ? 'status-ok' : 'status-pending'}" style="cursor:default;">${pago ? '✓ Pago' : 'Pendente'}</span></td>
   </tr>`;
+}
+
+/* ---------------- Ficha médica (a própria) ---------------- */
+async function openAlunoFichaMedicaModal() {
+  let f;
+  try {
+    f = await api.get('/api/aluno/ficha-medica');
+  } catch (e) {
+    showToast('Erro ao carregar sua ficha médica: ' + e.message, 'error');
+    return;
+  }
+  openModal('Minha Ficha Médica', `
+    <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">Essas informações ficam disponíveis pra academia em caso de emergência.</p>
+    ${fichaMedicaFormFields(f)}
+    <div id="fm-error"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="handleSaveAlunoFichaMedica()">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+    </div>
+  `, { width: '560px' });
+}
+
+async function handleSaveAlunoFichaMedica() {
+  const errorEl = document.getElementById('fm-error');
+  errorEl.innerHTML = '';
+  try {
+    await api.put('/api/aluno/ficha-medica', fichaMedicaFormPayload());
+    closeModal();
+    showToast('Ficha médica salva!');
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
 }
 

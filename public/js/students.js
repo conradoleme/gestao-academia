@@ -184,6 +184,7 @@ function openStudentForm(id) {
     <div class="form-group" style="margin-top:12px;"><label>Observações</label><textarea id="f-obs" style="min-height:60px;">${escapeHtml(s.observacoes||'')}</textarea></div>
     <div class="btn-row">
       <button class="btn btn-primary" onclick="saveStudentForm()">Salvar</button>
+      ${id ? `<button class="btn btn-secondary" onclick="openFichaMedicaModal('${id}', '${escapeHtml(s.nome).replace(/'/g, "\\'")}')">🏥 Ficha Médica</button>` : ''}
       <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
     </div>
     <div id="student-autosave-status" style="font-size:11px;color:var(--text2);margin-top:10px;min-height:14px;"></div>
@@ -206,6 +207,37 @@ function faixaOptionsFor(categoria, faixaAtual) {
 function onStudentCategoriaChange() {
   const categoria = document.getElementById('f-categoria').value;
   document.getElementById('f-faixa').innerHTML = faixaOptionsFor(categoria, null);
+}
+
+/* ---------------- Ficha médica ---------------- */
+async function openFichaMedicaModal(alunoId, alunoNome) {
+  let f;
+  try {
+    f = await fetchFichaMedica(alunoId);
+  } catch (e) {
+    showToast('Erro ao carregar ficha médica: ' + e.message, 'error');
+    return;
+  }
+  openModal(`Ficha Médica — ${escapeHtml(alunoNome)}`, `
+    ${fichaMedicaFormFields(f)}
+    <div id="fm-error"></div>
+    <div class="btn-row" style="margin-top:16px;">
+      <button class="btn btn-primary" onclick="handleSaveFichaMedica('${alunoId}')">Salvar</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+    </div>
+  `, { width: '560px' });
+}
+
+async function handleSaveFichaMedica(alunoId) {
+  const errorEl = document.getElementById('fm-error');
+  errorEl.innerHTML = '';
+  try {
+    await saveFichaMedica(alunoId, fichaMedicaFormPayload());
+    closeModal();
+    showToast('Ficha médica salva!');
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
 }
 
 function buildStudentPatch() {

@@ -32,6 +32,25 @@ function graduacaoToJSON(r) {
   };
 }
 
+function fichaMedicaToJSON(r) {
+  if (!r) return null;
+  return {
+    alunoId: String(r.aluno_id),
+    contatoEmergenciaNome: r.contato_emergencia_nome || '',
+    contatoEmergenciaParentesco: r.contato_emergencia_parentesco || '',
+    contatoEmergenciaTelefone: r.contato_emergencia_telefone || '',
+    tipoSanguineo: r.tipo_sanguineo || '',
+    alergias: r.alergias || '',
+    condicoesMedicas: r.condicoes_medicas || '',
+    medicamentos: r.medicamentos || '',
+    lesoesPrevias: r.lesoes_previas || '',
+    restricaoPratica: r.restricao_pratica || '',
+    responsavelLegalNome: r.responsavel_legal_nome || '',
+    responsavelLegalTelefone: r.responsavel_legal_telefone || '',
+    updatedAt: r.updated_at,
+  };
+}
+
 function recadoToJSON(r) {
   return {
     id: String(r.id), alcance: r.alcance, turma: r.turma || null,
@@ -81,4 +100,4 @@ function academiaToShape(r) {
   };
 }
 
-module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON, presencaToJSON, graduacaoToJSON, recadoToJSON };
+module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON, presencaToJSON, graduacaoToJSON, recadoToJSON, fichaMedicaToJSON };

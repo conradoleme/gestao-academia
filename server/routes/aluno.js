@@ -7,7 +7,8 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const { studentToJSON, turmaToJSON, txToJSON, recadoToJSON } = require('../mappers');
+const { studentToJSON, turmaToJSON, txToJSON, recadoToJSON, fichaMedicaToJSON } = require('../mappers');
+const { upsertFichaMedica, fichaMedicaVazia } = require('../fichaMedicaUpsert');
 const asyncHandler = require('../asyncHandler');
 
 router.use((req, res, next) => {
@@ -109,6 +110,18 @@ router.get('/me', asyncHandler(async (req, res) => {
     graduacao: computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes),
     recados: recadoRows.map(recadoToJSON),
   });
+}));
+
+/* Fica fora do /me de propósito — só busca quando o aluno realmente abre
+   "Ficha Médica" no portal, não em toda visita. */
+router.get('/ficha-medica', asyncHandler(async (req, res) => {
+  const [rows] = await pool.query('SELECT * FROM fichas_medicas WHERE aluno_id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
+  res.json(fichaMedicaToJSON(rows[0]) || fichaMedicaVazia(req.alunoId));
+}));
+
+router.put('/ficha-medica', asyncHandler(async (req, res) => {
+  const saved = await upsertFichaMedica(req.academiaId, req.alunoId, req.body || {});
+  res.json(saved);
 }));
 
 module.exports = router;

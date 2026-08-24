@@ -175,6 +175,51 @@ function renderBarChart(containerId, series, labels, opts = {}) {
   }).join('');
 }
 
+/* ---------------- Ficha médica — campos compartilhados entre a tela de
+   gestão (students.js, qualquer aluno) e o portal (aluno-portal.js, só a
+   própria ficha). Dado sensível (LGPD) — nunca entra no bootstrap, só é
+   buscado quando alguém abre a ficha de verdade. ---------------- */
+function fichaMedicaFormFields(f) {
+  return `
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin-bottom:8px;">Contato de Emergência</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nome</label><input type="text" id="fm-emerg-nome" value="${escapeHtml(f.contatoEmergenciaNome)}"></div>
+      <div class="form-group"><label>Parentesco</label><input type="text" id="fm-emerg-parentesco" value="${escapeHtml(f.contatoEmergenciaParentesco)}" placeholder="Ex: mãe, cônjuge"></div>
+      <div class="form-group"><label>Telefone</label><input type="tel" id="fm-emerg-telefone" value="${escapeHtml(f.contatoEmergenciaTelefone)}" placeholder="11987654321"></div>
+      <div class="form-group"><label>Tipo Sanguíneo</label><input type="text" id="fm-tipo-sanguineo" value="${escapeHtml(f.tipoSanguineo)}" placeholder="Ex: O+" style="max-width:100px;"></div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Saúde</div>
+    <div class="form-group"><label>Alergias</label><textarea id="fm-alergias" style="min-height:50px;" placeholder="Medicamentos, alimentos, outras — ou 'nenhuma'">${escapeHtml(f.alergias)}</textarea></div>
+    <div class="form-group" style="margin-top:10px;"><label>Condições médicas</label><textarea id="fm-condicoes" style="min-height:50px;" placeholder="Cardíaco, asma, diabetes, pressão, epilepsia...">${escapeHtml(f.condicoesMedicas)}</textarea></div>
+    <div class="form-group" style="margin-top:10px;"><label>Medicamentos de uso contínuo</label><textarea id="fm-medicamentos" style="min-height:50px;">${escapeHtml(f.medicamentos)}</textarea></div>
+    <div class="form-group" style="margin-top:10px;"><label>Lesões prévias / cirurgias</label><textarea id="fm-lesoes" style="min-height:50px;" placeholder="Joelho, ombro, coluna...">${escapeHtml(f.lesoesPrevias)}</textarea></div>
+    <div class="form-group" style="margin-top:10px;"><label>Restrição médica pra prática</label><textarea id="fm-restricao" style="min-height:50px;" placeholder="Alguma limitação de movimento ou esforço?">${escapeHtml(f.restricaoPratica)}</textarea></div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Responsável Legal <span style="text-transform:none;font-weight:400;">(se menor de idade)</span></div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nome</label><input type="text" id="fm-resp-nome" value="${escapeHtml(f.responsavelLegalNome)}"></div>
+      <div class="form-group"><label>Telefone</label><input type="tel" id="fm-resp-telefone" value="${escapeHtml(f.responsavelLegalTelefone)}"></div>
+    </div>
+  `;
+}
+
+function fichaMedicaFormPayload() {
+  return {
+    contatoEmergenciaNome: document.getElementById('fm-emerg-nome').value.trim(),
+    contatoEmergenciaParentesco: document.getElementById('fm-emerg-parentesco').value.trim(),
+    contatoEmergenciaTelefone: document.getElementById('fm-emerg-telefone').value.trim(),
+    tipoSanguineo: document.getElementById('fm-tipo-sanguineo').value.trim(),
+    alergias: document.getElementById('fm-alergias').value.trim(),
+    condicoesMedicas: document.getElementById('fm-condicoes').value.trim(),
+    medicamentos: document.getElementById('fm-medicamentos').value.trim(),
+    lesoesPrevias: document.getElementById('fm-lesoes').value.trim(),
+    restricaoPratica: document.getElementById('fm-restricao').value.trim(),
+    responsavelLegalNome: document.getElementById('fm-resp-nome').value.trim(),
+    responsavelLegalTelefone: document.getElementById('fm-resp-telefone').value.trim(),
+  };
+}
+
 /* ---------------- Confirmação simples ---------------- */
 function confirmAction(msg, onConfirm) {
   openModal('Confirmar ação', `

@@ -138,6 +138,31 @@ CREATE TABLE IF NOT EXISTS super_admins (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Dado sensível (categoria especial pela LGPD) — 1:1 com o aluno. Tanto o
+-- próprio aluno (pelo portal) quanto admin/operação podem preencher/editar;
+-- fica numa tabela separada de students pra deixar claro que é uma
+-- categoria de dado diferente, não pra misturar com o cadastro comum.
+CREATE TABLE IF NOT EXISTS fichas_medicas (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  academia_id INT NOT NULL,
+  aluno_id INT NOT NULL,
+  contato_emergencia_nome VARCHAR(150),
+  contato_emergencia_parentesco VARCHAR(60),
+  contato_emergencia_telefone VARCHAR(30),
+  tipo_sanguineo VARCHAR(5),
+  alergias TEXT,
+  condicoes_medicas TEXT,
+  medicamentos TEXT,
+  lesoes_previas TEXT,
+  restricao_pratica TEXT,
+  responsavel_legal_nome VARCHAR(150),
+  responsavel_legal_telefone VARCHAR(30),
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_fichas_medicas_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
+  CONSTRAINT fk_fichas_medicas_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE CASCADE,
+  UNIQUE KEY uq_fichas_medicas_aluno (aluno_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- Mural de recados do instrutor pro aluno — sem validade, fica visível até
 -- ser apagado. "alcance" decide quem vê: todo mundo, uma turma, ou um
 -- aluno só (mensagem direta).
