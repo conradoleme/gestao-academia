@@ -26,7 +26,7 @@ function alunoMensalidadeDoMes() {
 }
 
 function renderAlunoPortal() {
-  const { aluno, academiaNome, pagamentos, turmas, graduacao } = alunoData;
+  const { aluno, academiaNome, pagamentos, turmas, graduacao, recados } = alunoData;
   const mensalidadeAtual = alunoMensalidadeDoMes();
 
   let statusBadge = '';
@@ -39,8 +39,8 @@ function renderAlunoPortal() {
   }
 
   document.getElementById('aluno-portal-screen').innerHTML = `
-    <div class="login-wrap" style="align-items:flex-start;padding:40px 16px;">
-      <div style="width:100%;max-width:640px;display:flex;flex-direction:column;gap:20px;">
+    <div class="login-wrap" style="align-items:flex-start;padding:32px 16px;">
+      <div style="width:100%;max-width:760px;display:flex;flex-direction:column;gap:20px;">
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
           <div>
             <div class="logo" style="font-size:18px;">🥋 ${escapeHtml(academiaNome)}</div>
@@ -49,27 +49,23 @@ function renderAlunoPortal() {
           <button class="btn btn-secondary" onclick="handleLogout()">🚪 Sair</button>
         </div>
 
-        <div class="card">
-          <h3>Mensalidade — ${monthLabel(currentYearMonth())}</h3>
-          ${mensalidadeAtual ? `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:10px;">
-              <div>
-                <div style="font-size:22px;font-weight:700;">${fmtFull(mensalidadeAtual.valor)}</div>
-                <div style="font-size:12px;color:var(--text2);">Vencimento: ${fmtDate(mensalidadeAtual.data)}</div>
-              </div>
-              ${statusBadge}
-            </div>
-          ` : `<p style="color:var(--text2);margin:8px 0 0;">Nenhuma mensalidade lançada para este mês ainda.</p>`}
-        </div>
+        ${renderAlunoMural(recados)}
 
-        <div class="card">
-          <h3>Histórico de Pagamentos</h3>
-          <div class="table-wrap table-responsive-cards">
-            <table>
-              <thead><tr><th style="text-align:left;">Data</th><th style="text-align:left;">Descrição</th><th>Valor</th><th>Status</th></tr></thead>
-              <tbody>${pagamentos.length ? pagamentos.map(alunoPagamentoRow).join('') : `<tr><td colspan="4" style="text-align:center;color:var(--text2);">Nenhum pagamento registrado.</td></tr>`}</tbody>
-            </table>
+        <div class="card-grid card-grid-2">
+          <div class="card">
+            <h3>Mensalidade — ${monthLabel(currentYearMonth())}</h3>
+            ${mensalidadeAtual ? `
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:10px;">
+                <div>
+                  <div style="font-size:22px;font-weight:700;">${fmtFull(mensalidadeAtual.valor)}</div>
+                  <div style="font-size:12px;color:var(--text2);">Vencimento: ${fmtDate(mensalidadeAtual.data)}</div>
+                </div>
+                ${statusBadge}
+              </div>
+            ` : `<p style="color:var(--text2);margin:8px 0 0;">Nenhuma mensalidade lançada para este mês ainda.</p>`}
           </div>
+
+          ${renderAlunoGraduacaoCard(graduacao)}
         </div>
 
         <div class="card">
@@ -82,7 +78,33 @@ function renderAlunoPortal() {
           `).join('') : `<p style="color:var(--text2);">Você ainda não está matriculado(a) em nenhuma turma — fale com a academia.</p>`}
         </div>
 
-        ${renderAlunoGraduacaoCard(graduacao)}
+        <div class="card">
+          <h3>Histórico de Pagamentos</h3>
+          <div class="table-wrap table-responsive-cards">
+            <table>
+              <thead><tr><th style="text-align:left;">Data</th><th style="text-align:left;">Descrição</th><th>Valor</th><th>Status</th></tr></thead>
+              <tbody>${pagamentos.length ? pagamentos.map(alunoPagamentoRow).join('') : `<tr><td colspan="4" style="text-align:center;color:var(--text2);">Nenhum pagamento registrado.</td></tr>`}</tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderAlunoMural(recados) {
+  if (!recados || !recados.length) return '';
+  return `
+    <div class="card" style="border-left:3px solid var(--accent);">
+      <h3 style="display:flex;align-items:center;gap:8px;margin:0 0 4px;">📢 Mural de Recados</h3>
+      <div style="display:flex;flex-direction:column;">
+        ${recados.map((r, i) => `
+          <div style="padding:12px 0;${i < recados.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
+            <strong style="font-size:14px;">${escapeHtml(r.titulo)}</strong>
+            <p style="margin:4px 0 0;color:var(--text2);white-space:pre-wrap;font-size:13.5px;">${escapeHtml(r.mensagem)}</p>
+            <div style="font-size:11px;color:var(--text2);margin-top:6px;">${new Date(r.createdAt).toLocaleDateString('pt-BR')}</div>
+          </div>
+        `).join('')}
       </div>
     </div>
   `;

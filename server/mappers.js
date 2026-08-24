@@ -32,6 +32,14 @@ function graduacaoToJSON(r) {
   };
 }
 
+function recadoToJSON(r) {
+  return {
+    id: String(r.id), alcance: r.alcance, turma: r.turma || null,
+    alunoId: r.aluno_id ? String(r.aluno_id) : null,
+    titulo: r.titulo, mensagem: r.mensagem, createdAt: r.created_at,
+  };
+}
+
 function turmaToJSON(r) {
   return {
     id: String(r.id), nome: r.nome, horarios: r.horarios || [],
@@ -73,4 +81,4 @@ function academiaToShape(r) {
   };
 }
 
-module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON, presencaToJSON, graduacaoToJSON };
+module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON, presencaToJSON, graduacaoToJSON, recadoToJSON };

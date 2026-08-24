@@ -47,6 +47,7 @@ function defaultData() {
     presencas: [],
     graduacoes: [],
     graduacaoRegras: {},
+    recados: [],
     cobrancaTemplates: [
       { id: 'c1', nome: 'Lembrete', diasRelativoVencimento: -3, assunto: 'Lembrete: mensalidade {mes} vence em breve — {academia}',
         mensagem: 'Oi {nome}! Passando para lembrar que sua mensalidade de {valor} vence em {vencimento}. Qualquer dúvida, é só chamar. Bons treinos! 🥋' },
@@ -283,6 +284,26 @@ async function removeGraduacao(id) {
 }
 function graduacoesDoAluno(alunoId) {
   return data.graduacoes.filter(g => g.alunoId === alunoId).sort((a, b) => b.data.localeCompare(a.data));
+}
+
+/* ---------------- Mural de recados ---------------- */
+async function addRecado(payload) {
+  try {
+    const saved = await api.post('/api/recados', payload);
+    data.recados.unshift(saved);
+    return saved;
+  } catch (e) {
+    showToast('Erro ao publicar recado: ' + e.message, 'error');
+    throw e;
+  }
+}
+async function removeRecado(id) {
+  data.recados = data.recados.filter(r => r.id !== id);
+  try {
+    await api.del(`/api/recados/${id}`);
+  } catch (e) {
+    showToast('Erro ao remover recado: ' + e.message, 'error');
+  }
 }
 
 function regrasFaixaDaCategoria(categoria) {

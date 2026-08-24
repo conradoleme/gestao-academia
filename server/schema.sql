@@ -137,3 +137,20 @@ CREATE TABLE IF NOT EXISTS super_admins (
   senha_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Mural de recados do instrutor pro aluno — sem validade, fica visível até
+-- ser apagado. "alcance" decide quem vê: todo mundo, uma turma, ou um
+-- aluno só (mensagem direta).
+CREATE TABLE IF NOT EXISTS recados (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  academia_id INT NOT NULL,
+  alcance ENUM('global','turma','aluno') NOT NULL DEFAULT 'global',
+  turma VARCHAR(100) NULL,
+  aluno_id INT NULL,
+  titulo VARCHAR(150) NOT NULL,
+  mensagem TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_recados_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
+  CONSTRAINT fk_recados_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE CASCADE,
+  INDEX idx_recados_academia (academia_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

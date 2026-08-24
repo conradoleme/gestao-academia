@@ -7,7 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const { studentToJSON, turmaToJSON, txToJSON } = require('../mappers');
+const { studentToJSON, turmaToJSON, txToJSON, recadoToJSON } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
 
 router.use((req, res, next) => {
@@ -86,6 +86,17 @@ router.get('/me', asyncHandler(async (req, res) => {
   const [presencaRows] = await pool.query('SELECT data FROM presencas WHERE aluno_id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
   const [graduacaoRows] = await pool.query('SELECT data, faixa_nova FROM graduacoes WHERE aluno_id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
 
+  // Recados que valem pra esse aluno: globais, da própria turma, ou
+  // endereçados só a ele.
+  const [recadoRows] = await pool.query(
+    `SELECT * FROM recados WHERE academia_id = ? AND (
+       alcance = 'global'
+       OR (alcance = 'turma' AND turma = ?)
+       OR (alcance = 'aluno' AND aluno_id = ?)
+     ) ORDER BY created_at DESC`,
+    [req.academiaId, aluno.turma || '', req.alunoId]
+  );
+
   const graduacaoRegras = academiaRows[0]?.graduacao_regras || {};
   const presencas = presencaRows.map(r => ({ data: r.data }));
   const graduacoes = graduacaoRows.map(r => ({ data: r.data, faixaNova: r.faixa_nova }));
@@ -96,6 +107,7 @@ router.get('/me', asyncHandler(async (req, res) => {
     pagamentos: txRows.map(txToJSON),
     turmas: turmaRows.map(turmaToJSON),
     graduacao: computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes),
+    recados: recadoRows.map(recadoToJSON),
   });
 }));
 

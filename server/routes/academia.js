@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const pool = require('../db');
-const { studentToJSON, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, graduacaoToJSON } = require('../mappers');
+const { studentToJSON, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, graduacaoToJSON, recadoToJSON } = require('../mappers');
 const { requireRole } = require('../auth');
 const { r2Configurado, getR2Client } = require('../r2');
 const asyncHandler = require('../asyncHandler');
@@ -29,6 +29,7 @@ router.get('/bootstrap', asyncHandler(async (req, res) => {
   const [txRows] = await pool.query(txQuery, [req.academiaId]);
   const [presencaRows] = await pool.query('SELECT * FROM presencas WHERE academia_id = ?', [req.academiaId]);
   const [graduacaoRows] = await pool.query('SELECT * FROM graduacoes WHERE academia_id = ?', [req.academiaId]);
+  const [recadoRows] = await pool.query('SELECT * FROM recados WHERE academia_id = ? ORDER BY created_at DESC', [req.academiaId]);
 
   const shape = academiaToShape(academiaRows[0]);
   res.json({
@@ -38,6 +39,7 @@ router.get('/bootstrap', asyncHandler(async (req, res) => {
     transactions: txRows.map(txToJSON),
     presencas: presencaRows.map(presencaToJSON),
     graduacoes: graduacaoRows.map(graduacaoToJSON),
+    recados: recadoRows.map(recadoToJSON),
   });
 }));
 
