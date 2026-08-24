@@ -76,7 +76,9 @@ function graduacaoRow({ student, status }) {
     </tr>`;
   }
 
-  const faixaTag = `<span class="tag" style="background:${status.cor}22;color:${status.cor};border:1px solid ${status.cor}55;">${escapeHtml(status.faixaAtual)}${student.grau ? ' · ' + student.grau + '°' : ''}</span>`;
+  // Cor da faixa vai no fundo/borda, nunca no texto — faixas claras (ex:
+  // Branca) ficam ilegíveis se o texto usar a cor da própria faixa.
+  const faixaTag = `<span class="tag" style="background:${status.cor}22;color:var(--text);border:1px solid ${status.cor}88;">${escapeHtml(status.faixaAtual)}${student.grau ? ' · ' + student.grau + '°' : ''}</span>`;
 
   if (status.semRegra) {
     return `<tr>

@@ -122,7 +122,9 @@ function alunoBarra(pct, cor) {
 function renderAlunoGraduacaoCard(g) {
   if (!g) return '';
 
-  const faixaTag = `<span class="tag" style="background:${g.cor}22;color:${g.cor};border:1px solid ${g.cor}55;font-size:13px;">${escapeHtml(g.faixaAtual)}</span>`;
+  // Cor da faixa vai no fundo/borda, nunca no texto — faixas claras (ex:
+  // Branca) ficam ilegíveis se o texto usar a cor da própria faixa.
+  const faixaTag = `<span class="tag" style="background:${g.cor}22;color:var(--text);border:1px solid ${g.cor}88;font-size:13px;">${escapeHtml(g.faixaAtual)}</span>`;
 
   if (g.semRegra) {
     return `<div class="card">
