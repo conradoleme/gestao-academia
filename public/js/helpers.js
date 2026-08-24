@@ -196,6 +196,13 @@ function fichaMedicaFormFields(f) {
     <div class="form-group" style="margin-top:10px;"><label>Lesões prévias / cirurgias</label><textarea id="fm-lesoes" style="min-height:50px;" placeholder="Joelho, ombro, coluna...">${escapeHtml(f.lesoesPrevias)}</textarea></div>
     <div class="form-group" style="margin-top:10px;"><label>Restrição médica pra prática</label><textarea id="fm-restricao" style="min-height:50px;" placeholder="Alguma limitação de movimento ou esforço?">${escapeHtml(f.restricaoPratica)}</textarea></div>
 
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Convênio</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Hospital de preferência</label><input type="text" id="fm-hospital" value="${escapeHtml(f.hospitalPreferencia)}"></div>
+      <div class="form-group"><label>Plano de saúde</label><input type="text" id="fm-plano-saude" value="${escapeHtml(f.planoSaude)}"></div>
+      <div class="form-group"><label>Número da carteirinha</label><input type="text" id="fm-carteirinha" value="${escapeHtml(f.numeroCarteirinha)}"></div>
+    </div>
+
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Responsável Legal <span style="text-transform:none;font-weight:400;">(se menor de idade)</span></div>
     <div class="form-grid">
       <div class="form-group"><label>Nome</label><input type="text" id="fm-resp-nome" value="${escapeHtml(f.responsavelLegalNome)}"></div>
@@ -215,6 +222,9 @@ function fichaMedicaFormPayload() {
     medicamentos: document.getElementById('fm-medicamentos').value.trim(),
     lesoesPrevias: document.getElementById('fm-lesoes').value.trim(),
     restricaoPratica: document.getElementById('fm-restricao').value.trim(),
+    hospitalPreferencia: document.getElementById('fm-hospital').value.trim(),
+    planoSaude: document.getElementById('fm-plano-saude').value.trim(),
+    numeroCarteirinha: document.getElementById('fm-carteirinha').value.trim(),
     responsavelLegalNome: document.getElementById('fm-resp-nome').value.trim(),
     responsavelLegalTelefone: document.getElementById('fm-resp-telefone').value.trim(),
   };

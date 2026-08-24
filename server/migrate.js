@@ -39,6 +39,9 @@ async function migrate() {
   await addColumnIfMissing('students', 'data_inicio', `DATE NULL`);
   await addColumnIfMissing('students', 'faixa', `VARCHAR(30) NULL`);
   await addColumnIfMissing('students', 'grau', `INT NOT NULL DEFAULT 0`);
+  await addColumnIfMissing('fichas_medicas', 'hospital_preferencia', `VARCHAR(150) NULL`);
+  await addColumnIfMissing('fichas_medicas', 'plano_saude', `VARCHAR(100) NULL`);
+  await addColumnIfMissing('fichas_medicas', 'numero_carteirinha', `VARCHAR(60) NULL`);
 }
 
 /* ALTER TABLE ... ADD COLUMN é seguro rodar de novo a cada boot só se a
