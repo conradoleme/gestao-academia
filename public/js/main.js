@@ -66,6 +66,20 @@ function applyRoleUI(role) {
     const btn = document.getElementById('nav-' + id);
     if (btn) btn.style.display = 'none';
   });
+
+  // Esconder um botão pode deixar a seção acima dele órfã (ex: "Visão
+  // Geral" só tinha o Dashboard) ou com um item só (ex: "Financeiro" fica
+  // só com Cobrança) — some com o cabeçalho quando sobra no máximo 1 botão
+  // visível nele; o botão continua ali, só sem o rótulo de seção solto.
+  document.querySelectorAll('.sidebar .nav-section').forEach(section => {
+    let botoesVisiveis = 0;
+    let el = section.nextElementSibling;
+    while (el && el.classList.contains('nav-btn')) {
+      if (el.style.display !== 'none') botoesVisiveis++;
+      el = el.nextElementSibling;
+    }
+    if (botoesVisiveis <= 1) section.style.display = 'none';
+  });
 }
 
 /* ---------------- Logo personalizada da academia ---------------- */
