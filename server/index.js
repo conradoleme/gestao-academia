@@ -38,7 +38,17 @@ app.set('trust proxy', 1);
 // Frontend e API vivem na mesma origem (Railway serve os dois do mesmo
 // domínio) — não existe motivo pra aceitar chamada de outro site. Em dev
 // local (sem RAILWAY_PUBLIC_DOMAIN) libera geral pra não travar o trabalho.
-const allowedOrigin = process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : true;
+// Domínio próprio (meutatameapp.com.br) e o domínio gerado pelo Railway
+// (*.up.railway.app) ficam os dois ativos ao mesmo tempo — aceita ambos
+// pra não quebrar quem ainda acessa pelo link antigo enquanto o DNS
+// do domínio novo propaga.
+const ALLOWED_ORIGINS = [
+  process.env.RAILWAY_PUBLIC_DOMAIN && `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`,
+  'https://meutatameapp.com.br',
+  'https://www.meutatameapp.com.br',
+  'https://app-production-4551.up.railway.app',
+].filter(Boolean);
+const allowedOrigin = ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : true;
 app.use(cors({ origin: allowedOrigin }));
 app.use(express.json({ limit: '4mb' })); // acomoda a logo em base64 (upload de imagem)
 
