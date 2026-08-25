@@ -30,6 +30,7 @@ async function renderConfiguracoesPage() {
       <div><h1>Configurações</h1><p class="subtitle" style="margin:0;">Dados da sua academia</p></div>
     </div>
 
+    ${isAdmin ? `
     <div class="card" style="max-width:520px;margin-bottom:24px;">
       <h3>Academia</h3>
       <div class="form-group">
@@ -64,9 +65,10 @@ async function renderConfiguracoesPage() {
           <label style="margin:0;">Usar como marca d'água no fundo do sistema</label>
         </div>
       ` : ''}
+    </div>
+    ` : ''}
 
-      <hr class="divider">
-
+    <div class="card" style="max-width:520px;margin-bottom:24px;">
       <h3>Conta</h3>
       <div style="font-size:13px;color:var(--text2);margin-bottom:16px;">Login: <strong style="color:var(--text);">${escapeHtml(email)}</strong></div>
 
@@ -133,7 +135,7 @@ async function handleChangeSenha() {
   errorEl.innerHTML = '';
 
   if (!senhaAtual || !novaSenha) { errorEl.innerHTML = `<div class="alert alert-danger">Preencha a senha atual e a nova senha.</div>`; return; }
-  if (novaSenha.length < 6) { errorEl.innerHTML = `<div class="alert alert-danger">A nova senha precisa ter pelo menos 6 caracteres.</div>`; return; }
+  if (novaSenha.length < 8) { errorEl.innerHTML = `<div class="alert alert-danger">A nova senha precisa ter pelo menos 8 caracteres.</div>`; return; }
   if (novaSenha !== confirmar) { errorEl.innerHTML = `<div class="alert alert-danger">A confirmação não bate com a nova senha.</div>`; return; }
 
   try {
@@ -294,7 +296,7 @@ function openUsuarioForm(id) {
   openModal(id ? 'Editar Usuário' : 'Novo Usuário', `
     <div class="form-group"><label>Nome</label><input type="text" id="us-nome" value="${escapeHtml(u?.nome || '')}"></div>
     <div class="form-group" style="margin-top:12px;"><label>E-mail (login)</label><input type="email" id="us-email" value="${escapeHtml(u?.email || '')}" ${id ? 'disabled' : ''}></div>
-    ${!id ? `<div class="form-group" style="margin-top:12px;"><label>Senha inicial</label><input type="password" id="us-senha" placeholder="Mínimo 6 caracteres"></div>` : ''}
+    ${!id ? `<div class="form-group" style="margin-top:12px;"><label>Senha inicial</label><input type="password" id="us-senha" placeholder="Mínimo 8 caracteres"></div>` : ''}
     <div class="form-group" style="margin-top:12px;">
       <label>Papel</label>
       <select id="us-role" onchange="onUsuarioRoleChange()">
@@ -352,7 +354,7 @@ async function saveUsuarioForm(id) {
 
 function openUsuarioSenhaModal(id, nome) {
   openModal(`Trocar Senha — ${nome}`, `
-    <div class="form-group"><label>Nova senha</label><input type="password" id="us-nova-senha" placeholder="Mínimo 6 caracteres"></div>
+    <div class="form-group"><label>Nova senha</label><input type="password" id="us-nova-senha" placeholder="Mínimo 8 caracteres"></div>
     <div id="us-senha-error"></div>
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-primary" onclick="handleUsuarioSenha('${id}')">Salvar</button>
@@ -365,8 +367,8 @@ async function handleUsuarioSenha(id) {
   const novaSenha = document.getElementById('us-nova-senha').value;
   const errorEl = document.getElementById('us-senha-error');
   errorEl.innerHTML = '';
-  if (!novaSenha || novaSenha.length < 6) {
-    errorEl.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 6 caracteres.</div>`;
+  if (!novaSenha || novaSenha.length < 8) {
+    errorEl.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 8 caracteres.</div>`;
     return;
   }
   try {

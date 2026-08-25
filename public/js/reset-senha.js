@@ -17,7 +17,7 @@ async function resetFetch(path, data) {
 
 function renderResetForm(token) {
   document.getElementById('reset-content').innerHTML = `
-    <div class="form-group"><label>Nova senha</label><input type="password" id="reset-nova-senha" placeholder="Mínimo 6 caracteres" autocomplete="new-password"></div>
+    <div class="form-group"><label>Nova senha</label><input type="password" id="reset-nova-senha" placeholder="Mínimo 8 caracteres" autocomplete="new-password"></div>
     <div class="form-group" style="margin-top:14px;"><label>Confirmar nova senha</label><input type="password" id="reset-confirmar-senha" autocomplete="new-password"></div>
     <div id="reset-error"></div>
     <button class="btn btn-primary" style="width:100%;margin-top:20px;" onclick="handleResetPassword('${token}')">Criar Nova Senha</button>
@@ -46,7 +46,7 @@ async function handleResetPassword(token) {
   errorEl.innerHTML = '';
 
   if (!novaSenha) { errorEl.innerHTML = `<div class="alert alert-danger">Informe a nova senha.</div>`; return; }
-  if (novaSenha.length < 6) { errorEl.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 6 caracteres.</div>`; return; }
+  if (novaSenha.length < 8) { errorEl.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 8 caracteres.</div>`; return; }
   if (novaSenha !== confirmar) { errorEl.innerHTML = `<div class="alert alert-danger">A confirmação não bate com a nova senha.</div>`; return; }
 
   try {

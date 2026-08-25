@@ -27,8 +27,8 @@ async function main() {
     console.error('Uso: node server/scripts/create-super-admin.js --email=voce@email.com --senha=SenhaForte123');
     process.exit(1);
   }
-  if (senha.length < 6) {
-    console.error('A senha precisa ter pelo menos 6 caracteres.');
+  if (senha.length < 8) {
+    console.error('A senha precisa ter pelo menos 8 caracteres.');
     process.exit(1);
   }
 

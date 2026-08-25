@@ -26,7 +26,7 @@ function alunoMensalidadeDoMes() {
 }
 
 function renderAlunoPortal() {
-  const { aluno, academiaNome, pagamentos, turmas, graduacao, recados } = alunoData;
+  const { aluno, academiaNome, pagamentos, turmas, graduacao, recados, fichaMedicaPreenchida } = alunoData;
   const mensalidadeAtual = alunoMensalidadeDoMes();
 
   let statusBadge = '';
@@ -47,7 +47,10 @@ function renderAlunoPortal() {
             <div class="subtitle" style="margin:2px 0 0;">Olá, ${escapeHtml(aluno.nome)}</div>
           </div>
           <div style="display:flex;gap:8px;">
-            <button class="btn btn-secondary" onclick="openAlunoFichaMedicaModal()">🏥 Ficha Médica</button>
+            <button class="btn btn-secondary" style="position:relative;" onclick="openAlunoFichaMedicaModal()">
+              🏥 Ficha Médica
+              ${fichaMedicaPreenchida ? '' : '<span style="position:absolute;top:-4px;right:-4px;width:10px;height:10px;border-radius:50%;background:var(--red);border:2px solid var(--surface);" title="Ficha médica pendente"></span>'}
+            </button>
             <button class="btn btn-secondary" onclick="handleLogout()">🚪 Sair</button>
           </div>
         </div>
@@ -215,7 +218,7 @@ function alunoSimulacaoGraduacao(g) {
       <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Simulação — se você mantiver essa frequência a partir de hoje:</div>
       <div style="display:flex;flex-direction:column;gap:8px;">
         ${cenarios.map(c => `
-          <div style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 12px;">
+          <div class="simulacao-row" style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 12px;">
             <span style="font-size:13px;font-weight:600;">${c.freq}x por semana</span>
             <span style="font-size:12px;color:var(--text2);text-align:right;">
               ${c.atendeFrequencia

@@ -52,7 +52,7 @@ function renderAlunosPage() {
         <h3 style="margin:0;">Cadastro de Alunos</h3>
         <div class="btn-row" style="margin:0;">
           <button class="btn btn-primary" style="flex:1;" onclick="openStudentForm()">+ Novo Aluno</button>
-          <button class="btn btn-secondary" onclick="gerarMensalidadesAgora()" title="Gerar mensalidades do mês">🔄</button>
+          <button class="btn btn-secondary" onclick="gerarMensalidadesAgora()" title="Gerar mensalidades do mês">🔄 Gerar Mensalidades</button>
         </div>
       </div>
 
@@ -157,6 +157,7 @@ function openStudentForm(id) {
   const mesOptions = MESES_PT.map(m => `<option value="${m}" ${m===s.mesMatricula?'selected':''}>${m}</option>`).join('');
 
   openModal(id ? 'Editar Aluno' : 'Novo Aluno', `
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin-bottom:8px;">Identificação</div>
     <div class="form-grid">
       <div class="form-group"><label>Nome</label><input type="text" id="f-nome" value="${escapeHtml(s.nome)}"></div>
       <div class="form-group"><label>Turma</label><select id="f-turma">${turmaOptions}</select></div>
@@ -170,13 +171,21 @@ function openStudentForm(id) {
       <div class="form-group"><label>Status</label>
         <select id="f-status"><option value="Ativo" ${s.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${s.status==='Inativo'?'selected':''}>Inativo</option></select>
       </div>
+      <div class="form-group"><label>E-mail</label><input type="email" id="f-email" value="${escapeHtml(s.email||'')}" placeholder="aluno@email.com"></div>
+      <div class="form-group"><label>WhatsApp / Telefone</label><input type="tel" id="f-telefone" value="${escapeHtml(s.telefone||'')}" placeholder="11987654321"></div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Financeiro</div>
+    <div class="form-grid">
       <div class="form-group"><label>Valor Mensalidade (R$)</label><input type="text" inputmode="decimal" id="f-mensalidade" value="${formatCurrencyValue(s.valorMensalidade||0)}"></div>
       <div class="form-group"><label>Dia Vencimento</label><input type="number" id="f-vencimento" value="${s.diaVencimento||''}" min="1" max="31"></div>
       <div class="form-group"><label>Valor Matrícula (R$)</label><input type="text" inputmode="decimal" id="f-matricula" value="${formatCurrencyValue(s.valorMatricula||0)}"></div>
       <div class="form-group"><label>Mês Matrícula</label><select id="f-mes-matricula">${mesOptions}</select></div>
       <div class="form-group"><label>Dia Matrícula</label><input type="number" id="f-dia-matricula" value="${s.diaMatricula||1}" min="1" max="31"></div>
-      <div class="form-group"><label>E-mail</label><input type="email" id="f-email" value="${escapeHtml(s.email||'')}" placeholder="aluno@email.com"></div>
-      <div class="form-group"><label>WhatsApp / Telefone</label><input type="tel" id="f-telefone" value="${escapeHtml(s.telefone||'')}" placeholder="11987654321"></div>
+    </div>
+
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Graduação</div>
+    <div class="form-grid">
       <div class="form-group"><label>Data de Início (treino)</label><input type="date" id="f-data-inicio" value="${s.dataInicio||''}"></div>
       <div class="form-group"><label>Faixa Atual</label><select id="f-faixa">${faixaOptionsFor(s.categoria, s.faixa)}</select></div>
       <div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-grau" value="${s.grau||0}" min="0" max="10"></div>

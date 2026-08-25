@@ -84,6 +84,9 @@ router.get('/me', asyncHandler(async (req, res) => {
     : [[]];
 
   const [academiaRows] = await pool.query('SELECT nome, graduacao_regras FROM academias WHERE id = ?', [req.academiaId]);
+  // Só a existência do registro, nunca o conteúdo — os dados sensíveis
+  // continuam de fora do /me, buscados só quando o aluno abre a ficha.
+  const [fichaMedicaRows] = await pool.query('SELECT 1 FROM fichas_medicas WHERE aluno_id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
   const [presencaRows] = await pool.query('SELECT data FROM presencas WHERE aluno_id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
   const [graduacaoRows] = await pool.query('SELECT data, faixa_nova FROM graduacoes WHERE aluno_id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
 
@@ -109,6 +112,7 @@ router.get('/me', asyncHandler(async (req, res) => {
     turmas: turmaRows.map(turmaToJSON),
     graduacao: computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes),
     recados: recadoRows.map(recadoToJSON),
+    fichaMedicaPreenchida: fichaMedicaRows.length > 0,
   });
 }));
 

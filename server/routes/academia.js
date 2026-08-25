@@ -49,7 +49,7 @@ router.get('/academia', asyncHandler(async (req, res) => {
   res.json(academiaToShape(rows[0]));
 }));
 
-router.put('/academia', asyncHandler(async (req, res) => {
+router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
   const { meta, categoryGroups, cobrancaTemplates, graduacaoRegras } = req.body;
   await pool.query(
     `UPDATE academias SET nome=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?
@@ -64,7 +64,7 @@ router.put('/academia', asyncHandler(async (req, res) => {
 router.put('/academia/senha', asyncHandler(async (req, res) => {
   const { senhaAtual, novaSenha } = req.body || {};
   if (!senhaAtual || !novaSenha) return res.status(400).json({ error: 'Informe a senha atual e a nova senha.' });
-  if (novaSenha.length < 6) return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
+  if (novaSenha.length < 8) return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 8 caracteres.' });
 
   // Dono da academia (role 'admin') mora em "academias"; equipe (role
   // 'operacao') mora em "usuarios" — cada papel troca a própria senha na

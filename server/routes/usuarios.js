@@ -26,8 +26,8 @@ router.post('/', asyncHandler(async (req, res) => {
   if (!ROLES_VALIDOS.includes(role)) {
     return res.status(400).json({ error: 'Papel inválido.' });
   }
-  if (senha.length < 6) {
-    return res.status(400).json({ error: 'A senha precisa ter pelo menos 6 caracteres.' });
+  if (senha.length < 8) {
+    return res.status(400).json({ error: 'A senha precisa ter pelo menos 8 caracteres.' });
   }
   if (role === 'aluno' && !alunoId) {
     return res.status(400).json({ error: 'Selecione o aluno vinculado a este acesso.' });
@@ -72,8 +72,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
 router.put('/:id/senha', asyncHandler(async (req, res) => {
   const { novaSenha } = req.body || {};
-  if (!novaSenha || novaSenha.length < 6) {
-    return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
+  if (!novaSenha || novaSenha.length < 8) {
+    return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 8 caracteres.' });
   }
   const novoHash = await bcrypt.hash(novaSenha, 10);
   await pool.query('UPDATE usuarios SET senha_hash = ? WHERE id = ? AND academia_id = ?', [novoHash, req.params.id, req.academiaId]);

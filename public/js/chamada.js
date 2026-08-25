@@ -8,7 +8,7 @@ let chamadaTurma = '';
 let chamadaBusca = '';
 
 function renderChamadaPage() {
-  const turmaOptions = `<option value="">— Todos os Alunos —</option>` +
+  const turmaOptions = `<option value="">— Resumo do Dia —</option>` +
     data.turmas.map(t => `<option value="${escapeHtml(t.nome)}" ${t.nome === chamadaTurma ? 'selected' : ''}>${escapeHtml(t.nome)}</option>`).join('');
 
   document.getElementById('page-chamada').innerHTML = `
@@ -37,7 +37,7 @@ function renderChamadaPage() {
 
     <div class="card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h3 style="margin:0;">${chamadaTurma ? escapeHtml(chamadaTurma) : 'Todos os Alunos'} — ${fmtDate(chamadaData)}</h3>
+        <h3 style="margin:0;">${chamadaTurma ? escapeHtml(chamadaTurma) : 'Resumo do Dia'} — ${fmtDate(chamadaData)}</h3>
         <span id="chamada-contador" style="font-size:13px;color:var(--text2);"></span>
       </div>
       <div id="chamada-lista"></div>

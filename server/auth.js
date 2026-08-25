@@ -5,7 +5,10 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const pool = require('./db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'troque-este-segredo-em-producao';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('JWT_SECRET não configurado — defina a variável de ambiente antes de subir o servidor.');
+}
 
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';

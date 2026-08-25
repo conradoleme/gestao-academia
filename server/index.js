@@ -34,7 +34,11 @@ const PORT = process.env.PORT || 3000;
 // com o mesmo IP (o do proxy) pro rate limiter abaixo, e um limitaria todos.
 app.set('trust proxy', 1);
 
-app.use(cors());
+// Frontend e API vivem na mesma origem (Railway serve os dois do mesmo
+// domínio) — não existe motivo pra aceitar chamada de outro site. Em dev
+// local (sem RAILWAY_PUBLIC_DOMAIN) libera geral pra não travar o trabalho.
+const allowedOrigin = process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : true;
+app.use(cors({ origin: allowedOrigin }));
 app.use(express.json({ limit: '4mb' })); // acomoda a logo em base64 (upload de imagem)
 
 /* ---------------- Healthcheck (Railway) ---------------- */
@@ -125,7 +129,7 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
 app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   const { token, novaSenha } = req.body || {};
   if (!token || !novaSenha) return res.status(400).json({ error: 'Dados incompletos.' });
-  if (novaSenha.length < 6) return res.status(400).json({ error: 'A senha precisa ter pelo menos 6 caracteres.' });
+  if (novaSenha.length < 8) return res.status(400).json({ error: 'A senha precisa ter pelo menos 8 caracteres.' });
 
   try {
     const [rows] = await pool.query(
@@ -171,7 +175,7 @@ app.post('/admin/auth/login', authLimiter, async (req, res) => {
 app.put('/admin/auth/senha', requireSuperAdmin, async (req, res) => {
   const { senhaAtual, novaSenha } = req.body || {};
   if (!senhaAtual || !novaSenha) return res.status(400).json({ error: 'Informe a senha atual e a nova senha.' });
-  if (novaSenha.length < 6) return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
+  if (novaSenha.length < 8) return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 8 caracteres.' });
   try {
     const [rows] = await pool.query('SELECT senha_hash FROM super_admins WHERE id = ?', [req.superAdminId]);
     if (!rows[0]) return res.status(404).json({ error: 'Conta não encontrada.' });
@@ -265,8 +269,8 @@ app.put('/admin/academias/:id/pagamento', requireSuperAdmin, async (req, res) =>
 
 app.put('/admin/academias/:id/senha', requireSuperAdmin, async (req, res) => {
   const { novaSenha } = req.body || {};
-  if (!novaSenha || novaSenha.length < 6) {
-    return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 6 caracteres.' });
+  if (!novaSenha || novaSenha.length < 8) {
+    return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 8 caracteres.' });
   }
   try {
     const novoHash = await bcrypt.hash(novaSenha, 10);

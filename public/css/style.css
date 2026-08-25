@@ -296,4 +296,6 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; font-size: 
 @media (max-width: 480px) {
   .kpi-value { font-size: 20px; }
   .modal-body { padding: 16px; }
+  .simulacao-row { flex-direction: column; align-items: flex-start !important; gap: 4px; }
+  .simulacao-row span:last-child { text-align: left !important; }
 }

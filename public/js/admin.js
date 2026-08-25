@@ -62,7 +62,7 @@ async function handleAdminLogin() {
 function openAdminTrocarSenhaModal() {
   openModal('Trocar Minha Senha', `
     <div class="form-group"><label>Senha atual</label><input type="password" id="admin-senha-atual-input" autocomplete="current-password"></div>
-    <div class="form-group" style="margin-top:14px;"><label>Nova senha</label><input type="password" id="admin-senha-nova-input" autocomplete="new-password" placeholder="Mínimo 6 caracteres"></div>
+    <div class="form-group" style="margin-top:14px;"><label>Nova senha</label><input type="password" id="admin-senha-nova-input" autocomplete="new-password" placeholder="Mínimo 8 caracteres"></div>
     <div id="admin-senha-error"></div>
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-primary" onclick="handleAdminTrocarSenha()">Salvar</button>
@@ -204,7 +204,7 @@ async function salvarPagamento(id) {
 
 function openTrocarSenhaModal(id, nome) {
   openModal(`Trocar Senha — ${nome}`, `
-    <div class="form-group"><label>Nova senha</label><input type="password" id="new-senha-input" placeholder="Mínimo 6 caracteres"></div>
+    <div class="form-group"><label>Nova senha</label><input type="password" id="new-senha-input" placeholder="Mínimo 8 caracteres"></div>
     <div id="new-senha-error"></div>
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-primary" onclick="handleTrocarSenha('${id}')">Salvar</button>
@@ -217,8 +217,8 @@ async function handleTrocarSenha(id) {
   const novaSenha = document.getElementById('new-senha-input').value;
   const errorEl = document.getElementById('new-senha-error');
   errorEl.innerHTML = '';
-  if (!novaSenha || novaSenha.length < 6) {
-    errorEl.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 6 caracteres.</div>`;
+  if (!novaSenha || novaSenha.length < 8) {
+    errorEl.innerHTML = `<div class="alert alert-danger">A senha precisa ter pelo menos 8 caracteres.</div>`;
     return;
   }
   try {
