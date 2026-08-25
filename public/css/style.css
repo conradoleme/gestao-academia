@@ -71,6 +71,10 @@ h3 { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--text2)
 .card-grid-2 { grid-template-columns: 1fr 1fr; }
 .card-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
 .card-grid-4 { grid-template-columns: repeat(4, 1fr); }
+/* Sem isso, um card com conteúdo largo (ex: tabela) força o item de grid
+   inteiro a estourar a coluna — o padrão min-width:auto do grid deixa o
+   item crescer até o conteúdo caber, empurrando os outros junto. */
+.card-grid > * { min-width: 0; }
 
 /* KPI Cards */
 .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; box-shadow: var(--shadow-sm); }
@@ -106,6 +110,7 @@ tr:hover td { background: var(--surface2); }
 
 /* Form */
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.form-grid > * { min-width: 0; }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 0; }
 .form-group label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); font-weight: 700; }
 input[type="number"], input[type="text"], input[type="date"], input[type="email"], input[type="tel"], input[type="time"], select, textarea {
