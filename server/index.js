@@ -15,6 +15,7 @@ const { scheduleBackups } = require('./backup-scheduler');
 const { r2Configurado, getR2Client } = require('./r2');
 const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS } = require('./seed-defaults');
+const { logSafeError } = require('./log-safe-error');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
 const turmasRoutes = require('./routes/turmas');
@@ -83,7 +84,7 @@ app.post('/api/auth/login', authLimiter, async (req, res) => {
     if (!result) return res.status(400).json({ error: 'E-mail ou senha incorretos.' });
     res.json(result);
   } catch (e) {
-    console.error(e);
+    logSafeError('POST /api/auth/login', e);
     res.status(500).json({ error: 'Erro ao autenticar.' });
   }
 });
@@ -120,7 +121,7 @@ app.post('/api/auth/forgot-password', authLimiter, async (req, res) => {
       });
     }
   } catch (e) {
-    console.error(e);
+    logSafeError('POST /api/auth/forgot-password', e);
   }
 
   res.json(mensagemPadrao);
@@ -153,7 +154,7 @@ app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
     await pool.query('UPDATE password_resets SET used = 1 WHERE id = ?', [rows[0].id]);
     res.json({ ok: true });
   } catch (e) {
-    console.error(e);
+    logSafeError('POST /api/auth/reset-password', e);
     res.status(500).json({ error: 'Erro ao redefinir a senha.' });
   }
 });
@@ -167,7 +168,7 @@ app.post('/admin/auth/login', authLimiter, async (req, res) => {
     if (!result) return res.status(400).json({ error: 'E-mail ou senha incorretos.' });
     res.json(result);
   } catch (e) {
-    console.error(e);
+    logSafeError('POST /admin/auth/login', e);
     res.status(500).json({ error: 'Erro ao autenticar.' });
   }
 });
@@ -185,7 +186,7 @@ app.put('/admin/auth/senha', requireSuperAdmin, async (req, res) => {
     await pool.query('UPDATE super_admins SET senha_hash = ? WHERE id = ?', [novoHash, req.superAdminId]);
     res.json({ ok: true });
   } catch (e) {
-    console.error(e);
+    logSafeError('PUT /admin/auth/senha', e);
     res.status(500).json({ error: 'Erro ao trocar senha.' });
   }
 });
@@ -224,7 +225,7 @@ app.post('/admin/create-academia', requireSuperAdmin, async (req, res) => {
 
     res.json({ ok: true, id: result.insertId, email });
   } catch (e) {
-    console.error(e);
+    logSafeError('POST /admin/create-academia', e);
     res.status(500).json({ error: 'Erro ao criar academia.' });
   }
 });
@@ -244,7 +245,7 @@ app.get('/admin/academias', requireSuperAdmin, async (req, res) => {
       totalAlunos: r.total_alunos, totalTurmas: r.total_turmas,
     })));
   } catch (e) {
-    console.error(e);
+    logSafeError('GET /admin/academias', e);
     res.status(500).json({ error: 'Erro ao listar academias.' });
   }
 });
@@ -262,7 +263,7 @@ app.put('/admin/academias/:id/pagamento', requireSuperAdmin, async (req, res) =>
     );
     res.json({ ok: true });
   } catch (e) {
-    console.error(e);
+    logSafeError('PUT /admin/academias/:id/pagamento', e);
     res.status(500).json({ error: 'Erro ao atualizar pagamento.' });
   }
 });
@@ -277,7 +278,7 @@ app.put('/admin/academias/:id/senha', requireSuperAdmin, async (req, res) => {
     await pool.query('UPDATE academias SET senha_hash = ? WHERE id = ?', [novoHash, req.params.id]);
     res.json({ ok: true });
   } catch (e) {
-    console.error(e);
+    logSafeError('PUT /admin/academias/:id/senha', e);
     res.status(500).json({ error: 'Erro ao trocar senha.' });
   }
 });
@@ -294,7 +295,7 @@ app.delete('/admin/academias/:id', requireSuperAdmin, async (req, res) => {
     await pool.query('DELETE FROM academias WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
   } catch (e) {
-    console.error(e);
+    logSafeError('DELETE /admin/academias/:id', e);
     res.status(500).json({ error: 'Erro ao excluir academia.' });
   }
 });
@@ -329,7 +330,7 @@ app.get('*', (req, res) => {
 /* ---------------- Rede de segurança — qualquer erro não tratado cai aqui,
    em vez de derrubar o processo ou vazar stack trace pro cliente. ---------------- */
 app.use((err, req, res, next) => {
-  console.error(err);
+  logSafeError(`${req.method} ${req.path}`, err);
   res.status(500).json({ error: 'Erro interno do servidor.' });
 });
 
