@@ -56,12 +56,13 @@ function initTheme() {
 }
 
 /* ---------------- Restrições de menu por papel ---------------- */
-// Operação (equipe) cuida do dia a dia — alunos, turmas, inadimplência e
-// simulação de ganhos — mas não tem acesso às telas financeiras/de conta.
+// Operação (equipe) cuida do dia a dia — alunos, turmas, chamada, graduação
+// — mas não tem acesso a nada financeiro: cobrança e simulação de ganhos
+// são só do dono, igual fluxo de caixa e simulador de cenários já eram.
 // Dashboard fica visível pros dois papéis: pra operação ele mostra só as
 // Aulas de Hoje (renderDashboardPage decide o que exibir pelo role), sem
 // nenhum KPI financeiro.
-const OPERACAO_PAGINAS_OCULTAS = ['financas', 'simulador', 'configuracoes'];
+const OPERACAO_PAGINAS_OCULTAS = ['financas', 'simulador', 'configuracoes', 'inadimplencia', 'ganhos'];
 
 function applyRoleUI(role) {
   if (role !== 'operacao') return;

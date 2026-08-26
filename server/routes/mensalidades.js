@@ -1,16 +1,18 @@
-/* Fatia estreita de "transactions" que a operação pode ver/mexer: só
-   lançamentos vinculados a um aluno (mensalidade/matrícula) — nunca
-   despesas, salários, aluguel etc. Existe pra alimentar a tela de
-   Cobrança sem abrir o ledger financeiro inteiro pra esse papel. */
+/* Cobrança (ver e marcar como pago) é só do dono — operação não lida mais
+   com essa tela. O POST fica aberto pros dois papéis porque é usado tanto
+   pela geração automática de mensalidade do mês (dispara pra quem quer que
+   logue primeiro, admin ou operação) quanto pelo botão manual "Gerar
+   Mensalidades" na tela de Alunos, que continua disponível pra operação. */
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { txToJSON } = require('../mappers');
+const { requireRole } = require('../auth');
 const asyncHandler = require('../asyncHandler');
 
 const STATUS_VALIDOS = ['a_receber', 'recebido'];
 
-router.get('/', asyncHandler(async (req, res) => {
+router.get('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const [rows] = await pool.query(
     'SELECT * FROM transactions WHERE academia_id = ? AND aluno_id IS NOT NULL',
     [req.academiaId]
@@ -34,7 +36,7 @@ router.post('/', asyncHandler(async (req, res) => {
   res.json(txToJSON(rows[0]));
 }));
 
-router.put('/:id/status', asyncHandler(async (req, res) => {
+router.put('/:id/status', requireRole('admin'), asyncHandler(async (req, res) => {
   const { status } = req.body || {};
   if (!STATUS_VALIDOS.includes(status)) return res.status(400).json({ error: 'Status inválido.' });
 
