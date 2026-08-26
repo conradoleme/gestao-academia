@@ -113,7 +113,7 @@ tr:hover td { background: var(--surface2); }
 .form-grid > * { min-width: 0; }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 0; }
 .form-group label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text2); font-weight: 700; }
-input[type="number"], input[type="text"], input[type="date"], input[type="email"], input[type="tel"], input[type="time"], select, textarea {
+input[type="number"], input[type="text"], input[type="date"], input[type="email"], input[type="tel"], input[type="time"], input[type="password"], select, textarea {
   background: var(--surface2); border: 1px solid var(--border); color: var(--text);
   padding: 10px 12px; border-radius: 9px; font-size: 13px; width: 100%;
   outline: none; transition: border 0.15s, box-shadow .15s;
@@ -228,7 +228,12 @@ textarea { resize: vertical; min-height: 80px; font-family: inherit; font-size: 
 
 /* Tela de login */
 .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
-.login-card { width: 100%; max-width: 380px; }
+.login-card { width: 100%; max-width: 420px; padding: 40px 36px; border-radius: 20px; box-shadow: var(--shadow-lg); }
+.login-card .logo { font-size: 21px; }
+.login-card .subtitle { font-size: 14px; }
+.login-input { padding: 14px 16px; font-size: 15px; border-radius: 11px; }
+.login-submit { padding: 14px 20px; font-size: 15px; border-radius: 11px; }
+.login-card .form-group label { font-size: 11.5px; letter-spacing: 1px; }
 
 /* Barra superior mobile + gaveta de navegação (escondidas no desktop) */
 .mobile-topbar { display: none; }

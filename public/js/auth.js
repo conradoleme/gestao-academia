@@ -32,14 +32,14 @@ function renderLoginScreen(errorMsg, branding) {
   el.innerHTML = `
     <div class="login-wrap">
       <div class="card login-card">
-        <div class="logo" style="margin-bottom:2px;">${logoHtml} ${b ? escapeHtml(b.nome) : `Gestão <span>da Academia</span>`}</div>
-        <p class="subtitle" style="margin-bottom:24px;">Entre com o e-mail e senha da sua academia</p>
+        <div class="logo" style="margin-bottom:6px;">${logoHtml} ${b ? escapeHtml(b.nome) : `Gestão <span>da Academia</span>`}</div>
+        <p class="subtitle" style="margin-bottom:28px;">Entre com email e senha</p>
         ${errorMsg ? `<div class="alert alert-danger">${escapeHtml(errorMsg)}</div>` : ''}
-        <div class="form-group"><label>E-mail</label><input type="email" id="login-email" placeholder="voce@academia.com"></div>
-        <div class="form-group" style="margin-top:14px;"><label>Senha</label><input type="password" id="login-senha" placeholder="••••••••"></div>
-        <button class="btn btn-primary" style="width:100%;margin-top:20px;" onclick="handleLogin()">Entrar</button>
-        <div style="text-align:center;margin-top:14px;">
-          <a href="#" style="font-size:12.5px;color:var(--text2);" onclick="openForgotPasswordModal();return false;">Esqueci minha senha</a>
+        <div class="form-group"><label>E-mail</label><input type="email" id="login-email" class="login-input" placeholder="voce@academia.com"></div>
+        <div class="form-group" style="margin-top:18px;"><label>Senha</label><input type="password" id="login-senha" class="login-input" placeholder="••••••••"></div>
+        <button class="btn btn-primary login-submit" style="width:100%;margin-top:26px;" onclick="handleLogin()">Entrar</button>
+        <div style="text-align:center;margin-top:18px;">
+          <a href="#" style="font-size:13px;color:var(--text2);" onclick="openForgotPasswordModal();return false;">Esqueci minha senha</a>
         </div>
       </div>
     </div>
