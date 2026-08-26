@@ -6,6 +6,7 @@ const pool = require('../db');
 const { studentToJSON, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, graduacaoToJSON, recadoToJSON } = require('../mappers');
 const { requireRole } = require('../auth');
 const { r2Configurado, getR2Client } = require('../r2');
+const { slugify } = require('../slugify');
 const asyncHandler = require('../asyncHandler');
 
 // SVG fica de fora de propósito: pode carregar <script>/onload embutido, e
@@ -51,14 +52,25 @@ router.get('/academia', asyncHandler(async (req, res) => {
 
 router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
   const { meta, categoryGroups, cobrancaTemplates, graduacaoRegras } = req.body;
+
+  // Slug vazio = "não quero link de marca" (fica NULL). Preenchido, normaliza
+  // (sem acento/maiúscula/espaço) e garante que não colide com outra academia.
+  let slug = null;
+  if (meta.slug && meta.slug.trim()) {
+    slug = slugify(meta.slug);
+    if (!slug) return res.status(400).json({ error: 'Link inválido — use letras, números e hífen.' });
+    const [existing] = await pool.query('SELECT id FROM academias WHERE slug = ? AND id != ?', [slug, req.academiaId]);
+    if (existing[0]) return res.status(409).json({ error: 'Esse link já está em uso por outra academia.' });
+  }
+
   await pool.query(
-    `UPDATE academias SET nome=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?
+    `UPDATE academias SET nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?
      WHERE id=?`,
-    [meta.empresa, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
+    [meta.empresa, slug, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
      JSON.stringify(meta.generatedMonths || []), JSON.stringify(categoryGroups || {}), JSON.stringify(cobrancaTemplates || []),
      meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), req.academiaId]
   );
-  res.json({ ok: true });
+  res.json({ ok: true, slug });
 }));
 
 router.put('/academia/senha', asyncHandler(async (req, res) => {

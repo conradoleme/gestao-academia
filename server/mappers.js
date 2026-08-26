@@ -96,6 +96,7 @@ function academiaToShape(r) {
       generatedMonths: r.generated_months || [],
       logoUrl: r.logo_key ? `/logo/${r.id}` : null,
       watermarkAtivo: !!r.watermark_ativo,
+      slug: r.slug || null,
     },
     categoryGroups: r.category_groups || {},
     cobrancaTemplates: r.cobranca_templates || [],

@@ -16,6 +16,7 @@ const { r2Configurado, getR2Client } = require('./r2');
 const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS } = require('./seed-defaults');
 const { logSafeError } = require('./log-safe-error');
+const { generateUniqueSlug } = require('./slugify');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
 const turmasRoutes = require('./routes/turmas');
@@ -210,10 +211,11 @@ app.post('/admin/create-academia', requireSuperAdmin, async (req, res) => {
     if (existing[0]) return res.status(409).json({ error: 'Já existe uma academia com esse e-mail.' });
 
     const senhaHash = await bcrypt.hash(senha, 10);
+    const slug = await generateUniqueSlug(pool, nome || 'Minha Academia');
     const [result] = await pool.query(
-      `INSERT INTO academias (email, senha_hash, nome, generated_months, category_groups, cobranca_templates, graduacao_regras)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [email, senhaHash, nome || 'Minha Academia', JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES), JSON.stringify(DEFAULT_GRADUACAO_REGRAS)]
+      `INSERT INTO academias (email, senha_hash, nome, slug, generated_months, category_groups, cobranca_templates, graduacao_regras)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [email, senhaHash, nome || 'Minha Academia', slug, JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES), JSON.stringify(DEFAULT_GRADUACAO_REGRAS)]
     );
 
     if (turmasPadrao) {
@@ -307,6 +309,21 @@ app.delete('/admin/academias/:id', requireSuperAdmin, async (req, res) => {
   } catch (e) {
     logSafeError('DELETE /admin/academias/:id', e);
     res.status(500).json({ error: 'Erro ao excluir academia.' });
+  }
+});
+
+/* Landing "de marca" por academia (ex: meutatameapp.com.br/goushibjj) —
+   pública de propósito, só devolve nome e logo (nada sensível) pra
+   personalizar a tela de login antes mesmo do aluno digitar o e-mail. */
+app.get('/api/academia-by-slug/:slug', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT id, nome, logo_key FROM academias WHERE slug = ?', [req.params.slug]);
+    if (!rows[0]) return res.status(404).json({ error: 'Academia não encontrada.' });
+    const r = rows[0];
+    res.json({ nome: r.nome, logoUrl: r.logo_key ? `/logo/${r.id}` : null });
+  } catch (e) {
+    logSafeError('GET /api/academia-by-slug/:slug', e);
+    res.status(500).json({ error: 'Erro ao buscar academia.' });
   }
 });
 

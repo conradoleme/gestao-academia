@@ -43,6 +43,22 @@ async function renderConfiguracoesPage() {
 
       <hr class="divider">
 
+      <h3>Link da Academia</h3>
+      <p style="color:var(--text2);font-size:12.5px;margin:-4px 0 12px;">Um link com a cara da sua academia pra compartilhar com os alunos — mostra seu nome e logo já na tela de login. Deixe em branco se não quiser usar.</p>
+      <div class="form-group">
+        <label>Link</label>
+        <div style="display:flex;align-items:center;gap:2px;flex-wrap:wrap;">
+          <span style="font-size:13px;color:var(--text2);white-space:nowrap;">${escapeHtml(location.host)}/</span>
+          <input type="text" id="cfg-slug" value="${escapeHtml(data.meta.slug || '')}" placeholder="minha-academia" style="flex:1;min-width:140px;">
+        </div>
+      </div>
+      <div id="cfg-slug-error"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="handleSaveSlug()">Salvar</button>
+      </div>
+
+      <hr class="divider">
+
       <h3>Logo da Academia</h3>
       <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px;">
         <div id="cfg-logo-preview" style="width:56px;height:56px;border-radius:12px;background:var(--surface2);display:flex;align-items:center;justify-content:center;overflow:hidden;flex-shrink:0;">
@@ -156,6 +172,19 @@ async function handleSaveAcademiaNome() {
   document.getElementById('app-empresa-nome').textContent = nome;
   document.getElementById('app-empresa-nome-mobile').textContent = nome;
   showToast('Nome da academia atualizado!');
+}
+
+async function handleSaveSlug() {
+  const slug = document.getElementById('cfg-slug').value.trim();
+  const errorEl = document.getElementById('cfg-slug-error');
+  errorEl.innerHTML = '';
+  try {
+    await updateAcademiaSlug(slug);
+    document.getElementById('cfg-slug').value = data.meta.slug || '';
+    showToast(data.meta.slug ? 'Link da academia atualizado!' : 'Link removido.');
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
 }
 
 /* ---------------- Logo da Academia ---------------- */

@@ -2,12 +2,37 @@
    AUTH — login/logout por academia (autenticação própria via JWT)
    ========================================================================== */
 
-function renderLoginScreen(errorMsg) {
+/* Se a URL bater um link de marca (ex: /goushibjj), cacheia o nome/logo
+   daquela academia pra a tela de login (e uma eventual sessão expirada
+   depois) mostrar a cara dela em vez do branding genérico. */
+let cachedSlugBranding = null;
+
+function getSlugFromPath() {
+  const seg = window.location.pathname.split('/').filter(Boolean)[0];
+  return seg || null;
+}
+
+async function resolveSlugBranding() {
+  const slug = getSlugFromPath();
+  if (!slug) return null;
+  try {
+    cachedSlugBranding = await api.get('/api/academia-by-slug/' + encodeURIComponent(slug));
+  } catch (e) {
+    cachedSlugBranding = null;
+  }
+  return cachedSlugBranding;
+}
+
+function renderLoginScreen(errorMsg, branding) {
+  const b = branding !== undefined ? branding : cachedSlugBranding;
   const el = document.getElementById('login-screen');
+  const logoHtml = b?.logoUrl
+    ? `<img src="${escapeHtml(b.logoUrl)}" style="height:28px;vertical-align:middle;border-radius:6px;">`
+    : '🥋';
   el.innerHTML = `
     <div class="login-wrap">
       <div class="card login-card">
-        <div class="logo" style="margin-bottom:2px;">🥋 Gestão <span>da Academia</span></div>
+        <div class="logo" style="margin-bottom:2px;">${logoHtml} ${b ? escapeHtml(b.nome) : `Gestão <span>da Academia</span>`}</div>
         <p class="subtitle" style="margin-bottom:24px;">Entre com o e-mail e senha da sua academia</p>
         ${errorMsg ? `<div class="alert alert-danger">${escapeHtml(errorMsg)}</div>` : ''}
         <div class="form-group"><label>E-mail</label><input type="email" id="login-email" placeholder="voce@academia.com"></div>
@@ -92,7 +117,11 @@ async function bootByRole() {
 }
 
 async function checkExistingSession() {
-  if (!getAuthToken()) { renderLoginScreen(); return false; }
+  if (!getAuthToken()) {
+    await resolveSlugBranding();
+    renderLoginScreen();
+    return false;
+  }
   hideLoginScreen();
   return true;
 }

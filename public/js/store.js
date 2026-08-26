@@ -784,6 +784,18 @@ async function updateAcademiaNome(nome) {
   await persistAcademiaSettings();
 }
 
+async function updateAcademiaSlug(slug) {
+  const anterior = data.meta.slug;
+  data.meta.slug = slug;
+  try {
+    const result = await api.put('/api/academia', { meta: data.meta, categoryGroups: data.categoryGroups, cobrancaTemplates: data.cobrancaTemplates, graduacaoRegras: data.graduacaoRegras });
+    data.meta.slug = result.slug;
+  } catch (e) {
+    data.meta.slug = anterior;
+    throw e;
+  }
+}
+
 async function changeAcademiaSenha(senhaAtual, novaSenha) {
   await api.put('/api/academia/senha', { senhaAtual, novaSenha });
 }
