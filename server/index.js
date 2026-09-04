@@ -17,6 +17,7 @@ const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS_BJJ, DEFAULT_GRADUACAO_REGRAS_JUDO } = require('./seed-defaults');
 const { logSafeError } = require('./log-safe-error');
 const { generateUniqueSlug } = require('./slugify');
+const { getStripeClient, stripeConfigurado } = require('./stripe-client');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
 const turmasRoutes = require('./routes/turmas');
@@ -51,6 +52,56 @@ const ALLOWED_ORIGINS = [
 ].filter(Boolean);
 const allowedOrigin = ALLOWED_ORIGINS.length ? ALLOWED_ORIGINS : true;
 app.use(cors({ origin: allowedOrigin }));
+
+/* ---------------- Webhook do Stripe (assinatura da PLATAFORMA — você
+   cobrando cada academia pra usar o sistema; nada a ver com como a
+   academia cobra os próprios alunos, isso continua manual). Precisa do
+   corpo cru (não JSON-parseado) pra verificar a assinatura, então fica
+   registrado antes do express.json() global — só essa rota recebe o
+   corpo em Buffer, todo o resto do app usa JSON normalmente. ---------------- */
+app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+  if (!stripeConfigurado() || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return res.status(503).json({ error: 'Stripe não configurado.' });
+  }
+  const stripe = getStripeClient();
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (e) {
+    logSafeError('POST /webhooks/stripe (assinatura inválida)', e);
+    return res.status(400).send('Assinatura inválida.');
+  }
+
+  try {
+    const obj = event.data.object;
+    const customerId = obj.customer;
+
+    if (event.type === 'checkout.session.completed') {
+      // O Customer já foi criado e salvo na academia ANTES do checkout (na
+      // rota que gera o link) — aqui só completa com o ID da assinatura.
+      await pool.query(
+        'UPDATE academias SET stripe_subscription_id = ?, status_pagamento = ? WHERE stripe_customer_id = ?',
+        [obj.subscription || null, 'ativo', customerId]
+      );
+    } else if (event.type === 'invoice.paid') {
+      const periodEndUnix = obj.lines?.data?.[0]?.period?.end;
+      const proximoVencimento = periodEndUnix ? new Date(periodEndUnix * 1000).toISOString().slice(0, 10) : null;
+      await pool.query(
+        'UPDATE academias SET status_pagamento = ?, proximo_vencimento = COALESCE(?, proximo_vencimento) WHERE stripe_customer_id = ?',
+        ['ativo', proximoVencimento, customerId]
+      );
+    } else if (event.type === 'invoice.payment_failed') {
+      await pool.query('UPDATE academias SET status_pagamento = ? WHERE stripe_customer_id = ?', ['inadimplente', customerId]);
+    } else if (event.type === 'customer.subscription.deleted') {
+      await pool.query('UPDATE academias SET status_pagamento = ? WHERE stripe_customer_id = ?', ['inadimplente', customerId]);
+    }
+    res.json({ received: true });
+  } catch (e) {
+    logSafeError('POST /webhooks/stripe (processamento)', e);
+    res.status(500).json({ error: 'Erro ao processar evento.' });
+  }
+});
+
 app.use(express.json({ limit: '4mb' })); // acomoda a logo em base64 (upload de imagem)
 
 /* ---------------- Healthcheck (Railway) ---------------- */
@@ -255,7 +306,7 @@ app.post('/admin/create-academia', requireSuperAdmin, async (req, res) => {
 app.get('/admin/academias', requireSuperAdmin, async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT a.id, a.nome, a.email, a.status_pagamento, a.valor_mensal, a.proximo_vencimento, a.created_at,
+      SELECT a.id, a.nome, a.email, a.status_pagamento, a.valor_mensal, a.proximo_vencimento, a.created_at, a.stripe_subscription_id,
         (SELECT COUNT(*) FROM students WHERE academia_id = a.id) AS total_alunos,
         (SELECT COUNT(*) FROM turmas WHERE academia_id = a.id) AS total_turmas
       FROM academias a ORDER BY a.created_at DESC
@@ -265,6 +316,7 @@ app.get('/admin/academias', requireSuperAdmin, async (req, res) => {
       statusPagamento: r.status_pagamento, valorMensal: Number(r.valor_mensal) || 0,
       proximoVencimento: r.proximo_vencimento, createdAt: r.created_at,
       totalAlunos: r.total_alunos, totalTurmas: r.total_turmas,
+      stripeAtivo: !!r.stripe_subscription_id,
     })));
   } catch (e) {
     logSafeError('GET /admin/academias', e);
@@ -287,6 +339,43 @@ app.put('/admin/academias/:id/pagamento', requireSuperAdmin, async (req, res) =>
   } catch (e) {
     logSafeError('PUT /admin/academias/:id/pagamento', e);
     res.status(500).json({ error: 'Erro ao atualizar pagamento.' });
+  }
+});
+
+// Gera o link de pagamento (Stripe Checkout) da ASSINATURA DA PLATAFORMA
+// pra essa academia — você manda esse link pro dono da academia pagar.
+// Reaproveita o mesmo Customer do Stripe se a academia já tiver um (ex:
+// segunda cobrança depois de cancelar), em vez de criar um novo à toa.
+app.post('/admin/academias/:id/stripe-checkout', requireSuperAdmin, async (req, res) => {
+  if (!stripeConfigurado() || !process.env.STRIPE_PRICE_ID) {
+    return res.status(503).json({ error: 'Stripe não configurado (falta STRIPE_SECRET_KEY ou STRIPE_PRICE_ID).' });
+  }
+  try {
+    const [rows] = await pool.query('SELECT id, nome, email, stripe_customer_id FROM academias WHERE id = ?', [req.params.id]);
+    const academia = rows[0];
+    if (!academia) return res.status(404).json({ error: 'Academia não encontrada.' });
+
+    const stripe = getStripeClient();
+    let customerId = academia.stripe_customer_id;
+    if (!customerId) {
+      const customer = await stripe.customers.create({ name: academia.nome, email: academia.email });
+      customerId = customer.id;
+      await pool.query('UPDATE academias SET stripe_customer_id = ? WHERE id = ?', [customerId, academia.id]);
+    }
+
+    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const session = await stripe.checkout.sessions.create({
+      mode: 'subscription',
+      customer: customerId,
+      line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+      success_url: `${baseUrl}/admin.html?stripe=sucesso`,
+      cancel_url: `${baseUrl}/admin.html?stripe=cancelado`,
+    });
+
+    res.json({ ok: true, url: session.url });
+  } catch (e) {
+    logSafeError('POST /admin/academias/:id/stripe-checkout', e);
+    res.status(500).json({ error: 'Erro ao gerar cobrança no Stripe.' });
   }
 });
 

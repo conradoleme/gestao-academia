@@ -135,8 +135,9 @@ function academiaRow(a) {
     <td><input type="text" inputmode="decimal" id="admin-valor-${a.id}" class="mini-input" style="width:90px;" value="${formatCurrencyValue(a.valorMensal)}"></td>
     <td><input type="date" id="admin-venc-${a.id}" class="mini-input" style="width:140px;" value="${a.proximoVencimento || ''}"></td>
     <td>${criada}</td>
-    <td style="display:flex;gap:6px;">
+    <td style="display:flex;gap:6px;flex-wrap:wrap;">
       <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="salvarPagamento('${a.id}')">Salvar</button>
+      <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="handleCobrarStripe('${a.id}', '${escapeHtml(a.nome).replace(/'/g, "\\'")}')" title="Gera um link de pagamento da assinatura">${a.stripeAtivo ? '💳 Stripe' : '💳 Cobrar via Stripe'}</button>
       <button class="btn btn-secondary" style="padding:6px 12px;font-size:12px;" onclick="openTrocarSenhaModal('${a.id}', '${escapeHtml(a.nome)}')">Senha</button>
       <button class="btn btn-danger" style="padding:6px 12px;font-size:12px;" onclick="confirmarExclusaoAcademia('${a.id}', '${escapeHtml(a.nome)}')">Excluir</button>
     </td>
@@ -209,6 +210,22 @@ async function salvarPagamento(id) {
     await loadAcademias();
   } catch (e) {
     showToast('Erro ao salvar: ' + e.message, 'error');
+  }
+}
+
+async function handleCobrarStripe(id, nome) {
+  try {
+    const result = await adminFetch(`/admin/academias/${id}/stripe-checkout`, { method: 'POST' });
+    openModal(`Cobrança Stripe — ${escapeHtml(nome)}`, `
+      <p style="color:var(--text2);font-size:13px;margin-bottom:14px;">Link de pagamento da assinatura gerado. Envie pro dono da academia — assim que ele pagar, o status muda pra "Ativo" sozinho.</p>
+      <div class="form-group"><textarea id="stripe-link" readonly style="min-height:70px;">${escapeHtml(result.url)}</textarea></div>
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn btn-primary" onclick="copyTextareaToClipboard('stripe-link')">📋 Copiar Link</button>
+        <button class="btn btn-secondary" onclick="closeModal()">Fechar</button>
+      </div>
+    `, { width: '480px' });
+  } catch (e) {
+    showToast('Erro ao gerar cobrança: ' + e.message, 'error');
   }
 }
 
