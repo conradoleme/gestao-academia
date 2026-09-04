@@ -64,11 +64,11 @@ router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
   }
 
   await pool.query(
-    `UPDATE academias SET nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?
+    `UPDATE academias SET nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?, usa_grau=?
      WHERE id=?`,
     [meta.empresa, slug, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
      JSON.stringify(meta.generatedMonths || []), JSON.stringify(categoryGroups || {}), JSON.stringify(cobrancaTemplates || []),
-     meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), req.academiaId]
+     meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), meta.usaGrau === false ? 0 : 1, req.academiaId]
   );
   res.json({ ok: true, slug });
 }));

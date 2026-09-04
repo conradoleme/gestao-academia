@@ -14,7 +14,7 @@ const { runBackup } = require('./backup');
 const { scheduleBackups } = require('./backup-scheduler');
 const { r2Configurado, getR2Client } = require('./r2');
 const { GetObjectCommand } = require('@aws-sdk/client-s3');
-const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS } = require('./seed-defaults');
+const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS_BJJ, DEFAULT_GRADUACAO_REGRAS_JUDO } = require('./seed-defaults');
 const { logSafeError } = require('./log-safe-error');
 const { generateUniqueSlug } = require('./slugify');
 const academiaRoutes = require('./routes/academia');
@@ -202,20 +202,30 @@ app.put('/admin/auth/senha', requireSuperAdmin, async (req, res) => {
   }
 });
 
+// Modalidade só decide o ponto de partida (faixas pré-carregadas + se o
+// campo "Grau" aparece) — depois de criada, a academia edita tudo livre
+// em Configurações, igual sempre foi possível pro BJJ.
+const MODALIDADE_TEMPLATES = {
+  bjj: { graduacaoRegras: DEFAULT_GRADUACAO_REGRAS_BJJ, usaGrau: true },
+  judo: { graduacaoRegras: DEFAULT_GRADUACAO_REGRAS_JUDO, usaGrau: false },
+  outro: { graduacaoRegras: {}, usaGrau: true },
+};
+
 app.post('/admin/create-academia', requireSuperAdmin, async (req, res) => {
-  const { email, senha, nome, turmasPadrao } = req.body || {};
+  const { email, senha, nome, turmasPadrao, modalidade } = req.body || {};
   if (!email || !senha) return res.status(400).json({ error: 'Informe email e senha.' });
 
   try {
     const [existing] = await pool.query('SELECT id FROM academias WHERE email = ?', [email]);
     if (existing[0]) return res.status(409).json({ error: 'Já existe uma academia com esse e-mail.' });
 
+    const template = MODALIDADE_TEMPLATES[modalidade] || MODALIDADE_TEMPLATES.bjj;
     const senhaHash = await bcrypt.hash(senha, 10);
     const slug = await generateUniqueSlug(pool, nome || 'Minha Academia');
     const [result] = await pool.query(
-      `INSERT INTO academias (email, senha_hash, nome, slug, generated_months, category_groups, cobranca_templates, graduacao_regras)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [email, senhaHash, nome || 'Minha Academia', slug, JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES), JSON.stringify(DEFAULT_GRADUACAO_REGRAS)]
+      `INSERT INTO academias (email, senha_hash, nome, slug, usa_grau, generated_months, category_groups, cobranca_templates, graduacao_regras)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [email, senhaHash, nome || 'Minha Academia', slug, template.usaGrau ? 1 : 0, JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES), JSON.stringify(template.graduacaoRegras)]
     );
 
     if (turmasPadrao) {

@@ -78,7 +78,7 @@ function graduacaoRow({ student, status }) {
 
   // Cor da faixa vai no fundo/borda, nunca no texto — faixas claras (ex:
   // Branca) ficam ilegíveis se o texto usar a cor da própria faixa.
-  const faixaTag = `<span class="tag" style="background:${status.cor}22;color:var(--text);border:1px solid ${status.cor}88;">${escapeHtml(status.faixaAtual)}${student.grau ? ' · ' + student.grau + '°' : ''}</span>`;
+  const faixaTag = `<span class="tag" style="background:${status.cor}22;color:var(--text);border:1px solid ${status.cor}88;">${escapeHtml(status.faixaAtual)}${data.meta.usaGrau !== false && student.grau ? ' · ' + student.grau + '°' : ''}</span>`;
 
   if (status.semRegra) {
     return `<tr>
@@ -136,7 +136,7 @@ function openGraduarModal(alunoId) {
     <div class="form-grid">
       <div class="form-group"><label>Data</label><input type="date" id="f-grad-data" value="${todayStr()}"></div>
       <div class="form-group"><label>Nova Faixa</label><input type="text" id="f-grad-faixa" value="${escapeHtml(status.proximaFaixa)}" disabled></div>
-      <div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-grad-grau" value="0" min="0" max="10"></div>
+      ${data.meta.usaGrau !== false ? `<div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-grad-grau" value="0" min="0" max="10"></div>` : ''}
     </div>
     <div class="form-group" style="margin-top:12px;"><label>Observações</label><textarea id="f-grad-obs" style="min-height:60px;" placeholder="Opcional"></textarea></div>
     <div class="btn-row">
@@ -152,7 +152,7 @@ async function handleConfirmarGraduacao(alunoId, faixaAnterior, faixaNova) {
     data: document.getElementById('f-grad-data').value || todayStr(),
     faixaAnterior,
     faixaNova,
-    grau: parseInt(document.getElementById('f-grad-grau').value) || 0,
+    grau: parseInt(document.getElementById('f-grad-grau')?.value) || 0,
     observacoes: document.getElementById('f-grad-obs').value.trim(),
   };
   await addGraduacao(payload);
@@ -169,13 +169,13 @@ function openHistoricoGraduacao(alunoId) {
     ${historico.length ? `
       <div class="table-wrap">
         <table>
-          <thead><tr><th style="text-align:left;">Data</th><th style="text-align:left;">De</th><th style="text-align:left;">Para</th><th>Grau</th><th>Ações</th></tr></thead>
+          <thead><tr><th style="text-align:left;">Data</th><th style="text-align:left;">De</th><th style="text-align:left;">Para</th>${data.meta.usaGrau !== false ? '<th>Grau</th>' : ''}<th>Ações</th></tr></thead>
           <tbody>${historico.map(g => `
             <tr>
               <td style="text-align:left;">${fmtDate(g.data)}</td>
               <td style="text-align:left;">${escapeHtml(g.faixaAnterior || '—')}</td>
               <td style="text-align:left;">${escapeHtml(g.faixaNova)}</td>
-              <td>${g.grau}°</td>
+              ${data.meta.usaGrau !== false ? `<td>${g.grau}°</td>` : ''}
               <td><button class="btn-icon" title="Desfazer" onclick="handleDesfazerGraduacao('${g.id}')">🗑️</button></td>
             </tr>
           `).join('')}</tbody>
@@ -206,7 +206,7 @@ function openRegistrarGraduacaoModal(alunoId) {
     </p>
     <div class="form-grid">
       <div class="form-group"><label>Data da graduação</label><input type="date" id="f-reg-data" value="${todayStr()}"></div>
-      <div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-reg-grau" value="0" min="0" max="10"></div>
+      ${data.meta.usaGrau !== false ? `<div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-reg-grau" value="0" min="0" max="10"></div>` : ''}
       <div class="form-group"><label>Faixa anterior</label><select id="f-reg-faixa-anterior">${faixaOptions}</select></div>
       <div class="form-group"><label>Faixa nova</label><select id="f-reg-faixa-nova">${faixaOptions}</select></div>
     </div>
@@ -233,7 +233,7 @@ async function handleRegistrarGraduacao(alunoId) {
   const data_ = document.getElementById('f-reg-data').value;
   const faixaAnterior = document.getElementById('f-reg-faixa-anterior').value;
   const faixaNova = document.getElementById('f-reg-faixa-nova').value;
-  const grau = parseInt(document.getElementById('f-reg-grau').value) || 0;
+  const grau = parseInt(document.getElementById('f-reg-grau')?.value) || 0;
   const observacoes = document.getElementById('f-reg-obs').value.trim();
 
   if (!data_) { errorEl.innerHTML = `<div class="alert alert-danger">Escolha a data.</div>`; return; }

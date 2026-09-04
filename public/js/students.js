@@ -188,7 +188,7 @@ function openStudentForm(id) {
     <div class="form-grid">
       <div class="form-group"><label>Data de Início (treino)</label><input type="date" id="f-data-inicio" value="${s.dataInicio||''}"></div>
       <div class="form-group"><label>Faixa Atual</label><select id="f-faixa">${faixaOptionsFor(s.categoria, s.faixa)}</select></div>
-      <div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-grau" value="${s.grau||0}" min="0" max="10"></div>
+      ${data.meta.usaGrau !== false ? `<div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-grau" value="${s.grau||0}" min="0" max="10"></div>` : ''}
     </div>
     <div class="form-group" style="margin-top:12px;"><label>Observações</label><textarea id="f-obs" style="min-height:60px;">${escapeHtml(s.observacoes||'')}</textarea></div>
     <div class="btn-row">
@@ -265,7 +265,7 @@ function buildStudentPatch() {
     observacoes: document.getElementById('f-obs').value.trim(),
     dataInicio: document.getElementById('f-data-inicio').value || null,
     faixa: document.getElementById('f-faixa').value || null,
-    grau: parseInt(document.getElementById('f-grau').value) || 0,
+    grau: parseInt(document.getElementById('f-grau')?.value) || 0,
   };
 }
 

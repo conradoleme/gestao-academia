@@ -148,6 +148,15 @@ function openCreateAcademiaModal() {
     <div class="form-group"><label>Nome da Academia</label><input type="text" id="new-academia-nome" placeholder="Ex: Goushi BJJ"></div>
     <div class="form-group"><label>E-mail (login)</label><input type="email" id="new-academia-email" placeholder="contato@academia.com"></div>
     <div class="form-group"><label>Senha</label><input type="password" id="new-academia-senha" placeholder="Senha inicial"></div>
+    <div class="form-group">
+      <label>Modalidade</label>
+      <select id="new-academia-modalidade">
+        <option value="bjj">Jiu-Jitsu</option>
+        <option value="judo">Judô</option>
+        <option value="outro">Outra (sem faixas pré-cadastradas)</option>
+      </select>
+      <p style="color:var(--text2);font-size:12px;margin:6px 0 0;">Só define o ponto de partida (faixas e se usa "Grau") — a academia edita tudo depois em Configurações.</p>
+    </div>
     <div class="form-group" style="display:flex;align-items:center;gap:8px;">
       <input type="checkbox" id="new-academia-turmas" style="width:auto;">
       <label style="margin:0;">Criar com turmas padrão (T730 a T2000)</label>
@@ -164,6 +173,7 @@ async function handleCreateAcademia() {
   const nome = document.getElementById('new-academia-nome').value.trim();
   const email = document.getElementById('new-academia-email').value.trim();
   const senha = document.getElementById('new-academia-senha').value;
+  const modalidade = document.getElementById('new-academia-modalidade').value;
   const turmasPadrao = document.getElementById('new-academia-turmas').checked;
   const errorEl = document.getElementById('new-academia-error');
   errorEl.innerHTML = '';
@@ -176,7 +186,7 @@ async function handleCreateAcademia() {
   try {
     await adminFetch('/admin/create-academia', {
       method: 'POST',
-      body: JSON.stringify({ email, senha, nome, turmasPadrao }),
+      body: JSON.stringify({ email, senha, nome, modalidade, turmasPadrao }),
     });
     closeModal();
     showToast('Academia criada com sucesso!');

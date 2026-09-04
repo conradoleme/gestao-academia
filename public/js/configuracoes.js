@@ -128,6 +128,10 @@ async function renderConfiguracoesPage() {
       <div class="card">
         <h3>Regras de Graduação</h3>
         <p style="color:var(--text2);font-size:12.5px;margin-bottom:16px;">Defina a sequência de faixas de cada categoria e o critério pra avançar pra próxima. A última faixa da lista é o topo, sem critério.</p>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+          <input type="checkbox" id="cfg-usa-grau" style="width:auto;" ${data.meta.usaGrau !== false ? 'checked' : ''} onchange="handleToggleUsaGrau()">
+          <label style="margin:0;">Usar "Grau" (pontas) na graduação — comum em jiu-jitsu, nem toda modalidade usa</label>
+        </div>
         <div class="tabs" style="margin-bottom:16px;">
           <button class="tab ${graduacaoRegrasCategoriaAtiva==='Adulto'?'active':''}" onclick="setGraduacaoRegrasCategoria('Adulto')">Adulto</button>
           <button class="tab ${graduacaoRegrasCategoriaAtiva==='Kids'?'active':''}" onclick="setGraduacaoRegrasCategoria('Kids')">Kids</button>
@@ -496,4 +500,11 @@ async function handleSalvarGraduacaoRegras() {
   await persistAcademiaSettings();
   showToast('Regras de graduação salvas!');
   renderConfiguracoesPage();
+}
+
+async function handleToggleUsaGrau() {
+  const usaGrau = document.getElementById('cfg-usa-grau').checked;
+  data.meta.usaGrau = usaGrau;
+  await persistAcademiaSettings();
+  showToast(usaGrau ? 'Campo "Grau" ativado.' : 'Campo "Grau" desativado.');
 }
