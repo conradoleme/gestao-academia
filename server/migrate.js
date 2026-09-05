@@ -46,6 +46,8 @@ async function migrate() {
   await addColumnIfMissing('academias', 'usa_grau', `TINYINT(1) NOT NULL DEFAULT 1`);
   await addColumnIfMissing('academias', 'stripe_customer_id', `VARCHAR(255) NULL`);
   await addColumnIfMissing('academias', 'stripe_subscription_id', `VARCHAR(255) NULL`);
+  await addColumnIfMissing('academias', 'trial_ends_at', `DATE NULL`);
+  await addColumnIfMissing('academias', 'telefone', `VARCHAR(30) NULL`);
 
   // Trava contra mensalidade/matrícula duplicada quando duas sessões (ex:
   // dono e um funcionário logando quase ao mesmo tempo) disparam a geração

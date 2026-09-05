@@ -7,6 +7,7 @@ const { studentToJSON, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, g
 const { requireRole } = require('../auth');
 const { r2Configurado, getR2Client } = require('../r2');
 const { slugify } = require('../slugify');
+const { getStripeClient, stripeConfigurado } = require('../stripe-client');
 const asyncHandler = require('../asyncHandler');
 
 // SVG fica de fora de propósito: pode carregar <script>/onload embutido, e
@@ -64,13 +65,31 @@ router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
   }
 
   await pool.query(
-    `UPDATE academias SET nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?, usa_grau=?
+    `UPDATE academias SET nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?, usa_grau=?, telefone=?
      WHERE id=?`,
     [meta.empresa, slug, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
      JSON.stringify(meta.generatedMonths || []), JSON.stringify(categoryGroups || {}), JSON.stringify(cobrancaTemplates || []),
-     meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), meta.usaGrau === false ? 0 : 1, req.academiaId]
+     meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), meta.usaGrau === false ? 0 : 1, meta.telefone || null, req.academiaId]
   );
   res.json({ ok: true, slug });
+}));
+
+// E-mail é o login do dono — trocar exige senha atual (mesma trava de
+// segurança de trocar senha) e checa que ninguém mais já usa esse e-mail.
+router.put('/academia/email', requireRole('admin'), asyncHandler(async (req, res) => {
+  const { novoEmail, senhaAtual } = req.body || {};
+  if (!novoEmail || !senhaAtual) return res.status(400).json({ error: 'Informe o novo e-mail e a senha atual.' });
+
+  const [rows] = await pool.query('SELECT senha_hash FROM academias WHERE id = ?', [req.academiaId]);
+  if (!rows[0]) return res.status(404).json({ error: 'Academia não encontrada.' });
+  const ok = await bcrypt.compare(senhaAtual, rows[0].senha_hash);
+  if (!ok) return res.status(400).json({ error: 'Senha atual incorreta.' });
+
+  const [existing] = await pool.query('SELECT id FROM academias WHERE email = ? AND id != ? UNION SELECT id FROM usuarios WHERE email = ?', [novoEmail, req.academiaId, novoEmail]);
+  if (existing[0]) return res.status(409).json({ error: 'Esse e-mail já está em uso.' });
+
+  await pool.query('UPDATE academias SET email = ? WHERE id = ?', [novoEmail, req.academiaId]);
+  res.json({ ok: true });
 }));
 
 router.put('/academia/senha', asyncHandler(async (req, res) => {
@@ -129,6 +148,58 @@ router.delete('/academia/logo', requireRole('admin'), asyncHandler(async (req, r
     await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: logoKey })).catch(() => {});
   }
   res.json({ ok: true });
+}));
+
+/* Autoatendimento da própria academia (não confundir com a rota igual
+   que só o super-admin usa, em index.js) — o dono antecipa a assinatura
+   da plataforma sem precisar esperar você mandar o link. */
+router.post('/academia/stripe-checkout', requireRole('admin'), asyncHandler(async (req, res) => {
+  if (!stripeConfigurado() || !process.env.STRIPE_PRICE_ID) {
+    return res.status(503).json({ error: 'Cobrança não configurada — fale com o suporte.' });
+  }
+  const [rows] = await pool.query('SELECT id, nome, email, stripe_customer_id FROM academias WHERE id = ?', [req.academiaId]);
+  const academia = rows[0];
+  if (!academia) return res.status(404).json({ error: 'Academia não encontrada.' });
+
+  const stripe = getStripeClient();
+  let customerId = academia.stripe_customer_id;
+  if (!customerId) {
+    const customer = await stripe.customers.create({ name: academia.nome, email: academia.email });
+    customerId = customer.id;
+    await pool.query('UPDATE academias SET stripe_customer_id = ? WHERE id = ?', [customerId, academia.id]);
+  }
+
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const session = await stripe.checkout.sessions.create({
+    mode: 'subscription',
+    customer: customerId,
+    line_items: [{ price: process.env.STRIPE_PRICE_ID, quantity: 1 }],
+    success_url: `${baseUrl}/?assinatura=sucesso`,
+    cancel_url: `${baseUrl}/?assinatura=cancelada`,
+  });
+  res.json({ ok: true, url: session.url });
+}));
+
+// Portal hospedado pelo próprio Stripe — trocar cartão, ver faturas,
+// cancelar. Evita a gente lidar com dado de cartão diretamente.
+router.post('/academia/stripe-portal', requireRole('admin'), asyncHandler(async (req, res) => {
+  if (!stripeConfigurado()) return res.status(503).json({ error: 'Cobrança não configurada — fale com o suporte.' });
+
+  const [rows] = await pool.query('SELECT stripe_customer_id FROM academias WHERE id = ?', [req.academiaId]);
+  const customerId = rows[0]?.stripe_customer_id;
+  if (!customerId) return res.status(400).json({ error: 'Você ainda não tem uma assinatura ativa — use "Antecipar assinatura" primeiro.' });
+
+  const stripe = getStripeClient();
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  try {
+    const session = await stripe.billingPortal.sessions.create({ customer: customerId, return_url: `${baseUrl}/` });
+    res.json({ ok: true, url: session.url });
+  } catch (e) {
+    if (e.message && e.message.includes('configuration')) {
+      return res.status(503).json({ error: 'O portal de cobrança ainda não foi configurado no Stripe — fale com o suporte.' });
+    }
+    throw e;
+  }
 }));
 
 module.exports = router;

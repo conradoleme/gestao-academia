@@ -508,3 +508,115 @@ async function handleToggleUsaGrau() {
   await persistAcademiaSettings();
   showToast(usaGrau ? 'Campo "Grau" ativado.' : 'Campo "Grau" desativado.');
 }
+
+/* ---------------- Minha Assinatura (engrenagem no menu) ----------------
+   Autoatendimento da assinatura da PLATAFORMA (o que a academia paga pra
+   usar o sistema) — nada a ver com a cobrança dos alunos dela. Só o dono
+   (role admin) vê a engrenagem que abre isso, ver applyAssinaturaUI(). */
+function assinaturaStatusResumo() {
+  if (data.meta.stripeAssinaturaAtiva) {
+    return `<div class="alert alert-success">✅ Assinatura ativa.</div>`;
+  }
+  if (!data.meta.trialEndsAt) {
+    return `<div class="alert alert-danger">Nenhuma assinatura ativa.</div>`;
+  }
+  const hoje = new Date(todayStr() + 'T00:00:00');
+  const fim = new Date(data.meta.trialEndsAt + 'T00:00:00');
+  const dias = Math.ceil((fim - hoje) / (1000 * 60 * 60 * 24));
+  if (dias > 0) {
+    return `<div class="alert" style="background:var(--surface2);color:var(--text2);border:1px solid var(--border);">🕐 Período grátis: <strong style="color:var(--text);">${dias} dia(s)</strong> restante(s).</div>`;
+  }
+  return `<div class="alert alert-danger">⚠️ Seu período grátis acabou.</div>`;
+}
+
+function openMinhaAssinaturaModal() {
+  const email = decodeAuthToken()?.email || '';
+  openModal('Minha Assinatura', `
+    <div style="margin-bottom:18px;">${assinaturaStatusResumo()}</div>
+    <div class="btn-row" style="margin-bottom:20px;">
+      <button class="btn btn-primary" onclick="handleAntecipacaoAssinatura()">Antecipar assinatura</button>
+      <button class="btn btn-secondary" onclick="handleMudarFormaPagamento()">Mudar forma de pagamento</button>
+    </div>
+
+    <hr class="divider">
+    <h3 style="font-size:14px;">Trocar E-mail</h3>
+    <div class="form-group"><label>E-mail atual</label><input type="text" value="${escapeHtml(email)}" disabled></div>
+    <div class="form-group"><label>Novo e-mail</label><input type="email" id="ma-novo-email" placeholder="novo@email.com"></div>
+    <div class="form-group"><label>Senha atual</label><input type="password" id="ma-senha-atual-email" autocomplete="current-password"></div>
+    <div id="ma-email-error"></div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="handleTrocarEmailAssinatura()">Salvar E-mail</button></div>
+
+    <hr class="divider">
+    <h3 style="font-size:14px;">Trocar Telefone</h3>
+    <div class="form-group"><label>Telefone</label><input type="text" id="ma-telefone" value="${escapeHtml(data.meta.telefone || '')}" placeholder="(11) 99999-9999"></div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="handleTrocarTelefoneAssinatura()">Salvar Telefone</button></div>
+
+    <hr class="divider">
+    <h3 style="font-size:14px;">Trocar Senha</h3>
+    <div class="form-group"><label>Senha atual</label><input type="password" id="ma-senha-atual" autocomplete="current-password"></div>
+    <div class="form-group"><label>Nova senha</label><input type="password" id="ma-senha-nova" autocomplete="new-password" placeholder="Mínimo 8 caracteres"></div>
+    <div id="ma-senha-error"></div>
+    <div class="btn-row"><button class="btn btn-secondary" onclick="handleTrocarSenhaAssinatura()">Trocar Senha</button></div>
+
+    <div class="btn-row" style="margin-top:22px;"><button class="btn btn-secondary" onclick="closeModal()">Fechar</button></div>
+  `, { width: '480px' });
+}
+
+async function handleAntecipacaoAssinatura() {
+  try {
+    const { url } = await criarStripeCheckoutSelf();
+    window.open(url, '_blank');
+  } catch (e) {
+    showToast('Erro ao gerar link de pagamento: ' + e.message, 'error');
+  }
+}
+
+async function handleMudarFormaPagamento() {
+  try {
+    const { url } = await abrirStripePortalSelf();
+    window.open(url, '_blank');
+  } catch (e) {
+    showToast(e.message, 'error');
+  }
+}
+
+async function handleTrocarEmailAssinatura() {
+  const novoEmail = document.getElementById('ma-novo-email').value.trim();
+  const senhaAtual = document.getElementById('ma-senha-atual-email').value;
+  const errorEl = document.getElementById('ma-email-error');
+  errorEl.innerHTML = '';
+  if (!novoEmail || !senhaAtual) { errorEl.innerHTML = `<div class="alert alert-danger">Preencha o novo e-mail e a senha atual.</div>`; return; }
+  try {
+    await changeAcademiaEmail(novoEmail, senhaAtual);
+    showToast('E-mail atualizado! Use o novo e-mail no próximo login.');
+    closeModal();
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
+}
+
+async function handleTrocarTelefoneAssinatura() {
+  const telefone = document.getElementById('ma-telefone').value.trim();
+  try {
+    await updateAcademiaTelefone(telefone);
+    showToast('Telefone atualizado!');
+  } catch (e) {
+    showToast('Erro ao salvar telefone: ' + e.message, 'error');
+  }
+}
+
+async function handleTrocarSenhaAssinatura() {
+  const senhaAtual = document.getElementById('ma-senha-atual').value;
+  const novaSenha = document.getElementById('ma-senha-nova').value;
+  const errorEl = document.getElementById('ma-senha-error');
+  errorEl.innerHTML = '';
+  if (!senhaAtual || !novaSenha) { errorEl.innerHTML = `<div class="alert alert-danger">Preencha a senha atual e a nova senha.</div>`; return; }
+  if (novaSenha.length < 8) { errorEl.innerHTML = `<div class="alert alert-danger">A nova senha precisa ter pelo menos 8 caracteres.</div>`; return; }
+  try {
+    await changeAcademiaSenha(senhaAtual, novaSenha);
+    showToast('Senha atualizada!');
+    closeModal();
+  } catch (e) {
+    errorEl.innerHTML = `<div class="alert alert-danger">${escapeHtml(e.message)}</div>`;
+  }
+}

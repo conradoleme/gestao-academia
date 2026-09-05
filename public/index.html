@@ -22,7 +22,11 @@
   <!-- SIDEBAR -->
   <aside class="sidebar">
     <div class="logo"><span id="app-logo-emoji">🥋</span> Gestão <span>da Academia</span></div>
-    <div class="logo-sub" id="app-empresa-nome">Carregando…</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;">
+      <div class="logo-sub" id="app-empresa-nome">Carregando…</div>
+      <button class="btn-icon" id="btn-minha-assinatura" style="display:none;" title="Minha Assinatura" onclick="openMinhaAssinaturaModal()">⚙️</button>
+    </div>
+    <div id="trial-banner" style="display:none;"></div>
 
     <div class="nav-section">Visão Geral</div>
     <button class="nav-btn active" onclick="showPage('dashboard')" id="nav-dashboard"><span class="icon">🏁</span> Dashboard</button>

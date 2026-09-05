@@ -86,6 +86,39 @@ function applyRoleUI(role) {
   });
 }
 
+/* ---------------- Assinatura da plataforma (trial + engrenagem) ----------------
+   Só o dono (admin) mexe com isso — é o dinheiro que a ACADEMIA paga pra
+   usar o sistema, não tem nada a ver com o financeiro dos alunos dela,
+   então operação/aluno nunca veem essa faixa nem a engrenagem. */
+function applyAssinaturaUI(role) {
+  const btnEngrenagem = document.getElementById('btn-minha-assinatura');
+  const banner = document.getElementById('trial-banner');
+  if (role !== 'admin') {
+    if (btnEngrenagem) btnEngrenagem.style.display = 'none';
+    if (banner) banner.style.display = 'none';
+    return;
+  }
+  if (btnEngrenagem) btnEngrenagem.style.display = 'inline-flex';
+  if (!banner) return;
+
+  if (!data.meta.trialEndsAt || data.meta.stripeAssinaturaAtiva) {
+    banner.style.display = 'none';
+    return;
+  }
+  const hoje = new Date(todayStr() + 'T00:00:00');
+  const fim = new Date(data.meta.trialEndsAt + 'T00:00:00');
+  const dias = Math.ceil((fim - hoje) / (1000 * 60 * 60 * 24));
+
+  banner.style.display = 'block';
+  if (dias > 0) {
+    banner.style.cssText = 'display:block;margin:8px 0;padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.4;background:var(--surface2);color:var(--text2);';
+    banner.innerHTML = `🕐 Período grátis: <strong style="color:var(--text);">${dias} dia(s)</strong> restante(s). <a href="#" onclick="openMinhaAssinaturaModal();return false;" style="color:var(--accent);">Assinar agora</a>`;
+  } else {
+    banner.style.cssText = 'display:block;margin:8px 0;padding:8px 10px;border-radius:8px;font-size:11.5px;line-height:1.4;background:rgba(220,38,38,0.1);color:var(--red);';
+    banner.innerHTML = `⚠️ Seu período grátis acabou. <a href="#" onclick="openMinhaAssinaturaModal();return false;" style="color:inherit;text-decoration:underline;">Assinar agora</a>`;
+  }
+}
+
 /* ---------------- Logo personalizada da academia ---------------- */
 function applyAcademiaLogo() {
   const html = data.meta.logoUrl
@@ -119,6 +152,7 @@ async function bootAppAfterLogin() {
   applyWatermark();
   const role = decodeAuthToken()?.role;
   applyRoleUI(role);
+  applyAssinaturaUI(role);
   showPage(role === 'operacao' ? 'alunos' : 'dashboard');
 }
 

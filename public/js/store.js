@@ -800,6 +800,24 @@ async function changeAcademiaSenha(senhaAtual, novaSenha) {
   await api.put('/api/academia/senha', { senhaAtual, novaSenha });
 }
 
+async function changeAcademiaEmail(novoEmail, senhaAtual) {
+  await api.put('/api/academia/email', { novoEmail, senhaAtual });
+  data.meta.email = novoEmail;
+}
+
+async function updateAcademiaTelefone(telefone) {
+  data.meta.telefone = telefone;
+  await persistAcademiaSettings();
+}
+
+async function criarStripeCheckoutSelf() {
+  return api.post('/api/academia/stripe-checkout', {});
+}
+
+async function abrirStripePortalSelf() {
+  return api.post('/api/academia/stripe-portal', {});
+}
+
 async function uploadAcademiaLogo(imageBase64) {
   const result = await api.put('/api/academia/logo', { imageBase64 });
   data.meta.logoUrl = result.logoUrl + '?t=' + Date.now(); // evita cache do navegador na logo antiga

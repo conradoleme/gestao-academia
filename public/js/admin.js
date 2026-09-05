@@ -162,6 +162,7 @@ function openCreateAcademiaModal() {
       <input type="checkbox" id="new-academia-turmas" style="width:auto;">
       <label style="margin:0;">Criar com turmas padrão (T730 a T2000)</label>
     </div>
+    <div class="form-group"><label>Dias de teste grátis</label><input type="number" id="new-academia-trial-dias" value="14" min="0"></div>
     <div id="new-academia-error"></div>
     <div class="btn-row" style="margin-top:16px;">
       <button class="btn btn-primary" onclick="handleCreateAcademia()">Criar Academia</button>
@@ -176,6 +177,7 @@ async function handleCreateAcademia() {
   const senha = document.getElementById('new-academia-senha').value;
   const modalidade = document.getElementById('new-academia-modalidade').value;
   const turmasPadrao = document.getElementById('new-academia-turmas').checked;
+  const trialDias = document.getElementById('new-academia-trial-dias').value;
   const errorEl = document.getElementById('new-academia-error');
   errorEl.innerHTML = '';
 
@@ -187,7 +189,7 @@ async function handleCreateAcademia() {
   try {
     await adminFetch('/admin/create-academia', {
       method: 'POST',
-      body: JSON.stringify({ email, senha, nome, modalidade, turmasPadrao }),
+      body: JSON.stringify({ email, senha, nome, modalidade, turmasPadrao, trialDias }),
     });
     closeModal();
     showToast('Academia criada com sucesso!');
