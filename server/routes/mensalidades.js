@@ -27,13 +27,35 @@ router.post('/', asyncHandler(async (req, res) => {
   if (!STATUS_VALIDOS.includes(t.status)) return res.status(400).json({ error: 'Status inválido.' });
 
   // grupo/tipo fixos em receita/entrada — essa rota nunca cria despesa.
-  const [result] = await pool.query(
-    `INSERT INTO transactions (academia_id, data, grupo, categoria, descricao, valor, status, tipo, aluno_id, origem, recorrente, recorrencia_meses)
-     VALUES (?,?,'receita',?,?,?,?,'entrada',?,?,0,NULL)`,
-    [req.academiaId, t.data, t.categoria, t.descricao || null, t.valor || 0, t.status, t.alunoId, t.origem || null]
-  );
-  const [rows] = await pool.query('SELECT * FROM transactions WHERE id = ?', [result.insertId]);
-  res.json(txToJSON(rows[0]));
+  // dedup_key só é preenchido pra lançamentos auto-* (é o que a trave
+  // uq_transactions_dedup usa) — manual (origem null/outro) fica NULL e
+  // nunca colide, então continua livre pra lançar quantas vezes quiser.
+  const origemAuto = t.origem === 'auto-mensalidade' || t.origem === 'auto-matricula';
+  const dedupKey = origemAuto ? `${req.academiaId}|${t.alunoId}|${t.categoria}|${t.data}|${t.origem}` : null;
+
+  try {
+    const [result] = await pool.query(
+      `INSERT INTO transactions (academia_id, data, grupo, categoria, descricao, valor, status, tipo, aluno_id, origem, recorrente, recorrencia_meses, dedup_key)
+       VALUES (?,?,'receita',?,?,?,?,'entrada',?,?,0,NULL,?)`,
+      [req.academiaId, t.data, t.categoria, t.descricao || null, t.valor || 0, t.status, t.alunoId, t.origem || null, dedupKey]
+    );
+    const [rows] = await pool.query('SELECT * FROM transactions WHERE id = ?', [result.insertId]);
+    res.json(txToJSON(rows[0]));
+  } catch (e) {
+    // Duas sessões gerando o mês quase ao mesmo tempo (dono + funcionário
+    // logando junto, por ex.) corriam pra criar o mesmo lançamento — a
+    // trava uq_transactions_dedup barra a segunda, e aqui devolvemos o
+    // registro que já existe em vez de dar erro, então quem chamou nem
+    // percebe que perdeu a corrida.
+    if (e.code === 'ER_DUP_ENTRY' && t.origem) {
+      const [existing] = await pool.query(
+        'SELECT * FROM transactions WHERE academia_id = ? AND aluno_id = ? AND categoria = ? AND data = ? AND origem = ?',
+        [req.academiaId, t.alunoId, t.categoria, t.data, t.origem]
+      );
+      if (existing[0]) return res.json(txToJSON(existing[0]));
+    }
+    throw e;
+  }
 }));
 
 router.put('/:id/status', requireRole('admin'), asyncHandler(async (req, res) => {

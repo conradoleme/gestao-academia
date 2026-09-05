@@ -46,6 +46,23 @@ async function migrate() {
   await addColumnIfMissing('academias', 'usa_grau', `TINYINT(1) NOT NULL DEFAULT 1`);
   await addColumnIfMissing('academias', 'stripe_customer_id', `VARCHAR(255) NULL`);
   await addColumnIfMissing('academias', 'stripe_subscription_id', `VARCHAR(255) NULL`);
+
+  // Trava contra mensalidade/matrícula duplicada quando duas sessões (ex:
+  // dono e um funcionário logando quase ao mesmo tempo) disparam a geração
+  // automática do mesmo mês antes de uma ver o que a outra acabou de criar.
+  // Coluna simples (não gerada pelo MySQL — coluna GENERATED conflita com
+  // as foreign keys que essa tabela já tem): quem grava calcula o valor
+  // (server/routes/mensalidades.js) só pra lançamentos auto-*; os manuais
+  // ficam NULL e nunca colidem, já que UNIQUE não trava múltiplos NULLs.
+  await addColumnIfMissing('transactions', 'dedup_key', `VARCHAR(255) NULL`);
+  // Preenche o valor pros lançamentos auto-* que já existiam antes dessa
+  // coluna existir — sem isso a trava só protegeria lançamento novo daqui
+  // pra frente. Idempotente: só mexe em quem ainda está NULL.
+  await pool.query(
+    `UPDATE transactions SET dedup_key = CONCAT(academia_id,'|',aluno_id,'|',categoria,'|',data,'|',origem)
+     WHERE origem IN ('auto-mensalidade','auto-matricula') AND aluno_id IS NOT NULL AND dedup_key IS NULL`
+  );
+  await addUniqueIndexIfMissing('transactions', 'uq_transactions_dedup', 'dedup_key');
 }
 
 /* ALTER TABLE ... ADD COLUMN é seguro rodar de novo a cada boot só se a
@@ -60,6 +77,25 @@ async function addColumnIfMissing(table, column, definition) {
   if (rows[0].total === 0) {
     await pool.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
     console.log(`Coluna ${table}.${column} adicionada.`);
+  }
+}
+
+/* Mesma ideia do addColumnIfMissing, mas pra criar um índice único sem
+   quebrar se já existir (redeploy) nem se dados antigos violassem a
+   trava — nesse caso ela não é a causa, então preferimos avisar no log a
+   travar o boot. */
+async function addUniqueIndexIfMissing(table, indexName, column) {
+  const [rows] = await pool.query(
+    `SELECT COUNT(*) AS total FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?`,
+    [table, indexName]
+  );
+  if (rows[0].total === 0) {
+    try {
+      await pool.query(`ALTER TABLE ${table} ADD UNIQUE KEY ${indexName} (${column})`);
+      console.log(`Índice único ${indexName} criado em ${table}.${column}.`);
+    } catch (e) {
+      console.error(`Não deu pra criar o índice único ${indexName} (dado existente pode colidir):`, e.message);
+    }
   }
 }
 
