@@ -100,6 +100,7 @@ function academiaToShape(r) {
       usaGrau: r.usa_grau === undefined || r.usa_grau === null ? true : !!r.usa_grau,
       email: r.email || null,
       telefone: r.telefone || null,
+      modalidade: r.modalidade || 'bjj',
       trialEndsAt: r.trial_ends_at || null,
       stripeAssinaturaAtiva: !!r.stripe_subscription_id,
     },

@@ -613,17 +613,28 @@ function computeGestaoDica(k) {
   };
 }
 
-/* ---------------- Planejamento de ocupação do tatame ---------------- */
-const DENSIDADE_NIVEIS = [
+/* ---------------- Planejamento de ocupação do tatame ----------------
+   Densidade por dupla varia por modalidade: Judô é majoritariamente
+   nage-waza (arremessos em pé), que exige raio de queda e deslocamento —
+   Jiu-Jitsu é majoritariamente ne-waza (chão), então cabe mais gente no
+   mesmo tatame com segurança. Ver estudo na conversa (m²/dupla por fonte:
+   IJF, orientações de dojo de Judô e guias de tatame de Jiu-Jitsu). */
+const DENSIDADE_NIVEIS_BJJ = [
   { id: 'N1', descricao: 'Confortável — ideal para treino técnico', m2PorDupla: 10 },
   { id: 'N2', descricao: 'Operacional — padrão do dia a dia', m2PorDupla: 8 },
   { id: 'N3', descricao: 'Segurança — limite mínimo aceitável', m2PorDupla: 6 },
+];
+const DENSIDADE_NIVEIS_JUDO = [
+  { id: 'N1', descricao: 'Confortável — ideal para treino técnico', m2PorDupla: 16 },
+  { id: 'N2', descricao: 'Operacional — padrão do dia a dia', m2PorDupla: 12 },
+  { id: 'N3', descricao: 'Segurança — limite mínimo aceitável (arremessos exigem raio de queda)', m2PorDupla: 8 },
 ];
 
 function computeTatameCapacity() {
   const { comprimento, largura } = data.meta.tatame;
   const area = comprimento * largura;
-  const niveis = DENSIDADE_NIVEIS.map(n => {
+  const densidadeNiveis = data.meta.modalidade === 'judo' ? DENSIDADE_NIVEIS_JUDO : DENSIDADE_NIVEIS_BJJ;
+  const niveis = densidadeNiveis.map(n => {
     const duplas = area / n.m2PorDupla;
     return { ...n, duplas, alunosEquivalentes: duplas * 2 };
   });

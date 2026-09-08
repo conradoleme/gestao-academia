@@ -43,6 +43,21 @@ async function renderConfiguracoesPage() {
 
       <hr class="divider">
 
+      <h3>Modalidade</h3>
+      <p style="color:var(--text2);font-size:12.5px;margin:-4px 0 12px;">Usada pra calcular a ocupação segura do tatame — Judô exige mais espaço por dupla (arremessos) do que Jiu-Jitsu (chão).</p>
+      <div class="form-group">
+        <select id="cfg-modalidade">
+          <option value="bjj" ${data.meta.modalidade === 'bjj' ? 'selected' : ''}>Jiu-Jitsu</option>
+          <option value="judo" ${data.meta.modalidade === 'judo' ? 'selected' : ''}>Judô</option>
+          <option value="outro" ${data.meta.modalidade === 'outro' ? 'selected' : ''}>Outra</option>
+        </select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="handleSaveModalidade()">Salvar</button>
+      </div>
+
+      <hr class="divider">
+
       <h3>Link da Academia</h3>
       <p style="color:var(--text2);font-size:12.5px;margin:-4px 0 12px;">Um link com a cara da sua academia pra compartilhar com os alunos — mostra seu nome e logo já na tela de login. Deixe em branco se não quiser usar.</p>
       <div class="form-group">
@@ -176,6 +191,13 @@ async function handleSaveAcademiaNome() {
   document.getElementById('app-empresa-nome').textContent = nome;
   document.getElementById('app-empresa-nome-mobile').textContent = nome;
   showToast('Nome da academia atualizado!');
+}
+
+async function handleSaveModalidade() {
+  const modalidade = document.getElementById('cfg-modalidade').value;
+  data.meta.modalidade = modalidade;
+  await persistAcademiaSettings();
+  showToast('Modalidade atualizada!');
 }
 
 async function handleSaveSlug() {

@@ -270,14 +270,15 @@ app.post('/admin/create-academia', requireSuperAdmin, async (req, res) => {
     const [existing] = await pool.query('SELECT id FROM academias WHERE email = ?', [email]);
     if (existing[0]) return res.status(409).json({ error: 'Já existe uma academia com esse e-mail.' });
 
-    const template = MODALIDADE_TEMPLATES[modalidade] || MODALIDADE_TEMPLATES.bjj;
+    const modalidadeSalva = MODALIDADE_TEMPLATES[modalidade] ? modalidade : 'bjj';
+    const template = MODALIDADE_TEMPLATES[modalidadeSalva];
     const senhaHash = await bcrypt.hash(senha, 10);
     const slug = await generateUniqueSlug(pool, nome || 'Minha Academia');
     const dias = Number(trialDias) > 0 ? Number(trialDias) : 14;
     const [result] = await pool.query(
-      `INSERT INTO academias (email, senha_hash, nome, slug, usa_grau, generated_months, category_groups, cobranca_templates, graduacao_regras, trial_ends_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY))`,
-      [email, senhaHash, nome || 'Minha Academia', slug, template.usaGrau ? 1 : 0, JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES), JSON.stringify(template.graduacaoRegras), dias]
+      `INSERT INTO academias (email, senha_hash, nome, slug, usa_grau, generated_months, category_groups, cobranca_templates, graduacao_regras, trial_ends_at, modalidade)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_ADD(CURDATE(), INTERVAL ? DAY), ?)`,
+      [email, senhaHash, nome || 'Minha Academia', slug, template.usaGrau ? 1 : 0, JSON.stringify([]), JSON.stringify(DEFAULT_CATEGORY_GROUPS), JSON.stringify(DEFAULT_COBRANCA_TEMPLATES), JSON.stringify(template.graduacaoRegras), dias, modalidadeSalva]
     );
 
     if (turmasPadrao) {

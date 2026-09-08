@@ -48,6 +48,10 @@ async function migrate() {
   await addColumnIfMissing('academias', 'stripe_subscription_id', `VARCHAR(255) NULL`);
   await addColumnIfMissing('academias', 'trial_ends_at', `DATE NULL`);
   await addColumnIfMissing('academias', 'telefone', `VARCHAR(30) NULL`);
+  // Guarda a modalidade escolhida na criação (antes só era usada pra gerar o
+  // template inicial de graduação e depois descartada) — precisa persistir
+  // pra saber, depois, se a densidade de tatame do Judô deve ser aplicada.
+  await addColumnIfMissing('academias', 'modalidade', `VARCHAR(20) NULL`);
 
   // Trava contra mensalidade/matrícula duplicada quando duas sessões (ex:
   // dono e um funcionário logando quase ao mesmo tempo) disparam a geração

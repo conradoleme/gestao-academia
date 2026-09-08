@@ -51,6 +51,8 @@ router.get('/academia', asyncHandler(async (req, res) => {
   res.json(academiaToShape(rows[0]));
 }));
 
+const MODALIDADES_VALIDAS = ['bjj', 'judo', 'outro'];
+
 router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
   const { meta, categoryGroups, cobrancaTemplates, graduacaoRegras } = req.body;
 
@@ -64,12 +66,18 @@ router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
     if (existing[0]) return res.status(409).json({ error: 'Esse link já está em uso por outra academia.' });
   }
 
+  // Só troca a modalidade se vier um valor reconhecido — evita apagar o
+  // valor já salvo quando uma tela antiga (sem esse campo no formulário)
+  // faz o round-trip de meta sem passar modalidade nenhuma.
+  const modalidade = MODALIDADES_VALIDAS.includes(meta.modalidade) ? meta.modalidade : null;
+
   await pool.query(
-    `UPDATE academias SET nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?, usa_grau=?, telefone=?
+    `UPDATE academias SET nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?, usa_grau=?, telefone=?${modalidade ? ', modalidade=?' : ''}
      WHERE id=?`,
     [meta.empresa, slug, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
      JSON.stringify(meta.generatedMonths || []), JSON.stringify(categoryGroups || {}), JSON.stringify(cobrancaTemplates || []),
-     meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), meta.usaGrau === false ? 0 : 1, meta.telefone || null, req.academiaId]
+     meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), meta.usaGrau === false ? 0 : 1, meta.telefone || null,
+     ...(modalidade ? [modalidade] : []), req.academiaId]
   );
   res.json({ ok: true, slug });
 }));
