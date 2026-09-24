@@ -19,13 +19,9 @@ async function renderConfiguracoesPage() {
   const email = decodeAuthToken()?.email || '—';
   const role = decodeAuthToken()?.role;
   const isAdmin = role === 'admin';
-  // Admins adicionais (userId no token) veem tudo, menos a gestão de acessos.
-  const isOwner = isAdmin && !decodeAuthToken()?.userId;
 
   if (isAdmin) {
-    if (isOwner) {
-      try { usuariosCache = await fetchUsuarios(); } catch (e) { usuariosCache = []; }
-    }
+    try { usuariosCache = await fetchUsuarios(); } catch (e) { usuariosCache = []; }
     if (!graduacaoRegrasEdit) initGraduacaoRegrasEdit();
   }
 
@@ -126,11 +122,11 @@ async function renderConfiguracoesPage() {
     </div>
 
     ${isAdmin ? `
-      ${isOwner ? `<div class="card" style="margin-bottom:24px;">
+      <div class="card" style="margin-bottom:24px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <div>
             <h3 style="margin:0;">Usuários</h3>
-            <p style="color:var(--text2);font-size:12.5px;margin:4px 0 0;">Administradores, equipe (operação) e alunos, além do seu login de dono.</p>
+            <p style="color:var(--text2);font-size:12.5px;margin:4px 0 0;">Administradores, equipe (operação) e alunos, além do login do dono.</p>
           </div>
           <button class="btn btn-primary" onclick="openUsuarioForm()">+ Novo Usuário</button>
         </div>
@@ -142,7 +138,7 @@ async function renderConfiguracoesPage() {
             <tbody>${usuariosCache.map(usuarioRow).join('') || `<tr><td colspan="5" style="text-align:center;color:var(--text2);">Nenhum usuário adicional cadastrado ainda.</td></tr>`}</tbody>
           </table>
         </div>
-      </div>` : ''}
+      </div>
 
       <div class="card">
         <h3>Regras de Graduação</h3>

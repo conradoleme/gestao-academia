@@ -5,11 +5,11 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
-const { requireOwner } = require('../auth');
+const { requireRole } = require('../auth');
 const { usuarioToJSON } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
 
-router.use(requireOwner);
+router.use(requireRole('admin'));
 
 const ROLES_VALIDOS = ['admin', 'operacao', 'aluno'];
 
