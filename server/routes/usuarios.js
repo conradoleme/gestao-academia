@@ -5,13 +5,13 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
-const { requireRole } = require('../auth');
+const { requireOwner } = require('../auth');
 const { usuarioToJSON } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
 
-router.use(requireRole('admin'));
+router.use(requireOwner);
 
-const ROLES_VALIDOS = ['operacao', 'aluno'];
+const ROLES_VALIDOS = ['admin', 'operacao', 'aluno'];
 
 router.get('/', asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM usuarios WHERE academia_id = ? ORDER BY created_at DESC', [req.academiaId]);

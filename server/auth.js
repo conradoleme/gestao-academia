@@ -63,6 +63,14 @@ function requireRole(...roles) {
   };
 }
 
+/* Dono = a linha em "academias" (token sem userId). Admins adicionais moram em
+   "usuarios" com role 'admin' e têm userId no token — enxergam o mesmo que o
+   dono, mas não gerenciam acessos nem a assinatura da plataforma. */
+function requireOwner(req, res, next) {
+  if (req.role !== 'admin' || req.userId) return res.status(403).json({ error: 'Só o dono da academia pode fazer isso.' });
+  next();
+}
+
 /* Um login = uma linha em "academias" (dono/admin) OU em "usuarios"
    (operação/aluno, vinculados a uma academia). Tentamos academias primeiro
    porque é o caso mais comum. */
@@ -91,4 +99,4 @@ async function login(email, senha) {
   return null;
 }
 
-module.exports = { requireAuth, requireRole, login, requireSuperAdmin, loginSuperAdmin, JWT_SECRET };
+module.exports = { requireAuth, requireRole, requireOwner, login, requireSuperAdmin, loginSuperAdmin, JWT_SECRET };

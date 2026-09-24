@@ -4,7 +4,7 @@ const bcrypt = require('bcryptjs');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const pool = require('../db');
 const { studentToJSON, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, graduacaoToJSON, recadoToJSON } = require('../mappers');
-const { requireRole } = require('../auth');
+const { requireRole, requireOwner } = require('../auth');
 const { r2Configurado, getR2Client } = require('../r2');
 const { slugify } = require('../slugify');
 const { getStripeClient, stripeConfigurado } = require('../stripe-client');
@@ -84,7 +84,7 @@ router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
 
 // E-mail é o login do dono — trocar exige senha atual (mesma trava de
 // segurança de trocar senha) e checa que ninguém mais já usa esse e-mail.
-router.put('/academia/email', requireRole('admin'), asyncHandler(async (req, res) => {
+router.put('/academia/email', requireOwner, asyncHandler(async (req, res) => {
   const { novoEmail, senhaAtual } = req.body || {};
   if (!novoEmail || !senhaAtual) return res.status(400).json({ error: 'Informe o novo e-mail e a senha atual.' });
 
@@ -108,8 +108,8 @@ router.put('/academia/senha', asyncHandler(async (req, res) => {
   // Dono da academia (role 'admin') mora em "academias"; equipe (role
   // 'operacao') mora em "usuarios" — cada papel troca a própria senha na
   // tabela onde o login dele realmente vive.
-  const table = req.role === 'admin' ? 'academias' : 'usuarios';
-  const targetId = req.role === 'admin' ? req.academiaId : req.userId;
+  const table = req.userId ? 'usuarios' : 'academias';
+  const targetId = req.userId ? req.userId : req.academiaId;
 
   const [rows] = await pool.query(`SELECT senha_hash FROM ${table} WHERE id = ?`, [targetId]);
   if (!rows[0]) return res.status(404).json({ error: 'Usuário não encontrado.' });
@@ -161,7 +161,7 @@ router.delete('/academia/logo', requireRole('admin'), asyncHandler(async (req, r
 /* Autoatendimento da própria academia (não confundir com a rota igual
    que só o super-admin usa, em index.js) — o dono antecipa a assinatura
    da plataforma sem precisar esperar você mandar o link. */
-router.post('/academia/stripe-checkout', requireRole('admin'), asyncHandler(async (req, res) => {
+router.post('/academia/stripe-checkout', requireOwner, asyncHandler(async (req, res) => {
   if (!stripeConfigurado() || !process.env.STRIPE_PRICE_ID) {
     return res.status(503).json({ error: 'Cobrança não configurada — fale com o suporte.' });
   }
@@ -190,7 +190,7 @@ router.post('/academia/stripe-checkout', requireRole('admin'), asyncHandler(asyn
 
 // Portal hospedado pelo próprio Stripe — trocar cartão, ver faturas,
 // cancelar. Evita a gente lidar com dado de cartão diretamente.
-router.post('/academia/stripe-portal', requireRole('admin'), asyncHandler(async (req, res) => {
+router.post('/academia/stripe-portal', requireOwner, asyncHandler(async (req, res) => {
   if (!stripeConfigurado()) return res.status(503).json({ error: 'Cobrança não configurada — fale com o suporte.' });
 
   const [rows] = await pool.query('SELECT stripe_customer_id FROM academias WHERE id = ?', [req.academiaId]);

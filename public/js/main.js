@@ -93,7 +93,8 @@ function applyRoleUI(role) {
 function applyAssinaturaUI(role) {
   const btnEngrenagem = document.getElementById('btn-minha-assinatura');
   const banner = document.getElementById('trial-banner');
-  if (role !== 'admin') {
+  const ehDono = role === 'admin' && !decodeAuthToken()?.userId;
+  if (!ehDono) {
     if (btnEngrenagem) btnEngrenagem.style.display = 'none';
     if (banner) banner.style.display = 'none';
     return;
