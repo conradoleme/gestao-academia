@@ -8,11 +8,10 @@
 let graduacaoFiltroCategoria = '';
 
 function graduacaoProgressoPct(status) {
-  if (!status || status.semRegra || status.semDataInicio) return status && status.pronto ? 1 : 0;
+  if (!status || status.semRegra) return status && status.pronto ? 1 : 0;
   const partes = [
-    Math.min(1, status.meses / (status.minMeses || 1)),
     Math.min(1, status.totalAulas / (status.minAulas || 1)),
-    Math.min(1, status.frequenciaSemanal / (status.minFrequenciaSemanal || 1)),
+    Math.min(1, status.aulasRecentes / (status.minAulasRecentes || 1)),
   ];
   return partes.reduce((a, b) => a + b, 0) / partes.length;
 }
@@ -58,7 +57,7 @@ function renderGraduacaoPage() {
       <div class="table-wrap table-responsive-cards">
         <table>
           <thead><tr>
-            <th style="text-align:left;">Aluno</th><th style="text-align:left;">Faixa Atual</th><th>Tempo</th><th>Aulas</th><th>Frequência</th><th>Status</th><th>Ações</th>
+            <th style="text-align:left;">Aluno</th><th style="text-align:left;">Faixa Atual</th><th>Aulas</th><th>Ritmo recente</th><th>Status</th><th>Ações</th>
           </tr></thead>
           <tbody>${alunos.map(graduacaoRow).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--text2);">Nenhum aluno ativo nessa categoria.</td></tr>`}</tbody>
         </table>
@@ -84,19 +83,9 @@ function graduacaoRow({ student, status }) {
     return `<tr>
       <td data-label="Aluno" style="text-align:left;font-weight:600;">${escapeHtml(student.nome)}</td>
       <td data-label="Faixa Atual" style="text-align:left;">${faixaTag}</td>
-      <td data-label="Tempo" colspan="3" style="color:var(--text2);">Faixa máxima configurada</td>
+      <td data-label="Aulas" colspan="2" style="color:var(--text2);">Faixa máxima configurada</td>
       <td data-label="Status">—</td>
       <td data-label="Ações"><button class="btn-icon" title="Ver histórico" onclick="openHistoricoGraduacao('${student.id}')">📜</button></td>
-    </tr>`;
-  }
-
-  if (status.semDataInicio) {
-    return `<tr>
-      <td data-label="Aluno" style="text-align:left;font-weight:600;">${escapeHtml(student.nome)}</td>
-      <td data-label="Faixa Atual" style="text-align:left;">${faixaTag}</td>
-      <td data-label="Tempo" colspan="3" style="color:var(--text2);">Defina a Data de Início na ficha do aluno</td>
-      <td data-label="Status"><span class="tag" style="background:var(--surface2);">Sem dados</span></td>
-      <td data-label="Ações"><button class="btn-icon" title="Editar aluno" onclick="showPage('alunos').then(()=>openStudentForm('${student.id}'))">✏️</button></td>
     </tr>`;
   }
 
@@ -107,9 +96,8 @@ function graduacaoRow({ student, status }) {
   return `<tr>
     <td data-label="Aluno" style="text-align:left;font-weight:600;">${escapeHtml(student.nome)}</td>
     <td data-label="Faixa Atual" style="text-align:left;">${faixaTag}</td>
-    <td data-label="Tempo" class="${status.okMeses?'pos':''}">${status.meses}/${status.minMeses}m</td>
     <td data-label="Aulas" class="${status.okAulas?'pos':''}">${status.totalAulas}/${status.minAulas}</td>
-    <td data-label="Frequência" class="${status.okFrequencia?'pos':''}">${status.frequenciaSemanal.toFixed(1)}/${status.minFrequenciaSemanal}x sem.</td>
+    <td data-label="Ritmo recente" class="${status.okRecentes?'pos':''}" title="Aulas nos últimos ${status.janelaDias} dias">${status.aulasRecentes}/${status.minAulasRecentes} <span style="color:var(--text2);font-size:11px;">(${status.ritmoSemanal.toFixed(1)}x/sem)</span></td>
     <td data-label="Status">${statusTag}</td>
     <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap;">
       ${status.pronto ? `<button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="openGraduarModal('${student.id}')">🎓 Graduar</button>` : ''}

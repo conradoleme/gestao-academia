@@ -142,7 +142,7 @@ async function renderConfiguracoesPage() {
 
       <div class="card">
         <h3>Regras de Graduação</h3>
-        <p style="color:var(--text2);font-size:12.5px;margin-bottom:16px;">Defina a sequência de faixas de cada categoria e o critério pra avançar pra próxima. A última faixa da lista é o topo, sem critério.</p>
+        <p style="color:var(--text2);font-size:12.5px;margin-bottom:16px;">Defina a sequência de faixas de cada categoria e o critério pra avançar pra próxima — em aulas: o tempo é o ritmo de cada aluno. "Aulas nos últimos 60 dias" evita graduar quem parou de treinar (0 desliga). A última faixa da lista é o topo, sem critério.</p>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
           <input type="checkbox" id="cfg-usa-grau" style="width:auto;" ${data.meta.usaGrau !== false ? 'checked' : ''} onchange="handleToggleUsaGrau()">
           <label style="margin:0;">Usar "Grau" (pontas) na graduação — comum em jiu-jitsu, nem toda modalidade usa</label>
@@ -468,9 +468,8 @@ function renderGraduacaoRegrasLista() {
         </div>
         ${!isUltima ? `
           <div class="form-grid">
-            <div class="form-group" style="margin-bottom:0;"><label>Mín. meses</label><input type="number" min="0" value="${f.regra?.minMeses ?? 0}" onchange="handleRegraFieldChange(${i},'minMeses',this.value)"></div>
             <div class="form-group" style="margin-bottom:0;"><label>Mín. aulas</label><input type="number" min="0" value="${f.regra?.minAulas ?? 0}" onchange="handleRegraFieldChange(${i},'minAulas',this.value)"></div>
-            <div class="form-group" style="margin-bottom:0;"><label>Freq. mín./semana</label><input type="number" min="0" step="0.5" value="${f.regra?.minFrequenciaSemanal ?? 0}" onchange="handleRegraFieldChange(${i},'minFrequenciaSemanal',this.value)"></div>
+            <div class="form-group" style="margin-bottom:0;"><label>Mín. aulas nos últimos 60 dias</label><input type="number" min="0" value="${f.regra?.minAulasRecentes ?? Math.round((f.regra?.minFrequenciaSemanal || 0) * 5)}" onchange="handleRegraFieldChange(${i},'minAulasRecentes',this.value)"></div>
             <div class="form-group" style="margin-bottom:0;display:flex;align-items:center;gap:6px;margin-top:22px;">
               <input type="checkbox" id="reg-aval-${i}" style="width:auto;" ${f.regra?.avaliacaoManual !== false ? 'checked' : ''} onchange="handleRegraFieldChange(${i},'avaliacaoManual',this.checked)">
               <label style="margin:0;" for="reg-aval-${i}">Exige avaliação do instrutor</label>
@@ -508,7 +507,7 @@ function handleRemoverFaixa(i) {
 function handleAddFaixaRegra() {
   graduacaoRegrasEdit[graduacaoRegrasCategoriaAtiva].push({
     nome: 'Nova Faixa', cor: '#94a3b8',
-    regra: { minMeses: 12, minAulas: 60, minFrequenciaSemanal: 1, avaliacaoManual: true },
+    regra: { minAulas: 60, minAulasRecentes: 6, avaliacaoManual: true },
   });
   renderGraduacaoRegrasLista();
 }

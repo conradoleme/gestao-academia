@@ -337,37 +337,31 @@ function computeGraduacaoStatus(aluno) {
 
   const graduacoesAluno = graduacoesDoAluno(aluno.id);
   const ultimaGraduacao = graduacoesAluno.find(g => g.faixaNova === faixaAtualNome);
-  const dataAncora = ultimaGraduacao?.data || aluno.dataInicio;
+  const dataAncora = ultimaGraduacao?.data || aluno.dataInicio || null;
 
-  if (!dataAncora) {
-    return {
-      faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, proximaFaixa: proximaFaixa?.nome || null,
-      semDataInicio: true, regra,
-    };
-  }
+  // Progresso é em aulas, não em meses: quem define o tempo é o ritmo do
+  // próprio aluno. Sem data de início/graduação, conta todas as presenças.
+  const presencasAluno = presencasDoAluno(aluno.id);
+  const totalAulas = presencasAluno.filter(p => !dataAncora || p.data >= dataAncora).length;
 
-  const hoje = new Date();
-  const [ay, am, ad] = dataAncora.split('-').map(Number);
-  const ancora = new Date(ay, am - 1, ad);
-  const meses = (hoje.getFullYear() - ancora.getFullYear()) * 12 + (hoje.getMonth() - ancora.getMonth());
+  // Consistência: aulas na janela recente (evita graduar por aulas
+  // acumuladas de muito tempo atrás depois de meses sem treinar). Regras
+  // antigas só têm minFrequenciaSemanal — converte pra ~60% do ritmo nominal.
+  const JANELA_DIAS = 60;
+  const janelaInicio = new Date(Date.now() - JANELA_DIAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const aulasRecentes = presencasAluno.filter(p => p.data >= janelaInicio).length;
+  const minAulasRecentes = regra.minAulasRecentes ?? Math.round((regra.minFrequenciaSemanal || 0) * 5);
+  const ritmoSemanal = aulasRecentes / (JANELA_DIAS / 7);
 
-  const presencasDesde = presencasDoAluno(aluno.id).filter(p => p.data >= dataAncora);
-  const totalAulas = presencasDesde.length;
-
-  const noventaDiasAtras = new Date(hoje.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-  const presencasRecentes = presencasDoAluno(aluno.id).filter(p => p.data >= noventaDiasAtras).length;
-  const frequenciaSemanal = presencasRecentes / (90 / 7);
-
-  const okMeses = meses >= regra.minMeses;
   const okAulas = totalAulas >= regra.minAulas;
-  const okFrequencia = frequenciaSemanal >= regra.minFrequenciaSemanal;
-  const pronto = okMeses && okAulas && okFrequencia;
+  const okRecentes = aulasRecentes >= minAulasRecentes;
+  const pronto = okAulas && okRecentes;
 
   return {
     faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, proximaFaixa: proximaFaixa?.nome || null,
-    dataAncora, meses, minMeses: regra.minMeses, okMeses,
+    dataAncora,
     totalAulas, minAulas: regra.minAulas, okAulas,
-    frequenciaSemanal, minFrequenciaSemanal: regra.minFrequenciaSemanal, okFrequencia,
+    aulasRecentes, minAulasRecentes, okRecentes, janelaDias: JANELA_DIAS, ritmoSemanal,
     pronto, avaliacaoManual: !!regra.avaliacaoManual,
   };
 }

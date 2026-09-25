@@ -137,14 +137,6 @@ function renderAlunoGraduacaoCard(g) {
     </div>`;
   }
 
-  if (g.semDataInicio) {
-    return `<div class="card">
-      <h3>🥋 Evolução</h3>
-      <div style="margin-top:8px;">${faixaTag}</div>
-      <p style="color:var(--text2);margin:12px 0 0;">Peça pro seu instrutor cadastrar sua data de início — assim dá pra acompanhar sua evolução até a faixa ${escapeHtml(g.proximaFaixa || 'seguinte')}.</p>
-    </div>`;
-  }
-
   if (g.pronto) {
     return `<div class="card">
       <h3>🥋 Evolução</h3>
@@ -154,7 +146,6 @@ function renderAlunoGraduacaoCard(g) {
     </div>`;
   }
 
-  const faltamMeses = Math.max(0, g.minMeses - g.meses);
   const faltamAulas = Math.max(0, g.minAulas - g.totalAulas);
 
   return `<div class="card">
@@ -164,26 +155,21 @@ function renderAlunoGraduacaoCard(g) {
     <div style="display:flex;flex-direction:column;gap:12px;">
       <div>
         <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
-          <span>Tempo na faixa</span><span>${g.meses}/${g.minMeses} meses</span>
-        </div>
-        ${alunoBarra(g.meses / (g.minMeses || 1), g.okMeses ? 'var(--green)' : 'var(--accent)')}
-      </div>
-      <div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
-          <span>Aulas treinadas</span><span>${g.totalAulas}/${g.minAulas}</span>
+          <span>Aulas treinadas na faixa</span><span>${g.totalAulas}/${g.minAulas}</span>
         </div>
         ${alunoBarra(g.totalAulas / (g.minAulas || 1), g.okAulas ? 'var(--green)' : 'var(--accent)')}
       </div>
-      <div>
+      ${g.minAulasRecentes > 0 ? `<div>
         <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
-          <span>Frequência (últimos 90 dias)</span><span>${g.frequenciaSemanal.toFixed(1)}/${g.minFrequenciaSemanal}x por semana</span>
+          <span>Aulas nos últimos ${g.janelaDias} dias</span><span>${g.aulasRecentes}/${g.minAulasRecentes}</span>
         </div>
-        ${alunoBarra(g.frequenciaSemanal / (g.minFrequenciaSemanal || 1), g.okFrequencia ? 'var(--green)' : 'var(--accent)')}
-      </div>
+        ${alunoBarra(g.aulasRecentes / g.minAulasRecentes, g.okRecentes ? 'var(--green)' : 'var(--accent)')}
+      </div>` : ''}
     </div>
 
     <p style="color:var(--text2);font-size:12.5px;margin:14px 0 0;">
-      ${faltamAulas > 0 ? `Faltam <strong>${faltamAulas}</strong> aula(s)` : 'Aulas — feito ✓'}${faltamMeses > 0 ? ` e <strong>${faltamMeses}</strong> mês(es)` : ''} pra faixa ${escapeHtml(g.proximaFaixa)}.
+      ${faltamAulas > 0 ? `Faltam <strong>${faltamAulas}</strong> aula(s) pra faixa ${escapeHtml(g.proximaFaixa)}.` : 'Aulas — feito ✓'}
+      ${!g.okRecentes ? ` Treine mais nas próximas semanas pra manter o ritmo recente.` : ''}
     </p>
 
     ${alunoSimulacaoGraduacao(g)}
@@ -197,37 +183,35 @@ function alunoAvaliacaoDisclaimer() {
   </p>`;
 }
 
-/* Estático — três cenários fixos (1x/2x/3x por semana), não é algo que o
-   aluno escolhe ou ajusta. Meses não acelera com mais frequência (é tempo
-   de calendário); aulas sim. O gargalo de cada cenário é o maior dos dois. */
+/* Previsão em aulas: o prazo depende só do ritmo do aluno. Mostra o ritmo
+   real dos últimos dias e três cenários fixos (1x/2x/3x por semana). */
 function alunoSimulacaoGraduacao(g) {
   const faltamAulas = Math.max(0, g.minAulas - g.totalAulas);
-  const faltamMeses = Math.max(0, g.minMeses - g.meses);
-  const semanasParaMeses = faltamMeses * (52 / 12);
+  const fmt = semanas => new Date(Date.now() + semanas * 7 * 24 * 60 * 60 * 1000).toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
 
-  const cenarios = [1, 2, 3].map(freq => {
-    const atendeFrequencia = freq >= g.minFrequenciaSemanal;
-    const semanasParaAulas = faltamAulas > 0 ? Math.ceil(faltamAulas / freq) : 0;
-    const semanasTotal = Math.max(semanasParaAulas, Math.ceil(semanasParaMeses));
-    const previsao = new Date(Date.now() + semanasTotal * 7 * 24 * 60 * 60 * 1000);
-    return { freq, atendeFrequencia, semanasTotal, previsaoLabel: previsao.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' }) };
+  let ritmoLinha;
+  if (faltamAulas === 0) {
+    ritmoLinha = 'Você já tem as aulas necessárias.';
+  } else if (g.ritmoSemanal > 0) {
+    const semanas = Math.ceil(faltamAulas / g.ritmoSemanal);
+    ritmoLinha = `No seu ritmo (<strong>${g.ritmoSemanal.toFixed(1)}</strong> aula(s)/semana nos últimos ${g.janelaDias} dias): ~<strong>${semanas}</strong> semana(s), por volta de ${fmt(semanas)}.`;
+  } else {
+    ritmoLinha = `Sem aulas nos últimos ${g.janelaDias} dias — volte a treinar pra retomar a contagem do prazo.`;
+  }
+
+  const cenarios = faltamAulas === 0 ? [] : [1, 2, 3].map(freq => {
+    const semanas = Math.ceil(faltamAulas / freq);
+    return `<div class="simulacao-row" style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 12px;">
+      <span style="font-size:13px;font-weight:600;">${freq}x por semana</span>
+      <span style="font-size:12px;color:var(--text2);">~${semanas} semana(s) (${fmt(semanas)})</span>
+    </div>`;
   });
 
   return `
     <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
-      <div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Simulação — se você mantiver essa frequência a partir de hoje:</div>
-      <div style="display:flex;flex-direction:column;gap:8px;">
-        ${cenarios.map(c => `
-          <div class="simulacao-row" style="display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:8px;padding:8px 12px;">
-            <span style="font-size:13px;font-weight:600;">${c.freq}x por semana</span>
-            <span style="font-size:12px;color:var(--text2);text-align:right;">
-              ${c.atendeFrequencia
-                ? (c.semanasTotal > 0 ? `bate os números em ~${c.semanasTotal} semana(s) (${c.previsaoLabel})` : 'já bateria os números hoje')
-                : `<span style="color:var(--yellow);">abaixo da frequência mínima exigida (${g.minFrequenciaSemanal}x)</span>`}
-            </span>
-          </div>
-        `).join('')}
-      </div>
+      <div style="font-size:13px;margin-bottom:${cenarios.length ? 10 : 0}px;">${ritmoLinha}</div>
+      ${cenarios.length ? `<div style="font-size:12px;color:var(--text2);margin-bottom:8px;">Quanto mais você treina, mais cedo chega:</div>
+      <div style="display:flex;flex-direction:column;gap:8px;">${cenarios.join('')}</div>` : ''}
     </div>
   `;
 }
