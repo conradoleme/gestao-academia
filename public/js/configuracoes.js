@@ -300,7 +300,7 @@ function openCompartilharAcessoModal(usuarioId, senhaInicial) {
   const linhaLogin = senhaInicial
     ? `Login: ${u.email}\nSenha: ${senhaInicial}`
     : `Login: ${u.email} (a senha é a que a academia combinou com você)`;
-  const mensagem = `Oi${aluno ? ', ' + aluno.nome : ''}! Seu acesso ao portal da ${data.meta.empresa} já está pronto 🥋
+  const mensagem = `Oi, ${u.nome}! Seu acesso ao portal da ${data.meta.empresa} já está pronto 🥋
 
 Link: ${link}
 ${linhaLogin}
@@ -362,7 +362,7 @@ function openUsuarioForm(id) {
     </div>
     <div class="form-group" id="us-aluno-group" style="margin-top:12px;display:${role === 'aluno' ? 'block' : 'none'};">
       <label>Aluno vinculado</label>
-      <select id="us-aluno-id">${alunoSelectOptions(u?.alunoId)}</select>
+      <select id="us-aluno-id" onchange="onUsuarioAlunoChange()">${alunoSelectOptions(u?.alunoId)}</select>
     </div>
     <div id="us-error"></div>
     <div class="btn-row" style="margin-top:16px;">
@@ -375,6 +375,21 @@ function openUsuarioForm(id) {
 function onUsuarioRoleChange() {
   const role = document.getElementById('us-role').value;
   document.getElementById('us-aluno-group').style.display = role === 'aluno' ? 'block' : 'none';
+  if (role === 'aluno') onUsuarioAlunoChange();
+}
+
+// Papel "aluno" é o login DAQUELE aluno — nome e e-mail vêm do cadastro dele
+// em vez do admin redigitar (e sem risco de digitar um e-mail diferente do
+// que já está no cadastro). Só preenche em usuário novo — editar um usuário
+// já existente não mexe no e-mail (campo fica desabilitado nesse caso).
+function onUsuarioAlunoChange() {
+  const alunoSelect = document.getElementById('us-aluno-id');
+  const aluno = data.students.find(s => s.id === alunoSelect.value);
+  if (!aluno) return;
+  const nomeEl = document.getElementById('us-nome');
+  const emailEl = document.getElementById('us-email');
+  if (nomeEl) nomeEl.value = aluno.nome;
+  if (emailEl && !emailEl.disabled) emailEl.value = aluno.email || '';
 }
 
 async function saveUsuarioForm(id) {
