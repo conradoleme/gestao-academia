@@ -54,6 +54,8 @@ async function migrate() {
   await addColumnIfMissing('academias', 'modalidade', `VARCHAR(20) NULL`);
   // Saldo de aulas trazido de outro controle — soma às presenças reais na graduação.
   await addColumnIfMissing('students', 'aulas_anteriores', `INT NOT NULL DEFAULT 0`);
+  // "Ainda não" nos avisos de graduação: esconde o aluno até essa data.
+  await addColumnIfMissing('students', 'graduacao_adiada_ate', `DATE NULL`);
 
   // Trava contra mensalidade/matrícula duplicada quando duas sessões (ex:
   // dono e um funcionário logando quase ao mesmo tempo) disparam a geração

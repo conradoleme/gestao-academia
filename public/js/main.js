@@ -24,6 +24,7 @@ async function showPage(id) {
   document.getElementById('nav-' + id).classList.add('active');
   closeMobileNav();
   if (PAGE_RENDERERS[id]) await PAGE_RENDERERS[id]();
+  if (typeof updateGraduacaoBadge === 'function') updateGraduacaoBadge();
 }
 
 /* ---------------- Menu (gaveta) no celular ---------------- */
@@ -154,6 +155,7 @@ async function bootAppAfterLogin() {
   const role = decodeAuthToken()?.role;
   applyRoleUI(role);
   applyAssinaturaUI(role);
+  updateGraduacaoBadge();
   showPage(role === 'operacao' ? 'alunos' : 'dashboard');
 }
 

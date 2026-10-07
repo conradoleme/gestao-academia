@@ -89,9 +89,12 @@ function graduacaoRow({ student, status }) {
     </tr>`;
   }
 
+  const pend = graduacaoPendencia(student);
   const statusTag = status.pronto
     ? `<span class="status-toggle status-ok">✓ Pronto</span>`
-    : `<span class="status-toggle status-pending">Em progresso</span>`;
+    : pend && pend.tipo === 'grau'
+      ? `<span class="status-toggle status-ok">Apto ao ${pend.grauAlvo}º grau</span>`
+      : `<span class="status-toggle status-pending">Em progresso</span>`;
 
   return `<tr>
     <td data-label="Aluno" style="text-align:left;font-weight:600;">${escapeHtml(student.nome)}</td>
@@ -101,6 +104,7 @@ function graduacaoRow({ student, status }) {
     <td data-label="Status">${statusTag}</td>
     <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap;">
       ${status.pronto ? `<button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="openGraduarModal('${student.id}')">🎓 Graduar</button>` : ''}
+      ${!status.pronto && pend && pend.tipo === 'grau' ? `<button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="handleDarGrau('${student.id}', ${pend.grauAlvo})">Dar ${pend.grauAlvo}º grau</button>` : ''}
       <button class="btn-icon" title="Ver histórico" onclick="openHistoricoGraduacao('${student.id}')">📜</button>
     </td>
   </tr>`;
@@ -146,7 +150,7 @@ async function handleConfirmarGraduacao(alunoId, faixaAnterior, faixaNova) {
   await addGraduacao(payload);
   closeModal();
   showToast(`🎓 Graduado(a) para ${faixaNova}!`);
-  renderGraduacaoPage();
+  refreshGraduacaoAvisos();
 }
 
 function openHistoricoGraduacao(alunoId) {
@@ -239,5 +243,74 @@ function handleDesfazerGraduacao(id) {
     showToast('Graduação desfeita.');
     closeModal();
     renderGraduacaoPage();
+  });
+}
+
+
+/* ---------------- Avisos: prontos pra graduar / pra ganhar grau ---------------- */
+function renderProntosGraduarCard() {
+  const lista = computeAlunosProntos();
+  if (!lista.length) return '';
+  const visiveis = lista.slice(0, 8);
+  return `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 style="margin-bottom:4px;">🎓 Prontos para graduar (${lista.length})</h3>
+      <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">
+        Alunos que bateram o critério em aulas. Quem decide é o professor — "Ainda não" esconde o aluno daqui por 30 dias.
+      </p>
+      <div class="table-wrap table-responsive-cards">
+        <table>
+          <thead><tr><th style="text-align:left;">Aluno</th><th style="text-align:left;">Próximo passo</th><th>Ações</th></tr></thead>
+          <tbody>${visiveis.map(({ student, pend }) => `
+            <tr>
+              <td data-label="Aluno" style="text-align:left;font-weight:600;">${escapeHtml(student.nome)}</td>
+              <td data-label="Próximo passo" style="text-align:left;">${pend.tipo === 'faixa' ? `${escapeHtml(pend.texto)}` : `Apto ao <strong>${pend.grauAlvo}º grau</strong> <span style="color:var(--text2);">(${escapeHtml(pend.status.faixaAtual)})</span>`}</td>
+              <td data-label="Ações" style="display:flex;gap:6px;flex-wrap:wrap;">
+                ${pend.tipo === 'faixa'
+                  ? `<button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="openGraduarModal('${student.id}')">🎓 Graduar</button>`
+                  : `<button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="handleDarGrau('${student.id}', ${pend.grauAlvo})">Dar ${pend.grauAlvo}º grau</button>`}
+                <button class="btn btn-secondary" style="padding:6px 10px;font-size:12px;" onclick="handleAdiarGraduacao('${student.id}')">Ainda não</button>
+              </td>
+            </tr>`).join('')}</tbody>
+        </table>
+      </div>
+      ${lista.length > visiveis.length ? `<button class="btn btn-secondary" style="margin-top:12px;" onclick="showPage('graduacao')">Ver todos (${lista.length})</button>` : ''}
+    </div>`;
+}
+
+function updateGraduacaoBadge() {
+  const el = document.getElementById('nav-graduacao-badge');
+  if (!el) return;
+  const n = computeAlunosProntos().length;
+  el.textContent = n;
+  el.style.display = n ? 'inline-block' : 'none';
+}
+
+function refreshGraduacaoAvisos() {
+  updateGraduacaoBadge();
+  refreshDashboard();
+  if (document.getElementById('page-graduacao')?.classList.contains('active')) renderGraduacaoPage();
+}
+
+async function handleAdiarGraduacao(alunoId) {
+  try {
+    await adiarGraduacao(alunoId, 30);
+    showToast('Ok — o aviso volta em 30 dias.');
+    refreshGraduacaoAvisos();
+  } catch (e) {
+    showToast('Erro: ' + e.message, 'error');
+  }
+}
+
+function handleDarGrau(alunoId, grau) {
+  const aluno = data.students.find(s => s.id === alunoId);
+  confirmAction(`Registrar o <strong>${grau}º grau</strong> de <strong>${escapeHtml(aluno.nome)}</strong>?`, async () => {
+    try {
+      await darGrau(alunoId, grau);
+      showToast(`🎓 ${grau}º grau registrado!`);
+      refreshGraduacaoAvisos();
+    } catch (e) {
+      showToast('Erro: ' + e.message, 'error');
+    }
   });
 }

@@ -52,6 +52,7 @@ function renderDashboardPage() {
         <div><h1>Dashboard</h1><p class="subtitle" style="margin:0;">Aulas de hoje em ${escapeHtml(data.meta.empresa)}</p></div>
       </div>
       ${renderAulasHojeCard()}
+      ${renderProntosGraduarCard()}
     `;
     return;
   }
@@ -68,6 +69,8 @@ function renderDashboardPage() {
     </div>
 
     ${renderAulasHojeCard()}
+
+    ${renderProntosGraduarCard()}
 
     <div class="card-grid card-grid-3" style="margin-bottom:16px;">
       <div class="kpi kpi-green">

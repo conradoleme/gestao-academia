@@ -233,8 +233,16 @@ function transactionsInMonth(yearMonth) {
 /* ---------------- Presenças (chamada) ---------------- */
 async function addPresenca(alunoId, dataStr, turma) {
   try {
+    const aluno = data.students.find(s => s.id === alunoId);
+    const antes = aluno ? graduacaoPendencia(aluno) : null;
     const saved = await api.post('/api/presencas', { alunoId, data: dataStr, turma: turma || null });
     if (!data.presencas.some(p => p.id === saved.id)) data.presencas.push(saved);
+    // Avisa só na virada (nova pendência), não toda vez que alguém marca presença.
+    const depois = aluno ? graduacaoPendencia(aluno) : null;
+    if (depois && (!antes || antes.chave !== depois.chave) && !graduacaoAdiada(aluno)) {
+      showToast(`🎓 ${aluno.nome} completou as aulas pra ${depois.curto}!`);
+    }
+    if (typeof updateGraduacaoBadge === 'function') updateGraduacaoBadge();
     return saved;
   } catch (e) {
     showToast('Erro ao marcar presença: ' + e.message, 'error');
@@ -245,6 +253,7 @@ async function removePresenca(id) {
   data.presencas = data.presencas.filter(p => p.id !== id);
   try {
     await api.del(`/api/presencas/${id}`);
+    if (typeof updateGraduacaoBadge === 'function') updateGraduacaoBadge();
   } catch (e) {
     showToast('Erro ao remover presença: ' + e.message, 'error');
   }
@@ -364,6 +373,51 @@ function computeGraduacaoStatus(aluno) {
     aulasRecentes, minAulasRecentes, okRecentes, janelaDias: JANELA_DIAS, ritmoSemanal,
     pronto, avaliacaoManual: !!regra.avaliacaoManual,
   };
+}
+
+/* ---------------- Avisos de graduação ----------------
+   Faixa: bateu o critério da regra. Grau: a regra da faixa dividida em 4 —
+   a cada 1/4 das aulas mínimas da faixa o aluno ganha um grau. "Ainda não"
+   (graduacaoAdiadaAte) só esconde dos avisos; a tela Graduação continua
+   mostrando o status real. */
+const GRAUS_POR_FAIXA = 4;
+
+function graduacaoAdiada(aluno) {
+  return !!aluno.graduacaoAdiadaAte && aluno.graduacaoAdiadaAte >= todayStr();
+}
+
+function graduacaoPendencia(aluno) {
+  const st = computeGraduacaoStatus(aluno);
+  if (!st || st.semRegra) return null;
+  if (st.pronto) {
+    return { tipo: 'faixa', chave: 'faixa:' + st.faixaAtual, status: st, texto: `${st.faixaAtual} → ${st.proximaFaixa}`, curto: `faixa ${st.proximaFaixa}` };
+  }
+  if (data.meta.usaGrau !== false && st.minAulas > 0) {
+    const grauAlvo = Math.min(GRAUS_POR_FAIXA, Math.floor(st.totalAulas * GRAUS_POR_FAIXA / st.minAulas));
+    if (grauAlvo > (aluno.grau || 0)) {
+      return { tipo: 'grau', grauAlvo, chave: `grau:${st.faixaAtual}:${grauAlvo}`, status: st, texto: `${grauAlvo}º grau`, curto: `${grauAlvo}º grau` };
+    }
+  }
+  return null;
+}
+
+function computeAlunosProntos() {
+  return activeStudents()
+    .map(student => ({ student, pend: graduacaoPendencia(student) }))
+    .filter(x => x.pend && !graduacaoAdiada(x.student))
+    .sort((a, b) => (a.pend.tipo === b.pend.tipo ? a.student.nome.localeCompare(b.student.nome) : a.pend.tipo === 'faixa' ? -1 : 1));
+}
+
+async function adiarGraduacao(alunoId, dias = 30) {
+  const r = await api.put(`/api/students/${alunoId}/adiar-graduacao`, { dias });
+  const aluno = data.students.find(s => s.id === alunoId);
+  if (aluno) aluno.graduacaoAdiadaAte = r.ate;
+}
+
+async function darGrau(alunoId, grau) {
+  await api.put(`/api/students/${alunoId}/grau`, { grau });
+  const aluno = data.students.find(s => s.id === alunoId);
+  if (aluno) { aluno.grau = grau; aluno.graduacaoAdiadaAte = null; }
 }
 
 /* ---------------- Risco de evasão — frequência recente caiu vs o próprio

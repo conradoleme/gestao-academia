@@ -16,6 +16,7 @@ function studentToJSON(r) {
     observacoes: r.observacoes || '',
     dataInicio: r.data_inicio || null, faixa: r.faixa || null, grau: Number(r.grau) || 0,
     aulasAnteriores: Number(r.aulas_anteriores) || 0,
+    graduacaoAdiadaAte: r.graduacao_adiada_ate || null,
   };
 }
 

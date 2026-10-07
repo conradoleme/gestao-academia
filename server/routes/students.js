@@ -42,4 +42,24 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   res.json({ ok: true });
 }));
 
+router.put('/:id/adiar-graduacao', asyncHandler(async (req, res) => {
+  const dias = Math.min(365, Math.max(1, parseInt(req.body?.dias) || 30));
+  const [r] = await pool.query(
+    'UPDATE students SET graduacao_adiada_ate = DATE_ADD(CURDATE(), INTERVAL ? DAY) WHERE id=? AND academia_id=?',
+    [dias, req.params.id, req.academiaId]
+  );
+  if (!r.affectedRows) return res.status(404).json({ error: 'Aluno não encontrado.' });
+  const [rows] = await pool.query('SELECT graduacao_adiada_ate FROM students WHERE id=?', [req.params.id]);
+  res.json({ ok: true, ate: rows[0].graduacao_adiada_ate });
+}));
+
+// Grau (ponta) não é graduação de faixa: só atualiza o grau, sem criar evento
+// no histórico — um evento reiniciaria a contagem de aulas da faixa.
+router.put('/:id/grau', asyncHandler(async (req, res) => {
+  const grau = Math.min(10, Math.max(0, parseInt(req.body?.grau) || 0));
+  const [r] = await pool.query('UPDATE students SET grau=?, graduacao_adiada_ate=NULL WHERE id=? AND academia_id=?', [grau, req.params.id, req.academiaId]);
+  if (!r.affectedRows) return res.status(404).json({ error: 'Aluno não encontrado.' });
+  res.json({ ok: true, grau });
+}));
+
 module.exports = router;
