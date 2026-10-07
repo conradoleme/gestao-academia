@@ -52,6 +52,8 @@ async function migrate() {
   // template inicial de graduação e depois descartada) — precisa persistir
   // pra saber, depois, se a densidade de tatame do Judô deve ser aplicada.
   await addColumnIfMissing('academias', 'modalidade', `VARCHAR(20) NULL`);
+  // Saldo de aulas trazido de outro controle — soma às presenças reais na graduação.
+  await addColumnIfMissing('students', 'aulas_anteriores', `INT NOT NULL DEFAULT 0`);
 
   // Trava contra mensalidade/matrícula duplicada quando duas sessões (ex:
   // dono e um funcionário logando quase ao mesmo tempo) disparam a geração

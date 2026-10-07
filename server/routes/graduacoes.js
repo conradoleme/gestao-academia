@@ -21,7 +21,7 @@ router.post('/', asyncHandler(async (req, res) => {
     `INSERT INTO graduacoes (academia_id, aluno_id, data, faixa_anterior, faixa_nova, grau, observacoes) VALUES (?,?,?,?,?,?,?)`,
     [req.academiaId, alunoId, data, faixaAnterior || null, faixaNova, grau || 0, observacoes || null]
   );
-  await pool.query('UPDATE students SET faixa=?, grau=? WHERE id=? AND academia_id=?', [faixaNova, grau || 0, alunoId, req.academiaId]);
+  await pool.query('UPDATE students SET faixa=?, grau=?, aulas_anteriores=0 WHERE id=? AND academia_id=?', [faixaNova, grau || 0, alunoId, req.academiaId]);
 
   const [rows] = await pool.query('SELECT * FROM graduacoes WHERE id = ?', [result.insertId]);
   res.json(graduacaoToJSON(rows[0]));

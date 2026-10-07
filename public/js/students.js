@@ -150,7 +150,7 @@ function openStudentForm(id) {
   const s = id ? data.students.find(x => x.id === id) : {
     nome: '', turma: data.turmas[0]?.nome || '', categoria: 'Adulto', status: 'Ativo',
     valorMensalidade: 0, diaVencimento: 5, valorMatricula: 0, mesMatricula: MESES_PT[new Date().getMonth()],
-    diaMatricula: 1, observacoes: '', email: '', telefone: '', dataInicio: '', faixa: '', grau: 0,
+    diaMatricula: 1, observacoes: '', email: '', telefone: '', dataInicio: '', faixa: '', grau: 0, aulasAnteriores: 0,
   };
   const turmaOptions = `<option value="" ${!s.turma?'selected':''}>— Nenhuma —</option>` +
     data.turmas.map(t => `<option value="${t.nome}" ${t.nome===s.turma?'selected':''}>${t.nome}</option>`).join('');
@@ -188,6 +188,7 @@ function openStudentForm(id) {
     <div class="form-grid">
       <div class="form-group"><label>Data de Início (treino)</label><input type="date" id="f-data-inicio" value="${s.dataInicio||''}"></div>
       <div class="form-group"><label>Faixa Atual</label><select id="f-faixa">${faixaOptionsFor(s.categoria, s.faixa)}</select></div>
+      <div class="form-group"><label>Aulas anteriores (de outro controle)</label><input type="number" id="f-aulas-anteriores" value="${s.aulasAnteriores||0}" min="0" title="Aulas já treinadas na faixa atual antes de usar o sistema. Somam às presenças marcadas aqui e zeram quando o aluno é graduado."></div>
       ${data.meta.usaGrau !== false ? `<div class="form-group"><label>Grau (pontas)</label><input type="number" id="f-grau" value="${s.grau||0}" min="0" max="10"></div>` : ''}
     </div>
     <div class="form-group" style="margin-top:12px;"><label>Observações</label><textarea id="f-obs" style="min-height:60px;">${escapeHtml(s.observacoes||'')}</textarea></div>
@@ -201,7 +202,7 @@ function openStudentForm(id) {
   maskCurrencyInput(document.getElementById('f-mensalidade'));
   maskCurrencyInput(document.getElementById('f-matricula'));
   attachAutosaveListeners(
-    ['f-nome','f-turma','f-categoria','f-status','f-mensalidade','f-vencimento','f-matricula','f-mes-matricula','f-dia-matricula','f-email','f-telefone','f-obs','f-data-inicio','f-faixa','f-grau'],
+    ['f-nome','f-turma','f-categoria','f-status','f-mensalidade','f-vencimento','f-matricula','f-mes-matricula','f-dia-matricula','f-email','f-telefone','f-obs','f-data-inicio','f-faixa','f-grau','f-aulas-anteriores'],
     autosaveStudentDebounced
   );
 }
@@ -266,6 +267,7 @@ function buildStudentPatch() {
     dataInicio: document.getElementById('f-data-inicio').value || null,
     faixa: document.getElementById('f-faixa').value || null,
     grau: parseInt(document.getElementById('f-grau')?.value) || 0,
+    aulasAnteriores: Math.max(0, parseInt(document.getElementById('f-aulas-anteriores')?.value) || 0),
   };
 }
 

@@ -262,7 +262,7 @@ async function addGraduacao(payload) {
     const saved = await api.post('/api/graduacoes', payload);
     data.graduacoes.unshift(saved);
     const aluno = data.students.find(s => s.id === payload.alunoId);
-    if (aluno) { aluno.faixa = payload.faixaNova; aluno.grau = payload.grau || 0; }
+    if (aluno) { aluno.faixa = payload.faixaNova; aluno.grau = payload.grau || 0; aluno.aulasAnteriores = 0; }
     return saved;
   } catch (e) {
     showToast('Erro ao registrar graduação: ' + e.message, 'error');
@@ -342,7 +342,7 @@ function computeGraduacaoStatus(aluno) {
   // Progresso é em aulas, não em meses: quem define o tempo é o ritmo do
   // próprio aluno. Sem data de início/graduação, conta todas as presenças.
   const presencasAluno = presencasDoAluno(aluno.id);
-  const totalAulas = presencasAluno.filter(p => !dataAncora || p.data >= dataAncora).length;
+  const totalAulas = presencasAluno.filter(p => !dataAncora || p.data >= dataAncora).length + (aluno.aulasAnteriores || 0);
 
   // Consistência: aulas na janela recente (evita graduar por aulas
   // acumuladas de muito tempo atrás depois de meses sem treinar). Regras

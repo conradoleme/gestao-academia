@@ -15,6 +15,7 @@ function studentToJSON(r) {
     diaMatricula: r.dia_matricula, email: r.email || '', telefone: r.telefone || '',
     observacoes: r.observacoes || '',
     dataInicio: r.data_inicio || null, faixa: r.faixa || null, grau: Number(r.grau) || 0,
+    aulasAnteriores: Number(r.aulas_anteriores) || 0,
   };
 }
 
