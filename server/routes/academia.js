@@ -9,6 +9,7 @@ const { r2Configurado, getR2Client } = require('../r2');
 const { slugify } = require('../slugify');
 const { getStripeClient, stripeConfigurado } = require('../stripe-client');
 const asyncHandler = require('../asyncHandler');
+const { sendConflict, MSG_DESATUALIZADO } = require('../locks');
 
 // SVG fica de fora de propósito: pode carregar <script>/onload embutido, e
 // GET /logo/:academiaId é uma rota pública que serve o arquivo com o
@@ -53,33 +54,98 @@ router.get('/academia', asyncHandler(async (req, res) => {
 
 const MODALIDADES_VALIDAS = ['bjj', 'judo', 'outro'];
 
-router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
-  const { meta, categoryGroups, cobrancaTemplates, graduacaoRegras } = req.body;
+/* A configuração da academia é salva por SEÇÃO, cada uma com sua versão
+   (trava otimista): quem salva as regras de graduação não briga com quem
+   salva categorias ou os dados da academia, mas duas telas editando a
+   MESMA seção não sobrescrevem uma à outra. generatedMonths não faz parte
+   de nenhuma seção — tem rota própria que só acrescenta. */
+const SECOES = {
+  meta: {
+    col: 'ver_meta',
+    async build(meta, req, conn) {
+      // Slug vazio = "não quero link de marca" (fica NULL). Preenchido, normaliza
+      // (sem acento/maiúscula/espaço) e garante que não colide com outra academia.
+      let slug = null;
+      if (meta.slug && meta.slug.trim()) {
+        slug = slugify(meta.slug);
+        if (!slug) return { erro: { status: 400, error: 'Link inválido — use letras, números e hífen.' } };
+        const [existing] = await conn.query('SELECT id FROM academias WHERE slug = ? AND id != ?', [slug, req.academiaId]);
+        if (existing[0]) return { erro: { status: 409, error: 'Esse link já está em uso por outra academia.' } };
+      }
+      // Só troca a modalidade se vier um valor reconhecido.
+      const modalidade = MODALIDADES_VALIDAS.includes(meta.modalidade) ? meta.modalidade : null;
+      return {
+        slug,
+        setSql: `nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, watermark_ativo=?, usa_grau=?, telefone=?${modalidade ? ', modalidade=?' : ''}`,
+        params: [meta.empresa, slug, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
+          meta.watermarkAtivo ? 1 : 0, meta.usaGrau === false ? 0 : 1, meta.telefone || null, ...(modalidade ? [modalidade] : [])],
+      };
+    },
+  },
+  regras: { col: 'ver_regras', async build(v) { return { setSql: 'graduacao_regras=?', params: [JSON.stringify(v || {})] }; } },
+  categorias: { col: 'ver_categorias', async build(v) { return { setSql: 'category_groups=?', params: [JSON.stringify(v || {})] }; } },
+  cobranca: { col: 'ver_cobranca', async build(v) { return { setSql: 'cobranca_templates=?', params: [JSON.stringify(v || [])] }; } },
+};
 
-  // Slug vazio = "não quero link de marca" (fica NULL). Preenchido, normaliza
-  // (sem acento/maiúscula/espaço) e garante que não colide com outra academia.
-  let slug = null;
-  if (meta.slug && meta.slug.trim()) {
-    slug = slugify(meta.slug);
-    if (!slug) return res.status(400).json({ error: 'Link inválido — use letras, números e hífen.' });
-    const [existing] = await pool.query('SELECT id FROM academias WHERE slug = ? AND id != ?', [slug, req.academiaId]);
-    if (existing[0]) return res.status(409).json({ error: 'Esse link já está em uso por outra academia.' });
+router.put('/academia', requireRole('admin'), asyncHandler(async (req, res) => {
+  const sections = (req.body || {}).sections;
+  if (!sections || typeof sections !== 'object' || !Object.keys(sections).length) {
+    return res.status(409).json({ error: MSG_DESATUALIZADO, code: 'STALE_CLIENT' });
   }
 
-  // Só troca a modalidade se vier um valor reconhecido — evita apagar o
-  // valor já salvo quando uma tela antiga (sem esse campo no formulário)
-  // faz o round-trip de meta sem passar modalidade nenhuma.
-  const modalidade = MODALIDADES_VALIDAS.includes(meta.modalidade) ? meta.modalidade : null;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const versions = {};
+    let slug;
+    for (const [nome, sec] of Object.entries(sections)) {
+      const cfg = SECOES[nome];
+      if (!cfg) { await conn.rollback(); return res.status(400).json({ error: 'Seção inválida.' }); }
+      const v = Number.parseInt(sec && sec.version, 10);
+      if (!Number.isInteger(v) || v < 0) { await conn.rollback(); return res.status(409).json({ error: MSG_DESATUALIZADO, code: 'STALE_CLIENT' }); }
 
-  await pool.query(
-    `UPDATE academias SET nome=?, slug=?, tatame_comprimento=?, tatame_largura=?, concentracao_pico=?, generated_months=?, category_groups=?, cobranca_templates=?, watermark_ativo=?, graduacao_regras=?, usa_grau=?, telefone=?${modalidade ? ', modalidade=?' : ''}
-     WHERE id=?`,
-    [meta.empresa, slug, meta.tatame.comprimento, meta.tatame.largura, meta.concentracaoPico,
-     JSON.stringify(meta.generatedMonths || []), JSON.stringify(categoryGroups || {}), JSON.stringify(cobrancaTemplates || []),
-     meta.watermarkAtivo ? 1 : 0, JSON.stringify(graduacaoRegras || {}), meta.usaGrau === false ? 0 : 1, meta.telefone || null,
-     ...(modalidade ? [modalidade] : []), req.academiaId]
-  );
-  res.json({ ok: true, slug });
+      const built = await cfg.build(sec.value, req, conn);
+      if (built.erro) { await conn.rollback(); return res.status(built.erro.status).json({ error: built.erro.error }); }
+      const [r] = await conn.query(
+        `UPDATE academias SET ${built.setSql}, ${cfg.col} = ${cfg.col} + 1 WHERE id = ? AND ${cfg.col} = ?`,
+        [...built.params, req.academiaId, v]
+      );
+      if (r.affectedRows !== 1) { await conn.rollback(); return sendConflict(res); }
+      versions[nome] = v + 1;
+      if (nome === 'meta') slug = built.slug;
+    }
+    await conn.commit();
+    res.json({ ok: true, versions, slug });
+  } catch (e) {
+    await conn.rollback().catch(() => {});
+    throw e;
+  } finally {
+    conn.release();
+  }
+}));
+
+// Marca o mês como já gerado (mensalidades). Só acrescenta, sob lock de linha —
+// admin e operação podem chamar, e várias telas juntas não perdem meses.
+router.put('/academia/meses-gerados', asyncHandler(async (req, res) => {
+  const mes = String((req.body || {}).mes || '');
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(mes)) return res.status(400).json({ error: 'Mês inválido.' });
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    const [rows] = await conn.query('SELECT generated_months FROM academias WHERE id = ? FOR UPDATE', [req.academiaId]);
+    if (!rows[0]) { await conn.rollback(); return res.status(404).json({ error: 'Academia não encontrada.' }); }
+    const atuais = rows[0].generated_months || [];
+    if (!atuais.includes(mes)) {
+      await conn.query('UPDATE academias SET generated_months = ? WHERE id = ?', [JSON.stringify([...atuais, mes]), req.academiaId]);
+    }
+    await conn.commit();
+    res.json({ ok: true });
+  } catch (e) {
+    await conn.rollback().catch(() => {});
+    throw e;
+  } finally {
+    conn.release();
+  }
 }));
 
 // E-mail é o login do dono — trocar exige senha atual (mesma trava de

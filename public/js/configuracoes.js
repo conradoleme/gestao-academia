@@ -406,7 +406,8 @@ async function saveUsuarioForm(id) {
     let novoAluno = null;
     let senhaCriada = null;
     if (id) {
-      await updateUsuario(id, { nome, role, alunoId });
+      const atual = usuariosCache.find(x => x.id === id);
+      await updateUsuario(id, { nome, role, alunoId, version: atual && atual.version });
     } else {
       const email = document.getElementById('us-email').value.trim();
       const senha = document.getElementById('us-senha').value;
@@ -534,7 +535,7 @@ async function handleSalvarGraduacaoRegras() {
     if (lista.length) lista[lista.length - 1].regra = null;
   });
   data.graduacaoRegras = graduacaoRegrasEdit;
-  await persistAcademiaSettings();
+  if (!(await persistAcademiaSettings(['regras']))) return;
   showToast('Regras de graduação salvas!');
   renderConfiguracoesPage();
 }

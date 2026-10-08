@@ -47,6 +47,7 @@ function defaultData() {
     presencas: [],
     graduacoes: [],
     graduacaoRegras: {},
+    versions: { meta: 1, regras: 1, categorias: 1, cobranca: 1 },
     recados: [],
     cobrancaTemplates: [
       { id: 'c1', nome: 'Lembrete', diasRelativoVencimento: -3, assunto: 'Lembrete: mensalidade {mes} vence em breve — {academia}',
@@ -78,11 +79,29 @@ async function loadDataFromApi() {
 }
 
 /* Salva no banco tudo que hoje vive na configuração da academia (não entidades) */
-async function persistAcademiaSettings() {
+/* Cada seção tem a própria versão (trava otimista) — quem salva "regras"
+   não briga com quem salva "categorias". Passe só as seções que mudaram. */
+function settingsSectionValue(secao) {
+  return { meta: data.meta, regras: data.graduacaoRegras, categorias: data.categoryGroups, cobranca: data.cobrancaTemplates }[secao];
+}
+
+function saveSettingsSections(secoes) {
+  return enqueueWrite('academia-settings', async () => {
+    const sections = {};
+    secoes.forEach(s => { sections[s] = { value: settingsSectionValue(s), version: data.versions && data.versions[s] }; });
+    const r = await apiFetch('/api/academia', { method: 'PUT', body: JSON.stringify({ sections }) });
+    data.versions = { ...(data.versions || {}), ...r.versions };
+    return r;
+  });
+}
+
+async function persistAcademiaSettings(secoes = ['meta']) {
   try {
-    await api.put('/api/academia', { meta: data.meta, categoryGroups: data.categoryGroups, cobrancaTemplates: data.cobrancaTemplates, graduacaoRegras: data.graduacaoRegras });
+    await saveSettingsSections(secoes);
+    return true;
   } catch (e) {
-    showToast('Erro ao salvar configurações: ' + e.message, 'error');
+    if (!e.code) showToast('Erro ao salvar configurações: ' + e.message, 'error');
+    return false;
   }
 }
 
@@ -102,9 +121,9 @@ async function updateStudent(id, patch) {
   if (!s) return;
   Object.assign(s, patch);
   try {
-    await api.put(`/api/students/${id}`, s);
+    await api.putLocked(`/api/students/${id}`, () => s, v => { s.version = v; });
   } catch (e) {
-    showToast('Erro ao atualizar aluno: ' + e.message, 'error');
+    if (!e.code) showToast('Erro ao atualizar aluno: ' + e.message, 'error');
   }
 }
 async function deleteStudent(id) {
@@ -136,9 +155,9 @@ async function updateTurma(id, patch) {
   if (!t) return;
   Object.assign(t, patch);
   try {
-    await api.put(`/api/turmas/${id}`, t);
+    await api.putLocked(`/api/turmas/${id}`, () => t, v => { t.version = v; });
   } catch (e) {
-    showToast('Erro ao atualizar turma: ' + e.message, 'error');
+    if (!e.code) showToast('Erro ao atualizar turma: ' + e.message, 'error');
   }
 }
 async function deleteTurma(id) {
@@ -160,7 +179,7 @@ async function addCategory(group, name) {
   if (!data.categoryGroups[group]) data.categoryGroups[group] = [];
   if (data.categoryGroups[group].includes(name)) return false;
   data.categoryGroups[group].push(name);
-  await persistAcademiaSettings();
+  await persistAcademiaSettings(['categorias']);
   return true;
 }
 async function removeCategory(group, name) {
@@ -168,7 +187,7 @@ async function removeCategory(group, name) {
   const inUse = data.transactions.some(t => t.grupo === group && t.categoria === name);
   if (inUse) return false;
   data.categoryGroups[group] = data.categoryGroups[group].filter(c => c !== name);
-  await persistAcademiaSettings();
+  await persistAcademiaSettings(['categorias']);
   return true;
 }
 
@@ -189,9 +208,9 @@ async function updateTransaction(id, patch) {
   if (!t) return;
   Object.assign(t, patch);
   try {
-    await api.put(`/api/transactions/${id}`, t);
+    await api.putLocked(`/api/transactions/${id}`, () => t, v => { t.version = v; });
   } catch (e) {
-    showToast('Erro ao atualizar lançamento: ' + e.message, 'error');
+    if (!e.code) showToast('Erro ao atualizar lançamento: ' + e.message, 'error');
   }
 }
 // Fatia estreita de transactions que a operação também pode escrever —
@@ -210,9 +229,9 @@ async function updateMensalidadeStatus(id, status) {
   const t = data.transactions.find(t => t.id === id);
   if (t) t.status = status;
   try {
-    await api.put(`/api/mensalidades/${id}/status`, { status });
+    await api.putLocked(`/api/mensalidades/${id}/status`, () => ({ status, version: t && t.version }), v => { if (t) t.version = v; });
   } catch (e) {
-    showToast('Erro ao atualizar status: ' + e.message, 'error');
+    if (!e.code) showToast('Erro ao atualizar status: ' + e.message, 'error');
   }
 }
 async function deleteTransaction(id) {
@@ -268,27 +287,25 @@ function presencaExistente(alunoId, dataStr, turma) {
 /* ---------------- Graduação ---------------- */
 async function addGraduacao(payload) {
   try {
-    const saved = await api.post('/api/graduacoes', payload);
-    data.graduacoes.unshift(saved);
     const aluno = data.students.find(s => s.id === payload.alunoId);
-    if (aluno) { aluno.faixa = payload.faixaNova; aluno.grau = payload.grau || 0; aluno.aulasAnteriores = 0; }
+    const saved = await api.post('/api/graduacoes', { ...payload, alunoVersion: aluno && aluno.version });
+    data.graduacoes.unshift(saved);
+    if (aluno) { aluno.faixa = payload.faixaNova; aluno.grau = payload.grau || 0; aluno.aulasAnteriores = 0; aluno.version = saved.alunoVersion; }
     return saved;
   } catch (e) {
-    showToast('Erro ao registrar graduação: ' + e.message, 'error');
+    if (!e.code) showToast('Erro ao registrar graduação: ' + e.message, 'error');
     throw e;
   }
 }
 async function removeGraduacao(id) {
   const grad = data.graduacoes.find(g => g.id === id);
-  data.graduacoes = data.graduacoes.filter(g => g.id !== id);
+  const aluno = grad && data.students.find(s => s.id === grad.alunoId);
   try {
-    await api.del(`/api/graduacoes/${id}`);
-    if (grad) {
-      const aluno = data.students.find(s => s.id === grad.alunoId);
-      if (aluno) { aluno.faixa = grad.faixaAnterior; aluno.grau = 0; }
-    }
+    const r = await api.del(`/api/graduacoes/${id}?alunoVersion=${aluno ? aluno.version : ''}`);
+    data.graduacoes = data.graduacoes.filter(g => g.id !== id);
+    if (aluno) { aluno.faixa = grad.faixaAnterior; aluno.grau = 0; if (r.alunoVersion != null) aluno.version = r.alunoVersion; }
   } catch (e) {
-    showToast('Erro ao remover graduação: ' + e.message, 'error');
+    if (!e.code) showToast('Erro ao remover graduação: ' + e.message, 'error');
   }
 }
 function graduacoesDoAluno(alunoId) {
@@ -409,14 +426,14 @@ function computeAlunosProntos() {
 }
 
 async function adiarGraduacao(alunoId, dias = 30) {
-  const r = await api.put(`/api/students/${alunoId}/adiar-graduacao`, { dias });
   const aluno = data.students.find(s => s.id === alunoId);
+  const r = await api.putLocked(`/api/students/${alunoId}/adiar-graduacao`, () => ({ dias, version: aluno && aluno.version }), v => { if (aluno) aluno.version = v; });
   if (aluno) aluno.graduacaoAdiadaAte = r.ate;
 }
 
 async function darGrau(alunoId, grau) {
-  await api.put(`/api/students/${alunoId}/grau`, { grau });
   const aluno = data.students.find(s => s.id === alunoId);
+  await api.putLocked(`/api/students/${alunoId}/grau`, () => ({ grau, version: aluno && aluno.version }), v => { if (aluno) aluno.version = v; });
   if (aluno) { aluno.grau = grau; aluno.graduacaoAdiadaAte = null; }
 }
 
@@ -508,7 +525,7 @@ async function ensureMensalidadesForMonth(yearMonth) {
 
   if (!data.meta.generatedMonths.includes(yearMonth)) {
     data.meta.generatedMonths.push(yearMonth);
-    await persistAcademiaSettings();
+    try { await api.put('/api/academia/meses-gerados', { mes: yearMonth }); } catch (e) { /* tenta de novo no próximo login */ }
   }
   return created;
 }
@@ -824,17 +841,17 @@ function renderCobrancaTemplate(template, student, tx) {
 async function addCobrancaTemplate(tpl) {
   tpl.id = uid('c');
   data.cobrancaTemplates.push(tpl);
-  await persistAcademiaSettings();
+  await persistAcademiaSettings(['cobranca']);
   return tpl;
 }
 async function updateCobrancaTemplate(id, patch) {
   const t = data.cobrancaTemplates.find(t => t.id === id);
   if (t) Object.assign(t, patch);
-  await persistAcademiaSettings();
+  await persistAcademiaSettings(['cobranca']);
 }
 async function deleteCobrancaTemplate(id) {
   data.cobrancaTemplates = data.cobrancaTemplates.filter(t => t.id !== id);
-  await persistAcademiaSettings();
+  await persistAcademiaSettings(['cobranca']);
 }
 
 /* ---------------- Configurações da Academia ---------------- */
@@ -847,7 +864,7 @@ async function updateAcademiaSlug(slug) {
   const anterior = data.meta.slug;
   data.meta.slug = slug;
   try {
-    const result = await api.put('/api/academia', { meta: data.meta, categoryGroups: data.categoryGroups, cobrancaTemplates: data.cobrancaTemplates, graduacaoRegras: data.graduacaoRegras });
+    const result = await saveSettingsSections(['meta']);
     data.meta.slug = result.slug;
   } catch (e) {
     data.meta.slug = anterior;

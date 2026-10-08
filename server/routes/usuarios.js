@@ -8,6 +8,7 @@ const pool = require('../db');
 const { requireRole } = require('../auth');
 const { usuarioToJSON } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
+const { readVersion, updateLocked, replyLockResult } = require('../locks');
 
 router.use(requireRole('admin'));
 
@@ -63,11 +64,10 @@ router.put('/:id', asyncHandler(async (req, res) => {
     const [studentRows] = await pool.query('SELECT id FROM students WHERE id = ? AND academia_id = ?', [alunoId, req.academiaId]);
     if (!studentRows[0]) return res.status(400).json({ error: 'Aluno não encontrado.' });
   }
-  await pool.query(
-    `UPDATE usuarios SET nome=?, role=?, aluno_id=? WHERE id=? AND academia_id=?`,
-    [nome, role, role === 'aluno' ? alunoId : null, req.params.id, req.academiaId]
-  );
-  res.json({ ok: true });
+  const v = readVersion(req, res); if (v === null) return;
+  const where = 'id=? AND academia_id=?', ids = [req.params.id, req.academiaId];
+  const ok = await updateLocked('usuarios', 'nome=?, role=?, aluno_id=?', [nome, role, role === 'aluno' ? alunoId : null], where, ids, v);
+  await replyLockResult(res, ok, v, 'usuarios', where, ids, 'Usuário não encontrado.');
 }));
 
 router.put('/:id/senha', asyncHandler(async (req, res) => {

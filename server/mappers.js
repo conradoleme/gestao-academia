@@ -17,6 +17,7 @@ function studentToJSON(r) {
     dataInicio: r.data_inicio || null, faixa: r.faixa || null, grau: Number(r.grau) || 0,
     aulasAnteriores: Number(r.aulas_anteriores) || 0,
     graduacaoAdiadaAte: r.graduacao_adiada_ate || null,
+    version: Number(r.version) || 1,
   };
 }
 
@@ -53,6 +54,7 @@ function fichaMedicaToJSON(r) {
     responsavelLegalNome: r.responsavel_legal_nome || '',
     responsavelLegalTelefone: r.responsavel_legal_telefone || '',
     updatedAt: r.updated_at,
+    version: Number(r.version) || 1,
   };
 }
 
@@ -68,6 +70,7 @@ function turmaToJSON(r) {
   return {
     id: String(r.id), nome: r.nome, horarios: r.horarios || [],
     freqAnterior: Number(r.freq_anterior) || 0, freqAtual: Number(r.freq_atual) || 0,
+    version: Number(r.version) || 1,
   };
 }
 
@@ -78,6 +81,7 @@ function txToJSON(r) {
     alunoId: r.aluno_id === null || r.aluno_id === undefined ? null : String(r.aluno_id),
     origem: r.origem || '', recorrente: !!r.recorrente,
     recorrenciaMeses: r.recorrencia_meses === null || r.recorrencia_meses === undefined ? null : Number(r.recorrencia_meses),
+    version: Number(r.version) || 1,
   };
 }
 
@@ -86,6 +90,7 @@ function usuarioToJSON(r) {
     id: String(r.id), nome: r.nome, email: r.email, role: r.role,
     alunoId: r.aluno_id === null || r.aluno_id === undefined ? null : String(r.aluno_id),
     createdAt: r.created_at,
+    version: Number(r.version) || 1,
   };
 }
 
@@ -109,6 +114,7 @@ function academiaToShape(r) {
     categoryGroups: r.category_groups || {},
     cobrancaTemplates: r.cobranca_templates || [],
     graduacaoRegras: r.graduacao_regras || {},
+    versions: { meta: r.ver_meta || 1, regras: r.ver_regras || 1, categorias: r.ver_categorias || 1, cobranca: r.ver_cobranca || 1 },
   };
 }
 

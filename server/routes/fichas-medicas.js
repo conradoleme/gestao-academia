@@ -8,6 +8,7 @@ const pool = require('../db');
 const { fichaMedicaToJSON } = require('../mappers');
 const { upsertFichaMedica, fichaMedicaVazia } = require('../fichaMedicaUpsert');
 const asyncHandler = require('../asyncHandler');
+const { readVersion, sendConflict } = require('../locks');
 
 router.get('/:alunoId', asyncHandler(async (req, res) => {
   const [studentRows] = await pool.query('SELECT id FROM students WHERE id = ? AND academia_id = ?', [req.params.alunoId, req.academiaId]);
@@ -21,7 +22,9 @@ router.put('/:alunoId', asyncHandler(async (req, res) => {
   const [studentRows] = await pool.query('SELECT id FROM students WHERE id = ? AND academia_id = ?', [req.params.alunoId, req.academiaId]);
   if (!studentRows[0]) return res.status(404).json({ error: 'Aluno não encontrado.' });
 
-  const saved = await upsertFichaMedica(req.academiaId, req.params.alunoId, req.body || {});
+  const v = readVersion(req, res); if (v === null) return;
+  const saved = await upsertFichaMedica(req.academiaId, req.params.alunoId, req.body || {}, v);
+  if (!saved) return sendConflict(res);
   res.json(saved);
 }));
 

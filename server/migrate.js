@@ -57,6 +57,27 @@ async function migrate() {
   // "Ainda não" nos avisos de graduação: esconde o aluno até essa data.
   await addColumnIfMissing('students', 'graduacao_adiada_ate', `DATE NULL`);
 
+  // Trava otimista (ver server/locks.js): versão por linha editável e, na
+  // configuração da academia, uma versão por seção — assim salvar as regras
+  // de graduação não briga com quem salva categorias ou dados da academia.
+  for (const t of ['students', 'turmas', 'transactions', 'fichas_medicas', 'usuarios']) {
+    await addColumnIfMissing(t, 'version', `INT NOT NULL DEFAULT 1`);
+  }
+  for (const c of ['ver_meta', 'ver_regras', 'ver_categorias', 'ver_cobranca']) {
+    await addColumnIfMissing('academias', c, `INT NOT NULL DEFAULT 1`);
+  }
+  // Despesas recorrentes automáticas: uma por série/mês. Guardado em try/catch
+  // porque, se já houver duplicata antiga, o UPDATE em bloco falha — melhor
+  // avisar no log do que derrubar o boot.
+  try {
+    await pool.query(
+      `UPDATE transactions SET dedup_key = CONCAT(academia_id,'|rec|',grupo,'|',categoria,'|',IFNULL(descricao,''),'|',SUBSTRING(data,1,7))
+       WHERE origem = 'auto-recorrente' AND dedup_key IS NULL`
+    );
+  } catch (e) {
+    console.error('Backfill da trava de recorrentes não aplicado (há duplicatas antigas?):', e.message);
+  }
+
   // Trava contra mensalidade/matrícula duplicada quando duas sessões (ex:
   // dono e um funcionário logando quase ao mesmo tempo) disparam a geração
   // automática do mesmo mês antes de uma ver o que a outra acabou de criar.

@@ -9,6 +9,7 @@ const pool = require('../db');
 const { txToJSON } = require('../mappers');
 const { requireRole } = require('../auth');
 const asyncHandler = require('../asyncHandler');
+const { readVersion, updateLocked, replyLockResult } = require('../locks');
 
 const STATUS_VALIDOS = ['a_receber', 'recebido'];
 
@@ -62,14 +63,10 @@ router.put('/:id/status', requireRole('admin'), asyncHandler(async (req, res) =>
   const { status } = req.body || {};
   if (!STATUS_VALIDOS.includes(status)) return res.status(400).json({ error: 'Status inválido.' });
 
-  const [rows] = await pool.query(
-    'SELECT id FROM transactions WHERE id = ? AND academia_id = ? AND aluno_id IS NOT NULL',
-    [req.params.id, req.academiaId]
-  );
-  if (!rows[0]) return res.status(404).json({ error: 'Lançamento não encontrado.' });
-
-  await pool.query('UPDATE transactions SET status = ? WHERE id = ?', [status, req.params.id]);
-  res.json({ ok: true });
+  const v = readVersion(req, res); if (v === null) return;
+  const where = 'id=? AND academia_id=? AND aluno_id IS NOT NULL', ids = [req.params.id, req.academiaId];
+  const ok = await updateLocked('transactions', 'status=?', [status], where, ids, v);
+  await replyLockResult(res, ok, v, 'transactions', where, ids, 'Lançamento não encontrado.');
 }));
 
 module.exports = router;

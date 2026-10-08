@@ -185,7 +185,10 @@ function renderBarChart(containerId, series, labels, opts = {}) {
    gestão (students.js, qualquer aluno) e o portal (aluno-portal.js, só a
    própria ficha). Dado sensível (LGPD) — nunca entra no bootstrap, só é
    buscado quando alguém abre a ficha de verdade. ---------------- */
+let fichaVersionAberta = 0;
+
 function fichaMedicaFormFields(f) {
+  fichaVersionAberta = f.version != null ? f.version : 0;
   return `
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin-bottom:8px;">Contato de Emergência</div>
     <div class="form-grid">
@@ -233,6 +236,7 @@ function fichaMedicaFormPayload() {
     numeroCarteirinha: document.getElementById('fm-carteirinha').value.trim(),
     responsavelLegalNome: document.getElementById('fm-resp-nome').value.trim(),
     responsavelLegalTelefone: document.getElementById('fm-resp-telefone').value.trim(),
+    version: fichaVersionAberta,
   };
 }
 
@@ -246,4 +250,23 @@ function confirmAction(msg, onConfirm) {
     </div>
   `, { width: '420px' });
   document.getElementById('confirm-yes').onclick = () => { onConfirm(); closeModal(); };
+}
+
+
+/* ---------------- Aviso de informação desatualizada (trava otimista) ---------------- */
+function showConflictOverlay(msg) {
+  if (document.getElementById('conflict-overlay')) return;
+  const el = document.createElement('div');
+  el.id = 'conflict-overlay';
+  el.className = 'modal-overlay';
+  el.style.zIndex = '10000';
+  el.innerHTML = `
+    <div class="modal-box" style="max-width:440px;">
+      <div class="modal-header"><h3 style="margin:0;">⚠️ Informação desatualizada</h3></div>
+      <div class="modal-body">
+        <p style="color:var(--text);margin-bottom:18px;line-height:1.5;">${escapeHtml(msg)}</p>
+        <div class="btn-row"><button class="btn btn-primary" onclick="location.reload()">Atualizar agora</button></div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
 }

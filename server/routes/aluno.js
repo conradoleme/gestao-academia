@@ -10,6 +10,7 @@ const pool = require('../db');
 const { studentToJSON, turmaToJSON, txToJSON, recadoToJSON, fichaMedicaToJSON } = require('../mappers');
 const { upsertFichaMedica, fichaMedicaVazia } = require('../fichaMedicaUpsert');
 const asyncHandler = require('../asyncHandler');
+const { readVersion, sendConflict } = require('../locks');
 
 router.use((req, res, next) => {
   if (req.role !== 'aluno') return res.status(403).json({ error: 'Acesso restrito ao portal do aluno.' });
@@ -124,7 +125,9 @@ router.get('/ficha-medica', asyncHandler(async (req, res) => {
 }));
 
 router.put('/ficha-medica', asyncHandler(async (req, res) => {
-  const saved = await upsertFichaMedica(req.academiaId, req.alunoId, req.body || {});
+  const v = readVersion(req, res); if (v === null) return;
+  const saved = await upsertFichaMedica(req.academiaId, req.alunoId, req.body || {}, v);
+  if (!saved) return sendConflict(res);
   res.json(saved);
 }));
 
