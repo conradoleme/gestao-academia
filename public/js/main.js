@@ -144,6 +144,64 @@ function applyWatermark() {
   }
 }
 
+/* ---------------- Sincronização automática entre aparelhos ----------------
+   Celular e computador abertos ao mesmo tempo mostram cada um os dados do
+   momento em que carregaram. Ao voltar pra aba (ou a cada poucos minutos
+   com ela aberta) busca de novo e redesenha a tela — mas só quando é seguro:
+   sem janela aberta, sem campo sendo digitado, sem gravação em andamento e
+   fora de Configurações (que guarda edições ainda não salvas). */
+let ultimaSincronizacao = Date.now();
+let sincronizando = false;
+let sincronizacaoIniciada = false;
+
+function podeSincronizarAgora() {
+  const role = decodeAuthToken()?.role;
+  if (!role || role === 'aluno') return false;
+  const app = document.querySelector('.app');
+  if (!app || app.style.display === 'none') return false;
+  if (document.getElementById('modal-overlay') || document.getElementById('conflict-overlay')) return false;
+  if (writeQueues.size > 0) return false;
+  const ativa = document.querySelector('.page.active');
+  if (!ativa || ativa.id === 'page-configuracoes') return false;
+  const foco = document.activeElement;
+  if (foco && /^(INPUT|TEXTAREA|SELECT)$/.test(foco.tagName) && ativa.contains(foco)) return false;
+  return true;
+}
+
+async function sincronizarDados(intervaloMinimoMs = 60 * 1000) {
+  if (sincronizando || Date.now() - ultimaSincronizacao < intervaloMinimoMs || !podeSincronizarAgora()) return;
+  sincronizando = true;
+  try {
+    const fresco = await api.get('/api/bootstrap');
+    if (!podeSincronizarAgora()) return; // algo abriu enquanto buscava
+    data = fresco;
+    graduacaoRegrasEdit = null; // rascunho de regras (Configurações) volta a partir dos dados novos
+    const role = decodeAuthToken()?.role;
+    document.getElementById('app-empresa-nome').textContent = data.meta.empresa;
+    document.getElementById('app-empresa-nome-mobile').textContent = data.meta.empresa;
+    applyAcademiaLogo();
+    applyWatermark();
+    applyAssinaturaUI(role);
+    const id = document.querySelector('.page.active').id.replace('page-', '');
+    if (PAGE_RENDERERS[id]) await PAGE_RENDERERS[id]();
+    updateGraduacaoBadge();
+    ultimaSincronizacao = Date.now();
+  } catch (e) {
+    /* sem rede ou sessão expirada — o próprio api-client trata o 401; tenta de novo depois */
+  } finally {
+    sincronizando = false;
+  }
+}
+
+function iniciarSincronizacaoAutomatica() {
+  if (sincronizacaoIniciada) return;
+  sincronizacaoIniciada = true;
+  ultimaSincronizacao = Date.now();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizarDados(); });
+  window.addEventListener('focus', () => sincronizarDados());
+  setInterval(() => { if (!document.hidden) sincronizarDados(3 * 60 * 1000); }, 60 * 1000);
+}
+
 /* ---------------- Boot pós-login ---------------- */
 async function bootAppAfterLogin() {
   await loadDataFromApi();
@@ -156,6 +214,7 @@ async function bootAppAfterLogin() {
   applyRoleUI(role);
   applyAssinaturaUI(role);
   updateGraduacaoBadge();
+  iniciarSincronizacaoAutomatica();
   showPage(role === 'operacao' ? 'alunos' : 'dashboard');
 }
 
