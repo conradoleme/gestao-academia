@@ -196,7 +196,7 @@ async function addTransaction(tx) {
   tx.tipo = GROUP_META[tx.grupo].tipo;
   try {
     const saved = await api.post('/api/transactions', tx);
-    data.transactions.push(saved);
+    if (!data.transactions.some(x => x.id === saved.id)) data.transactions.push(saved);
     return saved;
   } catch (e) {
     showToast('Erro ao salvar lançamento: ' + e.message, 'error');
@@ -218,7 +218,7 @@ async function updateTransaction(id, patch) {
 async function addMensalidade(tx) {
   try {
     const saved = await api.post('/api/mensalidades', tx);
-    data.transactions.push(saved);
+    if (!data.transactions.some(x => x.id === saved.id)) data.transactions.push(saved);
     return saved;
   } catch (e) {
     showToast('Erro ao salvar lançamento: ' + e.message, 'error');

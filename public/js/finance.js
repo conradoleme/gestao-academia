@@ -183,7 +183,11 @@ function nextNMonthKeys(n) {
 
 /* ---------------- Formulário de lançamento ---------------- */
 function categorySelectOptions(grupo, selected) {
-  return (data.categoryGroups[grupo] || []).map(c => `<option value="${escapeHtml(c)}" ${c===selected?'selected':''}>${escapeHtml(c)}</option>`).join('');
+  const lista = [...(data.categoryGroups[grupo] || [])];
+  // Categoria já usada no lançamento mas fora da lista (removida/renomeada):
+  // mantém como opção, senão o select abre em branco e o autosave apaga a categoria.
+  if (selected && !lista.includes(selected)) lista.unshift(selected);
+  return lista.map(c => `<option value="${escapeHtml(c)}" ${c===selected?'selected':''}>${escapeHtml(c)}</option>`).join('');
 }
 
 let txFormId = null;
