@@ -138,6 +138,14 @@ app.get('/logo/:academiaId', async (req, res) => {
 });
 
 /* ---------------- Login (única rota pública) ---------------- */
+// Identifica a versão em execução (muda a cada deploy). Pública e sem cache:
+// as telas abertas comparam com a que carregaram e avisam pra atualizar.
+const BUILD_ID = process.env.RAILWAY_DEPLOYMENT_ID || String(Date.now());
+app.get('/api/versao', (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ build: BUILD_ID });
+});
+
 app.post('/api/auth/login', authLimiter, async (req, res) => {
   const { email, senha } = req.body || {};
   if (!email || !senha) return res.status(400).json({ error: 'Informe e-mail e senha.' });

@@ -270,3 +270,36 @@ function showConflictOverlay(msg) {
     </div>`;
   document.body.appendChild(el);
 }
+
+
+/* ---------------- Aviso de nova versão ----------------
+   Uma aba que fica aberta por dias continua rodando o código antigo depois
+   de um deploy. Compara a versão carregada com a do servidor (ao voltar pra
+   aba e a cada 2 min) e avisa pra atualizar antes de uma gravação falhar. */
+let buildCarregado = null;
+
+async function checarNovaVersao() {
+  try {
+    const r = await fetch('/api/versao', { cache: 'no-store' });
+    if (!r.ok) return;
+    const { build } = await r.json();
+    if (!buildCarregado) { buildCarregado = build; return; }
+    if (build !== buildCarregado) mostrarAvisoNovaVersao();
+  } catch (e) { /* sem rede agora — tenta de novo no próximo ciclo */ }
+}
+
+function mostrarAvisoNovaVersao() {
+  if (document.getElementById('nova-versao-aviso')) return;
+  const el = document.createElement('div');
+  el.id = 'nova-versao-aviso';
+  el.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:var(--accent);color:#fff;padding:10px 14px;display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;font-size:13px;font-weight:600;box-shadow:0 2px 12px rgba(0,0,0,0.2);';
+  el.innerHTML = `<span>🔄 Há uma nova versão do sistema. Atualize para não perder alterações.</span>
+    <button class="btn" style="background:#fff;color:var(--accent);padding:5px 12px;font-size:12px;" onclick="location.reload()">Atualizar agora</button>`;
+  document.body.appendChild(el);
+}
+
+function iniciarVigiaNovaVersao() {
+  checarNovaVersao();
+  setInterval(checarNovaVersao, 2 * 60 * 1000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checarNovaVersao(); });
+}

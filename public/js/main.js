@@ -161,6 +161,7 @@ async function bootAppAfterLogin() {
 
 async function initApp() {
   initTheme();
+  iniciarVigiaNovaVersao();
   const hasSession = await checkExistingSession();
   if (hasSession) await bootByRole();
 }
