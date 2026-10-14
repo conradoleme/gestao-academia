@@ -217,19 +217,24 @@ const autosaveTurmaDebounced = debounce(async () => {
   if (!document.getElementById('f-turma-nome')) return; // modal já foi fechado
   const patch = buildTurmaPatch();
   if (!patch.nome) return;
-  if (turmaFormId) {
-    await updateTurma(turmaFormId, patch);
-  } else {
-    const saved = await addTurma(patch);
-    turmaFormId = saved.id;
-  }
+  await enqueueWrite('form-turma', async () => {
+    if (turmaFormId) {
+      await updateTurma(turmaFormId, patch);
+    } else {
+      const saved = await addTurma(patch);
+      turmaFormId = saved.id;
+    }
+  });
   showAutosaveIndicator('turma-autosave-status');
 });
 
 async function saveTurmaForm() {
+  autosaveTurmaDebounced.cancel();
   const patch = buildTurmaPatch();
   if (!patch.nome) { showToast('Informe o nome da turma.', 'error'); return; }
-  if (turmaFormId) await updateTurma(turmaFormId, patch); else { const saved = await addTurma(patch); turmaFormId = saved.id; }
+  await enqueueWrite('form-turma', async () => {
+    if (turmaFormId) await updateTurma(turmaFormId, patch); else { const saved = await addTurma(patch); turmaFormId = saved.id; }
+  });
   closeModal();
   showToast('Turma salva!');
   renderTurmasPage();

@@ -277,19 +277,24 @@ const autosaveStudentDebounced = debounce(async () => {
   if (!document.getElementById('f-nome')) return; // modal já foi fechado
   const patch = buildStudentPatch();
   if (!patch.nome) return;
-  if (studentFormId) {
-    await updateStudent(studentFormId, patch);
-  } else {
-    const saved = await addStudent(patch);
-    studentFormId = saved.id;
-  }
+  await enqueueWrite('form-aluno', async () => {
+    if (studentFormId) {
+      await updateStudent(studentFormId, patch);
+    } else {
+      const saved = await addStudent(patch);
+      studentFormId = saved.id;
+    }
+  });
   showAutosaveIndicator('student-autosave-status');
 });
 
 async function saveStudentForm() {
+  autosaveStudentDebounced.cancel();
   const patch = buildStudentPatch();
   if (!patch.nome) { showToast('Informe o nome do aluno.', 'error'); return; }
-  if (studentFormId) await updateStudent(studentFormId, patch); else { const saved = await addStudent(patch); studentFormId = saved.id; }
+  await enqueueWrite('form-aluno', async () => {
+    if (studentFormId) await updateStudent(studentFormId, patch); else { const saved = await addStudent(patch); studentFormId = saved.id; }
+  });
   closeModal();
   showToast('Aluno salvo!');
   renderAlunosPage();

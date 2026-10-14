@@ -61,15 +61,30 @@ function monthLabel(yearMonth) {
 // Evita perder o que a pessoa digitou se ela fechar a aba, trocar de app ou
 // simplesmente esquecer de clicar em "Salvar" — os campos vão salvando
 // sozinhos enquanto digita, sem precisar de confirmação explícita.
+// flush(): grava já o que estiver esperando o tempo de 800ms. Sem isso, quem
+// digita um valor e fecha a janela logo em seguida perde a última digitação
+// (ficava salvo só o valor parcial, ex: R$ 0,01 em vez de R$ 700,00).
+const debouncesPendentes = new Set();
 function debounce(fn, ms = 800) {
-  let timer;
+  let timer, pendente = false, ultimosArgs = [];
+  const executar = () => { pendente = false; debouncesPendentes.delete(debounced); return fn(...ultimosArgs); };
   const debounced = (...args) => {
     clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), ms);
+    ultimosArgs = args;
+    pendente = true;
+    debouncesPendentes.add(debounced);
+    timer = setTimeout(executar, ms);
   };
-  debounced.cancel = () => clearTimeout(timer);
+  debounced.cancel = () => { clearTimeout(timer); pendente = false; debouncesPendentes.delete(debounced); };
+  debounced.flush = () => { if (!pendente) return; clearTimeout(timer); return executar(); };
   return debounced;
 }
+function salvarPendentesAgora() {
+  [...debouncesPendentes].forEach(d => d.flush());
+}
+// Celular: trocar de app ou bloquear a tela esconde a página — salva antes.
+document.addEventListener('visibilitychange', () => { if (document.hidden) salvarPendentesAgora(); });
+window.addEventListener('pagehide', salvarPendentesAgora);
 
 function attachAutosaveListeners(fieldIds, handler) {
   fieldIds.forEach(fid => {
@@ -144,6 +159,7 @@ function openModal(title, bodyHtml, { width = '560px' } = {}) {
   document.body.appendChild(overlay);
 }
 function closeModal() {
+  salvarPendentesAgora(); // ainda com os campos na tela, antes de removê-los
   const el = document.getElementById('modal-overlay');
   if (el) el.remove();
   // Com autosave, fechar o modal de qualquer jeito (✕, clique fora, Fechar)

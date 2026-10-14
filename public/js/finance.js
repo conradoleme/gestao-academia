@@ -289,22 +289,27 @@ const autosaveTransactionDebounced = debounce(async () => {
   if (!document.getElementById('f-tx-valor')) return; // modal já foi fechado
   const patch = buildTransactionPatch();
   if (!patch.data || patch.valor <= 0) return;
-  if (txFormId) {
-    await updateTransaction(txFormId, patch);
-  } else {
-    const saved = await addTransaction(patch);
-    txFormId = saved.id;
-  }
+  await enqueueWrite('form-lancamento', async () => {
+    if (txFormId) {
+      await updateTransaction(txFormId, patch);
+    } else {
+      const saved = await addTransaction(patch);
+      txFormId = saved.id;
+    }
+  });
   showAutosaveIndicator('tx-autosave-status');
 });
 
 async function saveTransactionForm() {
+  autosaveTransactionDebounced.cancel();
   const patch = buildTransactionPatch();
-  const id = txFormId;
   if (!patch.data) { showToast('Informe a data do lançamento.', 'error'); return; }
   if (patch.valor < 0) { showToast('O valor não pode ser negativo.', 'error'); return; }
 
-  if (id) { await updateTransaction(id, patch); } else { const saved = await addTransaction(patch); txFormId = saved.id; }
+  const id = txFormId;
+  await enqueueWrite('form-lancamento', async () => {
+    if (txFormId) { await updateTransaction(txFormId, patch); } else { const saved = await addTransaction(patch); txFormId = saved.id; }
+  });
   closeModal();
   showToast(id ? 'Lançamento atualizado!' : 'Lançamento criado!');
   financeSelectedMonth = monthKey(patch.data);
