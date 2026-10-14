@@ -409,7 +409,9 @@ function graduacaoPendencia(aluno) {
   if (st.pronto) {
     return { tipo: 'faixa', chave: 'faixa:' + st.faixaAtual, status: st, texto: `${st.faixaAtual} → ${st.proximaFaixa}`, curto: `faixa ${st.proximaFaixa}` };
   }
-  if (data.meta.usaGrau !== false && st.minAulas > 0) {
+  // Grau também exige treino recente (mesma regra da faixa): quem parou de treinar
+  // não aparece com pendência de nada, nem grau nem faixa.
+  if (data.meta.usaGrau !== false && st.minAulas > 0 && st.okRecentes) {
     const grauAlvo = Math.min(GRAUS_POR_FAIXA, Math.floor(st.totalAulas * GRAUS_POR_FAIXA / st.minAulas));
     if (grauAlvo > (aluno.grau || 0)) {
       return { tipo: 'grau', grauAlvo, chave: `grau:${st.faixaAtual}:${grauAlvo}`, status: st, texto: `${grauAlvo}º grau`, curto: `${grauAlvo}º grau` };
