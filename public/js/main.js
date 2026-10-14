@@ -193,6 +193,29 @@ async function sincronizarDados(intervaloMinimoMs = 60 * 1000) {
   }
 }
 
+/* Portal do aluno: mesma ideia — ao voltar pra aba, busca de novo e redesenha
+   (sem janela aberta, ex: ficha médica sendo preenchida). */
+async function sincronizarPortalAluno() {
+  if (sincronizando || Date.now() - ultimaSincronizacao < 60 * 1000) return;
+  if (document.getElementById('modal-overlay') || typeof alunoData === 'undefined' || !alunoData) return;
+  sincronizando = true;
+  try {
+    alunoData = await api.get('/api/aluno/me');
+    if (!document.getElementById('modal-overlay')) renderAlunoPortal();
+    ultimaSincronizacao = Date.now();
+  } catch (e) { /* tenta de novo depois */ } finally { sincronizando = false; }
+}
+
+let sincronizacaoPortalIniciada = false;
+function iniciarSincronizacaoPortal() {
+  if (sincronizacaoPortalIniciada) return;
+  sincronizacaoPortalIniciada = true;
+  ultimaSincronizacao = Date.now();
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) sincronizarPortalAluno(); });
+  window.addEventListener('focus', () => sincronizarPortalAluno());
+  setInterval(() => { if (!document.hidden) sincronizarPortalAluno(); }, 3 * 60 * 1000);
+}
+
 function iniciarSincronizacaoAutomatica() {
   if (sincronizacaoIniciada) return;
   sincronizacaoIniciada = true;

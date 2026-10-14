@@ -17,6 +17,7 @@ async function bootAlunoPortal() {
   }
   document.getElementById('aluno-portal-screen').style.display = 'block';
   renderAlunoPortal();
+  iniciarSincronizacaoPortal();
 }
 
 function alunoMensalidadeDoMes() {
