@@ -166,6 +166,8 @@ router.put('/academia/email', requireOwner, asyncHandler(async (req, res) => {
 }));
 
 router.put('/academia/senha', asyncHandler(async (req, res) => {
+  // Professor não troca a própria senha: quem define é o dono (Configurações → Usuários).
+  if (req.role === 'operacao') return res.status(403).json({ error: 'Peça ao dono da academia para trocar a sua senha.' });
   const { senhaAtual, novaSenha } = req.body || {};
   if (!senhaAtual || !novaSenha) return res.status(400).json({ error: 'Informe a senha atual e a nova senha.' });
   if (novaSenha.length < 8) return res.status(400).json({ error: 'A nova senha precisa ter pelo menos 8 caracteres.' });

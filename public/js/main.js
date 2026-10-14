@@ -18,7 +18,7 @@ const PAGE_RENDERERS = {
 
 async function showPage(id) {
   // Esconder o menu não basta: bloqueia também a navegação direta pelo console.
-  if (ehOperacao() && OPERACAO_PAGINAS_OCULTAS.includes(id) && id !== 'configuracoes') id = 'alunos';
+  if (ehOperacao() && OPERACAO_PAGINAS_OCULTAS.includes(id)) id = 'alunos';
   if (document.getElementById('modal-overlay')) closeModal();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));

@@ -76,7 +76,7 @@ function renderDashboardPage() {
       <div class="kpi kpi-green">
         <div class="kpi-label">Entradas</div>
         <div class="kpi-value">${fmt(k.entradasMes)}</div>
-        <div class="kpi-sub">${mesAtualLabel}</div>
+        <div class="kpi-sub">${mesAtualLabel} · recebido + a receber</div>
       </div>
       <div class="kpi kpi-red">
         <div class="kpi-label">Saídas</div>
@@ -87,6 +87,19 @@ function renderDashboardPage() {
         <div class="kpi-label">Lucro Líquido</div>
         <div class="kpi-value">${fmt(k.lucroLiquidoMesAtual)}</div>
         <div class="kpi-sub">${mesAtualLabel}</div>
+      </div>
+    </div>
+
+    <div class="card-grid card-grid-2" style="margin-bottom:16px;">
+      <div class="kpi kpi-green">
+        <div class="kpi-label">Recebido no Mês</div>
+        <div class="kpi-value">${fmt(k.entradasRecebidas)}</div>
+        <div class="kpi-sub">${k.entradasMes > 0 ? Math.round(k.entradasRecebidas / k.entradasMes * 100) : 0}% das entradas já entraram no caixa</div>
+      </div>
+      <div class="kpi kpi-yellow">
+        <div class="kpi-label">A Receber no Mês</div>
+        <div class="kpi-value">${fmt(k.entradasAReceber)}</div>
+        <div class="kpi-sub">ainda em aberto em ${mesAtualLabel}</div>
       </div>
     </div>
 

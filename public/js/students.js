@@ -138,7 +138,7 @@ function studentRow(s) {
     <td data-label="Matrícula">${s.valorMatricula ? fmtFull(s.valorMatricula) + ' (' + (s.mesMatricula||'—') + ')' : '—'}</td>`}
     <td data-label="Ações">
       <button class="btn-icon" title="Editar" onclick="openStudentForm('${s.id}')">✏️</button>
-      <button class="btn-icon" title="Excluir" onclick="handleDeleteStudent('${s.id}')">🗑️</button>
+      ${ehOperacao() ? '' : `<button class="btn-icon" title="Excluir" onclick="handleDeleteStudent('${s.id}')">🗑️</button>`}
     </td>
   </tr>`;
 }
@@ -306,6 +306,7 @@ async function saveStudentForm() {
 }
 
 function handleDeleteStudent(id) {
+  if (ehOperacao()) return;
   const s = data.students.find(x => x.id === id);
   confirmAction(`Excluir o aluno <strong>${escapeHtml(s?.nome||'')}</strong>? Lançamentos já gerados não serão removidos.`, async () => {
     await deleteStudent(id);

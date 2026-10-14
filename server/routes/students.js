@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../db');
 const { studentToJSON, studentToJSONParaOperacao } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
+const { requireRole } = require('../auth');
 const { readVersion, updateLocked, replyLockResult } = require('../locks');
 
 router.get('/', asyncHandler(async (req, res) => {
@@ -44,7 +45,8 @@ router.put('/:id', asyncHandler(async (req, res) => {
   await replyLockResult(res, ok, v, 'students', where, ids, 'Aluno não encontrado.');
 }));
 
-router.delete('/:id', asyncHandler(async (req, res) => {
+// Excluir aluno apaga presenças/graduações em cascata — só dono/admin, nunca o professor.
+router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
   await pool.query('DELETE FROM students WHERE id=? AND academia_id=?', [req.params.id, req.academiaId]);
   res.json({ ok: true });
 }));

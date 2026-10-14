@@ -643,7 +643,14 @@ function computeKPIs() {
   const mesAtual = getMonthSummary(ym);
   const receitaRecorrentePrevista = activeStudents().reduce((s, a) => s + (a.valorMensalidade || 0), 0);
 
+  // Entradas do mês separadas por situação: já entrou no caixa vs ainda por receber.
+  const entradasTx = transactionsInMonth(ym).filter(t => t.tipo === 'entrada');
+  const entradasRecebidas = entradasTx.filter(t => t.status === 'recebido').reduce((s, t) => s + t.valor, 0);
+  const entradasAReceber = entradasTx.filter(t => t.status !== 'recebido').reduce((s, t) => s + t.valor, 0);
+
   return {
+    entradasRecebidas,
+    entradasAReceber,
     entradasMes: mesAtual.totalEntradas,
     saidasMes: mesAtual.totalSaidas,
     lucroLiquidoMesAtual: mesAtual.lucroLiquido,
