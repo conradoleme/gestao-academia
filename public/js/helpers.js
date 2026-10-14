@@ -29,7 +29,14 @@ function avg(arr) { return arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
 function escapeHtml(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-function todayStr() { return new Date().toISOString().slice(0,10); }
+// Data LOCAL (AAAA-MM-DD). toISOString() é UTC: depois das 21h em Brasília já
+// devolvia o dia seguinte — chamada/graduação gravavam a data errada.
+function localDateStr(d = new Date()) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function todayStr() { return localDateStr(); }
+// Professor não vê nada financeiro (valores, receita, cobrança).
+function ehOperacao() { return decodeAuthToken()?.role === 'operacao'; }
 
 /* ---------------- Máscara monetária (R$ 1.234,56) para inputs ---------------- */
 function formatCurrencyValue(num) {

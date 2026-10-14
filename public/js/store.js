@@ -374,7 +374,7 @@ function computeGraduacaoStatus(aluno) {
   // acumuladas de muito tempo atrás depois de meses sem treinar). Regras
   // antigas só têm minFrequenciaSemanal — converte pra ~60% do ritmo nominal.
   const JANELA_DIAS = 60;
-  const janelaInicio = new Date(Date.now() - JANELA_DIAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const janelaInicio = localDateStr(new Date(Date.now() - JANELA_DIAS * 24 * 60 * 60 * 1000));
   const aulasRecentes = presencasAluno.filter(p => p.data >= janelaInicio).length;
   const minAulasRecentes = regra.minAulasRecentes ?? Math.round((regra.minFrequenciaSemanal || 0) * 5);
   const ritmoSemanal = aulasRecentes / (JANELA_DIAS / 7);
@@ -444,7 +444,7 @@ function computeRiscoEvasao(aluno) {
   if (presencas.length < 4) return null; // pouco histórico pra comparar com confiança
 
   const hoje = new Date();
-  const diasAtras = n => new Date(hoje.getTime() - n * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const diasAtras = n => localDateStr(new Date(hoje.getTime() - n * 24 * 60 * 60 * 1000));
   const janela90 = diasAtras(90);
   const janela21 = diasAtras(21);
 
@@ -585,6 +585,9 @@ async function autoGenerateOnLoad() {
   // Mensalidade é operação (Cobrança); recorrentes (aluguel, salários...)
   // são só do dono — não dá pra travar os dois atrás do mesmo flag de
   // "mês já gerado", senão quem loga primeiro no mês decide pros dois.
+  // Geração de mensalidades/recorrentes é do dono: o professor não recebe
+  // valores nem lançamentos (ver academia.js /bootstrap), então nem tenta.
+  if (decodeAuthToken()?.role !== 'admin') return;
   if (!data.meta.generatedMonths.includes(ym)) {
     await ensureMensalidadesForMonth(ym);
   }
@@ -724,7 +727,7 @@ function classifyFaixa(freqAtual, tatame) {
    (evita 1-2 chamadas isoladas derrubarem o planejamento do tatame). */
 function turmaFrequenciaReal(turmaNome, dias = 30) {
   const hoje = new Date();
-  const desde = new Date(hoje.getTime() - dias * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const desde = localDateStr(new Date(hoje.getTime() - dias * 24 * 60 * 60 * 1000));
   const presencasTurma = data.presencas.filter(p => p.turma === turmaNome && p.data >= desde);
   if (!presencasTurma.length) return null;
 

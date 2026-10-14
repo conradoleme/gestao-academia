@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const { PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const pool = require('../db');
-const { studentToJSON, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, graduacaoToJSON, recadoToJSON } = require('../mappers');
+const { studentToJSON, studentToJSONParaOperacao, academiaShapeParaOperacao, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, graduacaoToJSON, recadoToJSON } = require('../mappers');
 const { requireRole, requireOwner } = require('../auth');
 const { r2Configurado, getR2Client } = require('../r2');
 const { slugify } = require('../slugify');
@@ -26,19 +26,17 @@ router.get('/bootstrap', asyncHandler(async (req, res) => {
   const [studentRows] = await pool.query('SELECT * FROM students WHERE academia_id = ?', [req.academiaId]);
   // Operação só enxerga lançamentos vinculados a aluno (mensalidade/matrícula)
   // — o ledger completo (despesas, salários etc.) fica só com o dono.
-  const txQuery = req.role === 'operacao'
-    ? 'SELECT * FROM transactions WHERE academia_id = ? AND aluno_id IS NOT NULL'
-    : 'SELECT * FROM transactions WHERE academia_id = ?';
-  const [txRows] = await pool.query(txQuery, [req.academiaId]);
+  const operacao = req.role === 'operacao';
+  const [txRows] = operacao ? [[]] : await pool.query('SELECT * FROM transactions WHERE academia_id = ?', [req.academiaId]);
   const [presencaRows] = await pool.query('SELECT * FROM presencas WHERE academia_id = ?', [req.academiaId]);
   const [graduacaoRows] = await pool.query('SELECT * FROM graduacoes WHERE academia_id = ?', [req.academiaId]);
   const [recadoRows] = await pool.query('SELECT * FROM recados WHERE academia_id = ? ORDER BY created_at DESC', [req.academiaId]);
 
-  const shape = academiaToShape(academiaRows[0]);
+  const shape = operacao ? academiaShapeParaOperacao(academiaToShape(academiaRows[0])) : academiaToShape(academiaRows[0]);
   res.json({
     ...shape,
     turmas: turmaRows.map(turmaToJSON),
-    students: studentRows.map(studentToJSON),
+    students: studentRows.map(operacao ? studentToJSONParaOperacao : studentToJSON),
     transactions: txRows.map(txToJSON),
     presencas: presencaRows.map(presencaToJSON),
     graduacoes: graduacaoRows.map(graduacaoToJSON),
@@ -49,7 +47,8 @@ router.get('/bootstrap', asyncHandler(async (req, res) => {
 router.get('/academia', asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM academias WHERE id = ?', [req.academiaId]);
   if (!rows[0]) return res.status(404).json({ error: 'Academia não encontrada.' });
-  res.json(academiaToShape(rows[0]));
+  const shape = academiaToShape(rows[0]);
+  res.json(req.role === 'operacao' ? academiaShapeParaOperacao(shape) : shape);
 }));
 
 const MODALIDADES_VALIDAS = ['bjj', 'judo', 'outro'];

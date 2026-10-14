@@ -9,6 +9,7 @@ const pool = require('../db');
 const { txToJSON } = require('../mappers');
 const { requireRole } = require('../auth');
 const asyncHandler = require('../asyncHandler');
+const { alunoDaAcademia } = require('../validate');
 const { readVersion, updateLocked, replyLockResult } = require('../locks');
 
 const STATUS_VALIDOS = ['a_receber', 'recebido'];
@@ -24,6 +25,7 @@ router.get('/', requireRole('admin'), asyncHandler(async (req, res) => {
 router.post('/', asyncHandler(async (req, res) => {
   const t = req.body || {};
   if (!t.alunoId) return res.status(400).json({ error: 'Informe o aluno.' });
+  if (!(await alunoDaAcademia(req.academiaId, t.alunoId))) return res.status(400).json({ error: 'Aluno não encontrado.' });
   if (!t.data || !t.categoria || !t.status) return res.status(400).json({ error: 'Dados incompletos para o lançamento.' });
   if (!STATUS_VALIDOS.includes(t.status)) return res.status(400).json({ error: 'Status inválido.' });
 

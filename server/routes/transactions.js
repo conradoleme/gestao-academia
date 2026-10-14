@@ -4,6 +4,7 @@ const pool = require('../db');
 const { txToJSON } = require('../mappers');
 const { requireRole } = require('../auth');
 const asyncHandler = require('../asyncHandler');
+const { alunoDaAcademia } = require('../validate');
 const { readVersion, updateLocked, replyLockResult } = require('../locks');
 
 /* Ledger completo (despesas, salários, aluguel etc.) — só o dono vê. A
@@ -20,6 +21,7 @@ router.post('/', asyncHandler(async (req, res) => {
   if (!t.data || !t.grupo || !t.categoria || !t.status || !t.tipo) {
     return res.status(400).json({ error: 'Dados incompletos para o lançamento.' });
   }
+  if (t.alunoId && !(await alunoDaAcademia(req.academiaId, t.alunoId))) return res.status(400).json({ error: 'Aluno não encontrado.' });
   // Despesa recorrente gerada automaticamente: uma por série (grupo+categoria+
   // descrição) por mês — várias telas abrindo juntas no começo do mês geravam
   // a mesma despesa N vezes. A trava fica no banco (dedup_key único).

@@ -128,7 +128,7 @@ function renderAlunoGraduacaoCard(g) {
 
   // Cor da faixa vai no fundo/borda, nunca no texto — faixas claras (ex:
   // Branca) ficam ilegíveis se o texto usar a cor da própria faixa.
-  const faixaTag = `<span class="tag" style="background:${g.cor}22;color:var(--text);border:1px solid ${g.cor}88;font-size:13px;">${escapeHtml(g.faixaAtual)}</span>`;
+  const faixaTag = `<span class="tag" style="background:${g.cor}22;color:var(--text);border:1px solid ${g.cor}88;font-size:13px;">${escapeHtml(g.faixaAtual)}${g.usaGrau && g.grau ? ' · ' + g.grau + '°' : ''}</span>`;
 
   if (g.semRegra) {
     return `<div class="card">

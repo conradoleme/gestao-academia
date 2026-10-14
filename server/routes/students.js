@@ -1,18 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db');
-const { studentToJSON } = require('../mappers');
+const { studentToJSON, studentToJSONParaOperacao } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
 const { readVersion, updateLocked, replyLockResult } = require('../locks');
 
 router.get('/', asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM students WHERE academia_id = ?', [req.academiaId]);
-  res.json(rows.map(studentToJSON));
+  res.json(rows.map(req.role === 'operacao' ? studentToJSONParaOperacao : studentToJSON));
 }));
 
 router.post('/', asyncHandler(async (req, res) => {
-  const s = req.body;
+  const s = { ...req.body };
   if (!s.nome) return res.status(400).json({ error: 'Nome é obrigatório.' });
+  if (req.role === 'operacao') { s.valorMensalidade = 0; s.diaVencimento = null; s.valorMatricula = 0; s.mesMatricula = null; s.diaMatricula = null; }
   const [result] = await pool.query(
     `INSERT INTO students (academia_id, nome, turma, categoria, status, valor_mensalidade, dia_vencimento, valor_matricula, mes_matricula, dia_matricula, email, telefone, observacoes, data_inicio, faixa, grau, aulas_anteriores)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
@@ -29,11 +30,16 @@ router.put('/:id', asyncHandler(async (req, res) => {
   const s = req.body;
   const v = readVersion(req, res); if (v === null) return;
   const where = 'id=? AND academia_id=?', ids = [req.params.id, req.academiaId];
+  // Professor (operacao) nunca recebe valores financeiros, então o que ele
+  // devolve aqui é zero/vazio — não pode sobrescrever mensalidade/matrícula.
+  const financeiro = req.role === 'operacao' ? null : {
+    sql: 'valor_mensalidade=?, dia_vencimento=?, valor_matricula=?, mes_matricula=?, dia_matricula=?, ',
+    params: [s.valorMensalidade || 0, s.diaVencimento || null, s.valorMatricula || 0, s.mesMatricula || null, s.diaMatricula || null],
+  };
   const ok = await updateLocked('students',
-    'nome=?, turma=?, categoria=?, status=?, valor_mensalidade=?, dia_vencimento=?, valor_matricula=?, mes_matricula=?, dia_matricula=?, email=?, telefone=?, observacoes=?, data_inicio=?, faixa=?, grau=?, aulas_anteriores=?',
-    [s.nome, s.turma || null, s.categoria, s.status, s.valorMensalidade || 0, s.diaVencimento || null,
-     s.valorMatricula || 0, s.mesMatricula || null, s.diaMatricula || null, s.email || null,
-     s.telefone || null, s.observacoes || null, s.dataInicio || null, s.faixa || null, s.grau || 0, Math.max(0, parseInt(s.aulasAnteriores) || 0)],
+    `nome=?, turma=?, categoria=?, status=?, ${financeiro ? financeiro.sql : ''}email=?, telefone=?, observacoes=?, data_inicio=?, faixa=?, grau=?, aulas_anteriores=?`,
+    [s.nome, s.turma || null, s.categoria, s.status, ...(financeiro ? financeiro.params : []),
+     s.email || null, s.telefone || null, s.observacoes || null, s.dataInicio || null, s.faixa || null, s.grau || 0, Math.max(0, parseInt(s.aulasAnteriores) || 0)],
     where, ids, v);
   await replyLockResult(res, ok, v, 'students', where, ids, 'Aluno não encontrado.');
 }));

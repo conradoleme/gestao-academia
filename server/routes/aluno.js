@@ -45,7 +45,8 @@ function computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes) {
   const totalAulas = presencas.filter(p => !dataAncora || p.data >= dataAncora).length + (aluno.aulasAnteriores || 0);
 
   const JANELA_DIAS = 60;
-  const janelaInicio = new Date(Date.now() - JANELA_DIAS * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  // Data no fuso de Brasília (o servidor roda em UTC) — igual ao cálculo do cliente.
+  const janelaInicio = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date(Date.now() - JANELA_DIAS * 24 * 60 * 60 * 1000));
   const aulasRecentes = presencas.filter(p => p.data >= janelaInicio).length;
   // Regras antigas só têm minFrequenciaSemanal — converte pra ~60% do ritmo nominal.
   const minAulasRecentes = regra.minAulasRecentes ?? Math.round((regra.minFrequenciaSemanal || 0) * 5);
@@ -79,7 +80,7 @@ router.get('/me', asyncHandler(async (req, res) => {
     ? await pool.query('SELECT * FROM turmas WHERE academia_id = ? AND nome = ?', [req.academiaId, aluno.turma])
     : [[]];
 
-  const [academiaRows] = await pool.query('SELECT nome, graduacao_regras FROM academias WHERE id = ?', [req.academiaId]);
+  const [academiaRows] = await pool.query('SELECT nome, graduacao_regras, usa_grau FROM academias WHERE id = ?', [req.academiaId]);
   // Só a existência do registro, nunca o conteúdo — os dados sensíveis
   // continuam de fora do /me, buscados só quando o aluno abre a ficha.
   const [fichaMedicaRows] = await pool.query('SELECT 1 FROM fichas_medicas WHERE aluno_id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
@@ -106,7 +107,10 @@ router.get('/me', asyncHandler(async (req, res) => {
     aluno,
     pagamentos: txRows.map(txToJSON),
     turmas: turmaRows.map(turmaToJSON),
-    graduacao: computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes),
+    graduacao: (() => {
+      const g = computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes);
+      return g && { ...g, grau: aluno.grau || 0, usaGrau: academiaRows[0]?.usa_grau !== 0 };
+    })(),
     recados: recadoRows.map(recadoToJSON),
     fichaMedicaPreenchida: fichaMedicaRows.length > 0,
   });

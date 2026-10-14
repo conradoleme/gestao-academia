@@ -7,6 +7,7 @@ const router = express.Router();
 const pool = require('../db');
 const { presencaToJSON } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
+const { alunoDaAcademia } = require('../validate');
 
 router.get('/', asyncHandler(async (req, res) => {
   const [rows] = await pool.query('SELECT * FROM presencas WHERE academia_id = ? ORDER BY data DESC', [req.academiaId]);
@@ -16,6 +17,7 @@ router.get('/', asyncHandler(async (req, res) => {
 router.post('/', asyncHandler(async (req, res) => {
   const { alunoId, data, turma } = req.body || {};
   if (!alunoId || !data) return res.status(400).json({ error: 'Informe o aluno e a data.' });
+  if (!(await alunoDaAcademia(req.academiaId, alunoId))) return res.status(400).json({ error: 'Aluno não encontrado.' });
 
   const [existing] = await pool.query(
     'SELECT * FROM presencas WHERE academia_id = ? AND aluno_id = ? AND data = ? AND turma <=> ?',

@@ -94,6 +94,17 @@ function usuarioToJSON(r) {
   };
 }
 
+/* Professor (operacao) não vê nada financeiro: o servidor nem envia — esconder
+   só na tela não basta, o dado ficaria acessível pelo console/rede. */
+function studentToJSONParaOperacao(r) {
+  return { ...studentToJSON(r), valorMensalidade: 0, diaVencimento: null, valorMatricula: 0, mesMatricula: null, diaMatricula: null };
+}
+
+function academiaShapeParaOperacao(shape) {
+  const { email, telefone, trialEndsAt, stripeAssinaturaAtiva, ...meta } = shape.meta;
+  return { ...shape, meta, cobrancaTemplates: [] };
+}
+
 function academiaToShape(r) {
   return {
     meta: {
@@ -118,4 +129,4 @@ function academiaToShape(r) {
   };
 }
 
-module.exports = { studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON, presencaToJSON, graduacaoToJSON, recadoToJSON, fichaMedicaToJSON };
+module.exports = { studentToJSONParaOperacao, academiaShapeParaOperacao, studentToJSON, turmaToJSON, txToJSON, academiaToShape, usuarioToJSON, presencaToJSON, graduacaoToJSON, recadoToJSON, fichaMedicaToJSON };

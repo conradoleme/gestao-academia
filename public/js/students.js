@@ -24,6 +24,7 @@ function renderAlunosPage() {
   const adultos = data.students.filter(s => s.categoria === 'Adulto' && s.status === 'Ativo').length;
   const particulares = data.students.filter(s => s.categoria === 'Particular' && s.status === 'Ativo').length;
   const receitaPrevista = activeStudents().reduce((s, a) => s + (a.valorMensalidade || 0), 0);
+  const semFinanceiro = ehOperacao();
   const turmaOptions = `<option value="">Turma — Todas</option>` +
     data.turmas.map(t => `<option value="${escapeHtml(t.nome)}" ${t.nome===alunosFiltro.turma?'selected':''}>${escapeHtml(t.nome)}</option>`).join('');
 
@@ -41,10 +42,10 @@ function renderAlunosPage() {
         <span class="kpi-label" style="margin:0;">Kids · Adulto · Particular</span>
         <span style="font-size:16px;font-weight:800;white-space:nowrap;">${kids} · ${adultos} · ${particulares}</span>
       </div>
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border);">
+      ${semFinanceiro ? '' : `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-top:1px solid var(--border);">
         <span class="kpi-label" style="margin:0;">Receita Recorrente / Mês</span>
         <span style="font-size:16px;font-weight:800;white-space:nowrap;">${fmt(receitaPrevista)}</span>
-      </div>
+      </div>`}
     </div>
 
     <div class="card">
@@ -52,7 +53,7 @@ function renderAlunosPage() {
         <h3 style="margin:0;">Cadastro de Alunos</h3>
         <div class="btn-row" style="margin:0;">
           <button class="btn btn-primary" style="flex:1;" onclick="openStudentForm()">+ Novo Aluno</button>
-          <button class="btn btn-secondary" onclick="gerarMensalidadesAgora()" title="Gerar mensalidades do mês">🔄 Gerar Mensalidades</button>
+          ${semFinanceiro ? '' : `<button class="btn btn-secondary" onclick="gerarMensalidadesAgora()" title="Gerar mensalidades do mês">🔄 Gerar Mensalidades</button>`}
         </div>
       </div>
 
@@ -85,7 +86,7 @@ function renderAlunosPage() {
         <table>
           <thead><tr>
             <th style="text-align:left;">Nome</th><th>Turma</th><th>Categoria</th><th>Status</th>
-            <th>Mensalidade</th><th>Vencimento</th><th>Matrícula</th><th>Ações</th>
+            ${semFinanceiro ? '' : '<th>Mensalidade</th><th>Vencimento</th><th>Matrícula</th>'}<th>Ações</th>
           </tr></thead>
           <tbody id="alunos-tbody"></tbody>
         </table>
@@ -98,7 +99,7 @@ function renderAlunosPage() {
 function renderAlunosTableBody() {
   const list = filteredStudents();
   document.getElementById('alunos-tbody').innerHTML = list.map(studentRow).join('') ||
-    `<tr><td colspan="8" style="text-align:center;color:var(--text2);">${data.students.length ? 'Nenhum aluno encontrado com esses filtros.' : 'Nenhum aluno cadastrado.'}</td></tr>`;
+    `<tr><td colspan="${ehOperacao() ? 5 : 8}" style="text-align:center;color:var(--text2);">${data.students.length ? 'Nenhum aluno encontrado com esses filtros.' : 'Nenhum aluno cadastrado.'}</td></tr>`;
 }
 
 function onAlunosFiltroChange() {
@@ -132,9 +133,9 @@ function studentRow(s) {
     <td data-label="Turma">${escapeHtml(s.turma || '—')}</td>
     <td data-label="Categoria"><span class="tag ${s.categoria === 'Kids' ? 'tag-yellow' : s.categoria === 'Particular' ? 'tag-cyan' : 'tag-accent'}">${s.categoria}</span></td>
     <td data-label="Status"><span class="tag ${s.status === 'Ativo' ? 'tag-green' : 'tag-red'}">${s.status}</span></td>
-    <td data-label="Mensalidade">${fmtFull(s.valorMensalidade || 0)}</td>
+    ${ehOperacao() ? '' : `<td data-label="Mensalidade">${fmtFull(s.valorMensalidade || 0)}</td>
     <td data-label="Vencimento">${s.diaVencimento ? 'Dia ' + s.diaVencimento : '—'}</td>
-    <td data-label="Matrícula">${s.valorMatricula ? fmtFull(s.valorMatricula) + ' (' + (s.mesMatricula||'—') + ')' : '—'}</td>
+    <td data-label="Matrícula">${s.valorMatricula ? fmtFull(s.valorMatricula) + ' (' + (s.mesMatricula||'—') + ')' : '—'}</td>`}
     <td data-label="Ações">
       <button class="btn-icon" title="Editar" onclick="openStudentForm('${s.id}')">✏️</button>
       <button class="btn-icon" title="Excluir" onclick="handleDeleteStudent('${s.id}')">🗑️</button>
@@ -175,7 +176,7 @@ function openStudentForm(id) {
       <div class="form-group"><label>WhatsApp / Telefone</label><input type="tel" id="f-telefone" value="${escapeHtml(s.telefone||'')}" placeholder="11987654321"></div>
     </div>
 
-    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Financeiro</div>
+    ${ehOperacao() ? '' : `<div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Financeiro</div>
     <div class="form-grid">
       <div class="form-group"><label>Valor Mensalidade (R$)</label><input type="text" inputmode="decimal" id="f-mensalidade" value="${formatCurrencyValue(s.valorMensalidade||0)}"></div>
       <div class="form-group"><label>Dia Vencimento</label><input type="number" id="f-vencimento" value="${s.diaVencimento||''}" min="1" max="31"></div>
@@ -183,7 +184,7 @@ function openStudentForm(id) {
       <div class="form-group"><label>Mês Matrícula</label><select id="f-mes-matricula">${mesOptions}</select></div>
       <div class="form-group"><label>Dia Matrícula</label><input type="number" id="f-dia-matricula" value="${s.diaMatricula||1}" min="1" max="31"></div>
     </div>
-
+`}
     <div style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600;margin:16px 0 8px;">Graduação</div>
     <div class="form-grid">
       <div class="form-group"><label>Data de Início (treino)</label><input type="date" id="f-data-inicio" value="${s.dataInicio||''}"></div>
@@ -256,11 +257,14 @@ function buildStudentPatch() {
     turma: document.getElementById('f-turma').value,
     categoria: document.getElementById('f-categoria').value,
     status: document.getElementById('f-status').value,
-    valorMensalidade: parseCurrencyValue(document.getElementById('f-mensalidade').value),
-    diaVencimento: parseInt(document.getElementById('f-vencimento').value) || null,
-    valorMatricula: parseCurrencyValue(document.getElementById('f-matricula').value),
-    mesMatricula: document.getElementById('f-mes-matricula').value,
-    diaMatricula: parseInt(document.getElementById('f-dia-matricula').value) || 1,
+    // Campos financeiros só existem pro dono/admin — professor nem os vê.
+    ...(document.getElementById('f-mensalidade') ? {
+      valorMensalidade: parseCurrencyValue(document.getElementById('f-mensalidade').value),
+      diaVencimento: parseInt(document.getElementById('f-vencimento').value) || null,
+      valorMatricula: parseCurrencyValue(document.getElementById('f-matricula').value),
+      mesMatricula: document.getElementById('f-mes-matricula').value,
+      diaMatricula: parseInt(document.getElementById('f-dia-matricula').value) || 1,
+    } : {}),
     email: document.getElementById('f-email').value.trim(),
     telefone: document.getElementById('f-telefone').value.trim(),
     observacoes: document.getElementById('f-obs').value.trim(),

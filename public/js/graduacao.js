@@ -34,7 +34,7 @@ function renderGraduacaoPage() {
     </div>
 
     <div class="card-grid card-grid-2" style="margin-bottom:20px;">
-      <div class="kpi kpi-green"><div class="kpi-label">Prontos para Graduar</div><div class="kpi-value">${prontos}</div></div>
+      <div class="kpi kpi-green"><div class="kpi-label">Prontos para Nova Faixa</div><div class="kpi-value">${prontos}</div></div>
       <div class="kpi kpi-accent"><div class="kpi-label">Alunos Acompanhados</div><div class="kpi-value">${alunos.length}</div></div>
     </div>
 
@@ -254,7 +254,7 @@ function renderProntosGraduarCard() {
   const visiveis = lista.slice(0, 8);
   return `
     <div class="card" style="margin-bottom:16px;">
-      <h3 style="margin-bottom:4px;">🎓 Prontos para graduar (${lista.length})</h3>
+      <h3 style="margin-bottom:4px;">🎓 Graduações pendentes (${lista.length})</h3>
       <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">
         Alunos que bateram o critério em aulas. Quem decide é o professor — "Ainda não" esconde o aluno daqui por 30 dias.
       </p>
