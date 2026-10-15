@@ -552,6 +552,9 @@ async function handleToggleUsaGrau() {
    usar o sistema) — nada a ver com a cobrança dos alunos dela. Só o dono
    (role admin) vê a engrenagem que abre isso, ver applyAssinaturaUI(). */
 function assinaturaStatusResumo() {
+  if (data.meta.isenta) {
+    return `<div class="alert alert-success">🎁 Sua academia tem <strong>mensalidade isenta</strong> — não há nada a pagar.</div>`;
+  }
   if (data.meta.stripeAssinaturaAtiva) {
     return `<div class="alert alert-success">✅ Assinatura ativa.</div>`;
   }
@@ -571,10 +574,10 @@ function openMinhaAssinaturaModal() {
   const email = decodeAuthToken()?.email || '';
   openModal('Minha Assinatura', `
     <div style="margin-bottom:18px;">${assinaturaStatusResumo()}</div>
-    <div class="btn-row" style="margin-bottom:20px;">
+    ${data.meta.isenta ? '' : `<div class="btn-row" style="margin-bottom:20px;">
       <button class="btn btn-primary" onclick="handleAntecipacaoAssinatura()">Antecipar assinatura</button>
       <button class="btn btn-secondary" onclick="handleMudarFormaPagamento()">Mudar forma de pagamento</button>
-    </div>
+    </div>`}
 
     <hr class="divider">
     <h3 style="font-size:14px;">Trocar E-mail</h3>

@@ -316,7 +316,7 @@ app.post('/admin/create-academia', requireSuperAdmin, async (req, res) => {
 app.get('/admin/academias', requireSuperAdmin, async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT a.id, a.nome, a.email, a.status_pagamento, a.valor_mensal, a.proximo_vencimento, a.created_at, a.stripe_subscription_id,
+      SELECT a.id, a.nome, a.email, a.status_pagamento, a.valor_mensal, a.proximo_vencimento, a.created_at, a.stripe_subscription_id, a.isenta,
         (SELECT COUNT(*) FROM students WHERE academia_id = a.id) AS total_alunos,
         (SELECT COUNT(*) FROM turmas WHERE academia_id = a.id) AS total_turmas
       FROM academias a ORDER BY a.created_at DESC
@@ -327,6 +327,7 @@ app.get('/admin/academias', requireSuperAdmin, async (req, res) => {
       proximoVencimento: r.proximo_vencimento, createdAt: r.created_at,
       totalAlunos: r.total_alunos, totalTurmas: r.total_turmas,
       stripeAtivo: !!r.stripe_subscription_id,
+      isenta: !!r.isenta,
     })));
   } catch (e) {
     logSafeError('GET /admin/academias', e);
@@ -335,15 +336,18 @@ app.get('/admin/academias', requireSuperAdmin, async (req, res) => {
 });
 
 app.put('/admin/academias/:id/pagamento', requireSuperAdmin, async (req, res) => {
-  const { statusPagamento, valorMensal, proximoVencimento } = req.body || {};
+  const { statusPagamento, valorMensal, proximoVencimento, isenta } = req.body || {};
   const statusesValidos = ['ativo', 'pendente', 'inadimplente'];
   if (statusPagamento && !statusesValidos.includes(statusPagamento)) {
     return res.status(400).json({ error: 'Status de pagamento inválido.' });
   }
   try {
+    // Isenta = cortesia: fica sempre "ativo", valor 0 e sem vencimento.
+    const isenção = isenta === true;
     await pool.query(
-      `UPDATE academias SET status_pagamento = ?, valor_mensal = ?, proximo_vencimento = ? WHERE id = ?`,
-      [statusPagamento || 'ativo', valorMensal || 0, proximoVencimento || null, req.params.id]
+      `UPDATE academias SET status_pagamento = ?, valor_mensal = ?, proximo_vencimento = ?, isenta = ? WHERE id = ?`,
+      isenção ? ['ativo', 0, null, 1, req.params.id]
+              : [statusPagamento || 'ativo', valorMensal || 0, proximoVencimento || null, 0, req.params.id]
     );
     res.json({ ok: true });
   } catch (e) {
@@ -360,6 +364,8 @@ app.post('/admin/academias/:id/stripe-checkout', requireSuperAdmin, async (req, 
   if (!stripeConfigurado() || !process.env.STRIPE_PRICE_ID) {
     return res.status(503).json({ error: 'Stripe não configurado (falta STRIPE_SECRET_KEY ou STRIPE_PRICE_ID).' });
   }
+  const [isentaRows] = await pool.query('SELECT isenta FROM academias WHERE id = ?', [req.params.id]);
+  if (isentaRows[0] && isentaRows[0].isenta) return res.status(400).json({ error: 'Esta academia é isenta de mensalidade — desmarque a isenção antes de gerar cobrança.' });
   try {
     const [rows] = await pool.query('SELECT id, nome, email, stripe_customer_id FROM academias WHERE id = ?', [req.params.id]);
     const academia = rows[0];

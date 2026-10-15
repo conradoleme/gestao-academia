@@ -105,7 +105,7 @@ function applyAssinaturaUI(role) {
   if (btnEngrenagem) btnEngrenagem.style.display = 'inline-flex';
   if (!banner) return;
 
-  if (!data.meta.trialEndsAt || data.meta.stripeAssinaturaAtiva) {
+  if (data.meta.isenta || !data.meta.trialEndsAt || data.meta.stripeAssinaturaAtiva) {
     banner.style.display = 'none';
     return;
   }

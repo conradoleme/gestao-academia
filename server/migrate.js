@@ -52,6 +52,9 @@ async function migrate() {
   // template inicial de graduação e depois descartada) — precisa persistir
   // pra saber, depois, se a densidade de tatame do Judô deve ser aplicada.
   await addColumnIfMissing('academias', 'modalidade', `VARCHAR(20) NULL`);
+  // Isenção de mensalidade da plataforma (cortesia/parceria): sem banner de teste,
+  // sem cobrança Stripe. Marcada só pelo super-admin.
+  await addColumnIfMissing('academias', 'isenta', `TINYINT(1) NOT NULL DEFAULT 0`);
   // Saldo de aulas trazido de outro controle — soma às presenças reais na graduação.
   await addColumnIfMissing('students', 'aulas_anteriores', `INT NOT NULL DEFAULT 0`);
   // "Ainda não" nos avisos de graduação: esconde o aluno até essa data.

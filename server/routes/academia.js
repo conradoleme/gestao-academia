@@ -232,8 +232,9 @@ router.post('/academia/stripe-checkout', requireOwner, asyncHandler(async (req, 
   if (!stripeConfigurado() || !process.env.STRIPE_PRICE_ID) {
     return res.status(503).json({ error: 'Cobrança não configurada — fale com o suporte.' });
   }
-  const [rows] = await pool.query('SELECT id, nome, email, stripe_customer_id FROM academias WHERE id = ?', [req.academiaId]);
+  const [rows] = await pool.query('SELECT id, nome, email, stripe_customer_id, isenta FROM academias WHERE id = ?', [req.academiaId]);
   const academia = rows[0];
+  if (academia && academia.isenta) return res.status(400).json({ error: 'Sua academia tem mensalidade isenta — não há nada a pagar.' });
   if (!academia) return res.status(404).json({ error: 'Academia não encontrada.' });
 
   const stripe = getStripeClient();

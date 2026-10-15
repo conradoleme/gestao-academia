@@ -120,7 +120,7 @@ function academiaRow(a) {
   const criada = a.createdAt ? new Date(a.createdAt).toLocaleDateString('pt-BR') : '—';
   return `<tr>
     <td style="text-align:left;">
-      <div style="font-weight:600;">${escapeHtml(a.nome)}</div>
+      <div style="font-weight:600;">${escapeHtml(a.nome)} ${a.isenta ? '<span class="tag tag-green" style="font-size:10px;">ISENTA</span>' : ''}</div>
       <div style="font-size:11px;color:var(--text2);">${escapeHtml(a.email)}</div>
     </td>
     <td>${a.totalAlunos}</td>
@@ -131,6 +131,9 @@ function academiaRow(a) {
         <option value="pendente" ${a.statusPagamento==='pendente'?'selected':''}>Pendente</option>
         <option value="inadimplente" ${a.statusPagamento==='inadimplente'?'selected':''}>Inadimplente</option>
       </select>
+      <label style="display:flex;align-items:center;gap:5px;font-size:11px;margin-top:6px;white-space:nowrap;cursor:pointer;">
+        <input type="checkbox" id="admin-isenta-${a.id}" style="width:auto;" ${a.isenta ? 'checked' : ''}> Isenta de mensalidade
+      </label>
     </td>
     <td><input type="text" inputmode="decimal" id="admin-valor-${a.id}" class="mini-input" style="width:90px;" value="${formatCurrencyValue(a.valorMensal)}"></td>
     <td><input type="date" id="admin-venc-${a.id}" class="mini-input" style="width:140px;" value="${a.proximoVencimento || ''}"></td>
@@ -203,10 +206,11 @@ async function salvarPagamento(id) {
   const statusPagamento = document.getElementById(`admin-status-${id}`).value;
   const valorMensal = parseCurrencyValue(document.getElementById(`admin-valor-${id}`).value);
   const proximoVencimento = document.getElementById(`admin-venc-${id}`).value || null;
+  const isenta = document.getElementById(`admin-isenta-${id}`).checked;
   try {
     await adminFetch(`/admin/academias/${id}/pagamento`, {
       method: 'PUT',
-      body: JSON.stringify({ statusPagamento, valorMensal, proximoVencimento }),
+      body: JSON.stringify({ statusPagamento, valorMensal, proximoVencimento, isenta }),
     });
     showToast('Pagamento atualizado!');
     await loadAcademias();

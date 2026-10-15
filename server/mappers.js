@@ -121,6 +121,7 @@ function academiaToShape(r) {
       modalidade: r.modalidade || 'bjj',
       trialEndsAt: r.trial_ends_at || null,
       stripeAssinaturaAtiva: !!r.stripe_subscription_id,
+      isenta: !!r.isenta,
     },
     categoryGroups: r.category_groups || {},
     cobrancaTemplates: r.cobranca_templates || [],
