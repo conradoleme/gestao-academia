@@ -156,7 +156,7 @@ function alunoBarraEvolucao(g) {
   const mascara = `<div style="position:absolute;top:0;bottom:0;right:0;width:${100 - pc}%;background:var(--surface2);"></div>`;
 
   const marcos = [];
-  if (g.usaGrau) { for (let k = 1; k <= 4; k++) marcos.push({ at: k / 4, n: Math.round(g.minAulas * k / 4), grau: k, fim: k === 4 }); }
+  if (g.usaGrau) { for (let k = 1; k <= 4; k++) marcos.push({ at: k / 4, n: Math.round(g.minAulas * k / 4), grau: k, fim: false }); }
   else { marcos.push({ at: 0.5, n: Math.round(g.minAulas / 2), grau: 0, fim: false }, { at: 1, n: g.minAulas, grau: 0, fim: true }); }
 
   // A meta final (desenho da faixa nova na ponta da barra) só aparece quando
@@ -166,14 +166,16 @@ function alunoBarraEvolucao(g) {
   const revelacao = pct >= 1 ? 1 : Math.max(0, (pct - REVELA_A_PARTIR) / (1 - REVELA_A_PARTIR));
   const efeitoMeta = `opacity:${revelacao.toFixed(2)};`;
 
+  const miolhoFaixaNova = (feito) => s2
+    ? `<span style="width:36px;height:22px;border-radius:4px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;background:linear-gradient(to bottom,${c2} 0 36%,${s2} 36% 64%,${c2} 64% 100%);font-size:11px;color:#fff;${efeitoMeta}">${feito ? '<span style="background:#111;border-radius:50%;width:15px;height:15px;line-height:15px;text-align:center;">✓</span>' : ''}</span>`
+    : `<span style="width:26px;height:26px;border-radius:50%;background:${c2};border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;${efeitoMeta}">${feito ? '✓' : '🏁'}</span>`;
+
   const marcosHtml = marcos.map(m => {
     if (m.fim && revelacao <= 0) return '';
     const feito = g.totalAulas >= m.n;
     let miolo;
     if (m.fim) {
-      miolo = s2
-        ? `<span style="width:36px;height:22px;border-radius:4px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;background:linear-gradient(to bottom,${c2} 0 36%,${s2} 36% 64%,${c2} 64% 100%);font-size:11px;color:#fff;${efeitoMeta}">${feito ? '<span style="background:#111;border-radius:50%;width:15px;height:15px;line-height:15px;text-align:center;">✓</span>' : ''}</span>`
-        : `<span style="width:26px;height:26px;border-radius:50%;background:${c2};border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;${efeitoMeta}">${feito ? '✓' : '🏁'}</span>`;
+      miolo = miolhoFaixaNova(feito);
     } else {
       miolo = `<span style="width:22px;height:22px;border-radius:50%;background:${feito ? 'var(--text)' : 'var(--surface)'};border:${feito ? '2px solid var(--surface)' : '1.5px dashed var(--text2)'};box-shadow:${feito ? '0 0 0 1px var(--border)' : 'none'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${feito ? 'var(--surface)' : 'var(--text2)'};">${feito ? '✓' : (m.grau || '')}</span>`;
     }
@@ -185,6 +187,13 @@ function alunoBarraEvolucao(g) {
     </div>`;
   }).join('');
 
+  // Com graus, o 4º grau fica sempre visível na ponta da barra e a faixa nova
+  // aparece ALÉM dela (só perto do objetivo, ver REVELA_A_PARTIR).
+  const faixaNovaHtml = (g.usaGrau && revelacao > 0) ? `<div style="position:absolute;left:calc(100% + 46px);top:-5px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;max-width:56px;text-align:center;">
+      ${miolhoFaixaNova(g.totalAulas >= g.minAulas)}
+      <span style="font-size:11px;margin-top:6px;line-height:1.25;color:${g.totalAulas >= g.minAulas ? 'var(--text)' : 'var(--text2)'};font-weight:${g.totalAulas >= g.minAulas ? 700 : 400};opacity:${revelacao.toFixed(2)};">${escapeHtml(g.proximaFaixa)}</span>
+    </div>` : '';
+
   const proximo = marcos.find(m => g.totalAulas < m.n);
   const falta = proximo ? proximo.n - g.totalAulas : 0;
   const metaTxt = proximo
@@ -195,10 +204,10 @@ function alunoBarraEvolucao(g) {
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:26px;">
       <span>Aulas treinadas na faixa</span><strong style="color:var(--text);">${g.totalAulas}/${g.minAulas}</strong>
     </div>
-    <div style="position:relative;margin:0 28px 52px 12px;">
+    <div style="position:relative;margin:0 ${g.usaGrau ? 66 : 28}px 52px 12px;">
       <div style="position:absolute;left:${pc}%;top:-20px;transform:translateX(-50%);font-size:11px;font-weight:700;white-space:nowrap;">${g.totalAulas} ▾</div>
       <div style="position:relative;height:16px;border-radius:999px;border:1px solid var(--border);overflow:hidden;background:${base};">${listras}${mascara}</div>
-      ${marcosHtml}
+      ${marcosHtml}${faixaNovaHtml}
     </div>
     <div style="display:flex;align-items:center;gap:8px;font-size:13px;background:var(--surface2);border-radius:10px;padding:10px 12px;">${metaTxt}</div>`;
 }
