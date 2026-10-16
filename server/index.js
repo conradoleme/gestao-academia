@@ -148,7 +148,7 @@ app.get('/health', (req, res) => res.status(200).json({ ok: true }));
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
-  keyGenerator: ipDoCliente, // atrás do Cloudflare, req.ip seria o do próprio Cloudflare
+  keyGenerator: ipDoCliente, // req.ip seria um IP interno do Railway (ver server/client-ip.js)
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Muitas tentativas — aguarde alguns minutos e tente de novo.' },
