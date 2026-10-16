@@ -130,13 +130,13 @@ function renderDashboardPage() {
         </p>
         <div class="table-wrap table-responsive-cards">
           <table>
-            <thead><tr><th style="text-align:left;">Aluno</th><th>Última vez</th><th>Frequência antes</th><th>Frequência agora</th><th>Ações</th></tr></thead>
+            <thead><tr><th style="text-align:left;">Aluno</th><th>Última vez</th><th>Últimos 90 dias</th><th>Últimas 3 semanas</th><th>Ações</th></tr></thead>
             <tbody>${emRisco.slice(0, 8).map(({ student, risco }) => `
               <tr>
                 <td data-label="Aluno" style="text-align:left;font-weight:600;">${escapeHtml(student.nome)}</td>
                 <td data-label="Última vez" class="${risco.diasSemTreinar >= 21 ? 'neg' : ''}">${risco.diasSemTreinar} dias atrás</td>
-                <td data-label="Frequência antes">${risco.baselineSemanal.toFixed(1)}x/sem.</td>
-                <td data-label="Frequência agora" class="neg">${risco.recenteSemanal.toFixed(1)}x/sem.</td>
+                <td data-label="Últimos 90 dias">${risco.aulas90} aula${risco.aulas90 === 1 ? '' : 's'}</td>
+                <td data-label="Últimas 3 semanas" class="neg">${risco.aulas21} aula${risco.aulas21 === 1 ? '' : 's'}</td>
                 <td data-label="Ações"><button class="btn-icon" title="Ver ficha do aluno" onclick="showPage('alunos').then(()=>openStudentForm('${student.id}'))">👤</button></td>
               </tr>
             `).join('')}</tbody>

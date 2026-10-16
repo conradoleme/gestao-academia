@@ -268,7 +268,7 @@ function alunoSimulacaoGraduacao(g) {
     ritmoLinha = 'Você já tem as aulas necessárias.';
   } else if (g.ritmoSemanal > 0) {
     const semanas = Math.ceil(faltamAulas / g.ritmoSemanal);
-    ritmoLinha = `No seu ritmo (<strong>${g.ritmoSemanal.toFixed(1)}</strong> aula(s)/semana nos últimos ${g.janelaDias} dias): ~<strong>${semanas}</strong> semana(s), por volta de ${fmt(semanas)}.`;
+    ritmoLinha = `No seu ritmo (<strong>${g.aulasRecentes}</strong> aula${g.aulasRecentes === 1 ? '' : 's'} nos últimos ${g.janelaDias} dias): ~<strong>${semanas}</strong> semana(s), por volta de ${fmt(semanas)}.`;
   } else {
     ritmoLinha = `Sem aulas nos últimos ${g.janelaDias} dias — volte a treinar pra retomar a contagem do prazo.`;
   }

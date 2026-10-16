@@ -463,7 +463,7 @@ function computeRiscoEvasao(aluno) {
   const diasSemTreinar = Math.floor((hoje - new Date(ultimaPresenca + 'T00:00:00')) / 86400000);
 
   if (quedaPercentual >= 0.5 || diasSemTreinar >= 21) {
-    return { baselineSemanal, recenteSemanal, quedaPercentual, diasSemTreinar, ultimaPresenca };
+    return { baselineSemanal, recenteSemanal, quedaPercentual, diasSemTreinar, ultimaPresenca, aulas90: presencas90.length, aulas21: presencas21.length };
   }
   return null;
 }
