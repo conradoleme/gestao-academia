@@ -6,6 +6,7 @@
    só atualiza se ninguém gravou no meio. Retorna null em caso de conflito. */
 const pool = require('./db');
 const { fichaMedicaToJSON } = require('./mappers');
+const { criptografarTexto } = require('./crypto');
 
 const CAMPOS = [
   ['contato_emergencia_nome', 'contatoEmergenciaNome'], ['contato_emergencia_parentesco', 'contatoEmergenciaParentesco'],
@@ -17,7 +18,8 @@ const CAMPOS = [
 ];
 
 async function upsertFichaMedica(academiaId, alunoId, f, version) {
-  const valores = CAMPOS.map(([, k]) => f[k] || null);
+  // Dados de saúde: cifrados antes de ir pro banco (ver server/crypto.js).
+  const valores = CAMPOS.map(([, k]) => criptografarTexto(f[k] || null));
   if (version === 0) {
     try {
       await pool.query(

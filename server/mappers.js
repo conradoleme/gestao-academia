@@ -35,24 +35,27 @@ function graduacaoToJSON(r) {
   };
 }
 
+const { descriptografarTexto } = require('./crypto');
+
 function fichaMedicaToJSON(r) {
   if (!r) return null;
+  const d = descriptografarTexto; // valor antigo (sem criptografia) passa direto
   return {
     alunoId: String(r.aluno_id),
-    contatoEmergenciaNome: r.contato_emergencia_nome || '',
-    contatoEmergenciaParentesco: r.contato_emergencia_parentesco || '',
-    contatoEmergenciaTelefone: r.contato_emergencia_telefone || '',
-    tipoSanguineo: r.tipo_sanguineo || '',
-    alergias: r.alergias || '',
-    condicoesMedicas: r.condicoes_medicas || '',
-    medicamentos: r.medicamentos || '',
-    lesoesPrevias: r.lesoes_previas || '',
-    restricaoPratica: r.restricao_pratica || '',
-    hospitalPreferencia: r.hospital_preferencia || '',
-    planoSaude: r.plano_saude || '',
-    numeroCarteirinha: r.numero_carteirinha || '',
-    responsavelLegalNome: r.responsavel_legal_nome || '',
-    responsavelLegalTelefone: r.responsavel_legal_telefone || '',
+    contatoEmergenciaNome: d(r.contato_emergencia_nome) || '',
+    contatoEmergenciaParentesco: d(r.contato_emergencia_parentesco) || '',
+    contatoEmergenciaTelefone: d(r.contato_emergencia_telefone) || '',
+    tipoSanguineo: d(r.tipo_sanguineo) || '',
+    alergias: d(r.alergias) || '',
+    condicoesMedicas: d(r.condicoes_medicas) || '',
+    medicamentos: d(r.medicamentos) || '',
+    lesoesPrevias: d(r.lesoes_previas) || '',
+    restricaoPratica: d(r.restricao_pratica) || '',
+    hospitalPreferencia: d(r.hospital_preferencia) || '',
+    planoSaude: d(r.plano_saude) || '',
+    numeroCarteirinha: d(r.numero_carteirinha) || '',
+    responsavelLegalNome: d(r.responsavel_legal_nome) || '',
+    responsavelLegalTelefone: d(r.responsavel_legal_telefone) || '',
     updatedAt: r.updated_at,
     version: Number(r.version) || 1,
   };

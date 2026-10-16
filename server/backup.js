@@ -17,6 +17,7 @@ const zlib = require('zlib');
 const { PutObjectCommand, ListObjectsV2Command, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const pool = require('./db');
 const { r2Configurado, getR2Client } = require('./r2');
+const { criptografarArquivo } = require('./crypto');
 
 const RETENTION_DIAS = 14;
 
@@ -67,23 +68,26 @@ async function runBackup() {
 
   const database = process.env.MYSQLDATABASE || process.env.DB_NAME;
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-  const filename = `backup-${database}-${timestamp}.sql.gz`;
-
   try {
     const sql = await dumpDatabaseSQL();
     const gzipped = zlib.gzipSync(Buffer.from(sql, 'utf8'));
+    // Com DATA_ENCRYPTION_KEY o arquivo sai cifrado (.enc) — quem obtém só o
+    // bucket não lê nada. Restaurar: node server/scripts/decrypt-backup.js
+    const cifrado = criptografarArquivo(gzipped);
+    const conteudo = cifrado || gzipped;
+    const filename = `backup-${database}-${timestamp}.sql.gz${cifrado ? '.enc' : ''}`;
 
     const s3 = getR2Client();
     await s3.send(new PutObjectCommand({
       Bucket: process.env.R2_BUCKET,
       Key: filename,
-      Body: gzipped,
+      Body: conteudo,
     }));
 
     const removidos = await limparBackupsAntigos(s3, `backup-${database}-`);
 
-    console.log(`[backup] ${filename} enviado (${(gzipped.length / 1024 / 1024).toFixed(2)} MB). ${removidos} backup(s) antigo(s) removido(s).`);
-    return { ok: true, filename, sizeMB: +(gzipped.length / 1024 / 1024).toFixed(2), removidos };
+    console.log(`[backup] ${filename} enviado (${(conteudo.length / 1024 / 1024).toFixed(2)} MB${cifrado ? ', cifrado' : ', SEM cifra'}). ${removidos} backup(s) antigo(s) removido(s).`);
+    return { ok: true, filename, sizeMB: +(conteudo.length / 1024 / 1024).toFixed(2), cifrado: !!cifrado, removidos };
   } catch (e) {
     console.error('[backup] Falha:', e.message);
     return { ok: false, error: e.message };

@@ -52,6 +52,18 @@ async function migrate() {
   // template inicial de graduação e depois descartada) — precisa persistir
   // pra saber, depois, se a densidade de tatame do Judô deve ser aplicada.
   await addColumnIfMissing('academias', 'modalidade', `VARCHAR(20) NULL`);
+  // Ficha médica passa a ser gravada cifrada (server/crypto.js): o texto cifrado
+  // é maior que o original, então as colunas VARCHAR viram TEXT (idempotente).
+  for (const col of ['contato_emergencia_nome', 'contato_emergencia_parentesco', 'contato_emergencia_telefone', 'tipo_sanguineo',
+                     'hospital_preferencia', 'plano_saude', 'numero_carteirinha', 'responsavel_legal_nome', 'responsavel_legal_telefone']) {
+    const [[info]] = await pool.query(
+      `SELECT DATA_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'fichas_medicas' AND COLUMN_NAME = ?`, [col]);
+    if (info && info.DATA_TYPE !== 'text') {
+      await pool.query(`ALTER TABLE fichas_medicas MODIFY ${col} TEXT NULL`);
+      console.log(`Coluna fichas_medicas.${col} ampliada pra TEXT.`);
+    }
+  }
+
   // Isenção de mensalidade da plataforma (cortesia/parceria): sem banner de teste,
   // sem cobrança Stripe. Marcada só pelo super-admin.
   await addColumnIfMissing('academias', 'isenta', `TINYINT(1) NOT NULL DEFAULT 0`);

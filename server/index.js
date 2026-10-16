@@ -102,6 +102,38 @@ app.post('/webhooks/stripe', express.raw({ type: 'application/json' }), async (r
   }
 });
 
+/* Cabeçalhos de segurança em TODAS as respostas. O app não carrega nada de fora
+   (sem scripts/fontes/CDN), então a CSP pode ser restrita; 'unsafe-inline' é
+   necessário porque as telas usam onclick/style inline. As fotos dos recados
+   vêm do R2 por link temporário — por isso o host do R2 em img-src. */
+app.disable('x-powered-by');
+const R2_HOST = (() => { try { return process.env.R2_ENDPOINT ? new URL(process.env.R2_ENDPOINT).host : ''; } catch (e) { return ''; } })();
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob:${R2_HOST ? ' https://*.' + R2_HOST.split('.').slice(1).join('.') : ''}`,
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  'upgrade-insecure-requests',
+].join('; ');
+app.use((req, res, next) => {
+  res.set({
+    'Content-Security-Policy': CSP,
+    'Strict-Transport-Security': 'max-age=31536000',
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+    'Cross-Origin-Opener-Policy': 'same-origin',
+  });
+  next();
+});
+
 app.use(express.json({ limit: '4mb' })); // acomoda a logo em base64 (upload de imagem)
 
 /* ---------------- Healthcheck (Railway) ---------------- */
