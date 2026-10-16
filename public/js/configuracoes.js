@@ -476,7 +476,11 @@ function renderGraduacaoRegrasLista() {
     return `
       <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:10px;">
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:${isUltima ? '0' : '10px'};">
-          <input type="color" value="${f.cor || '#94a3b8'}" style="width:36px;height:36px;padding:2px;flex-shrink:0;" onchange="handleFaixaFieldChange(${i},'cor',this.value)">
+          <input type="color" value="${f.cor || '#94a3b8'}" style="width:36px;height:36px;padding:2px;flex-shrink:0;" onchange="handleFaixaFieldChange(${i},'cor',this.value)" title="Cor da faixa">
+          <label style="margin:0;display:flex;align-items:center;gap:4px;font-size:11px;color:var(--text2);flex-shrink:0;" title="Faixa com listra no meio (ex: laranja e preta)">
+            <input type="checkbox" style="width:auto;" ${f.corListra ? 'checked' : ''} onchange="handleToggleListra(${i},this.checked)"> listra
+          </label>
+          ${f.corListra ? `<input type="color" value="${f.corListra}" style="width:30px;height:30px;padding:2px;flex-shrink:0;" onchange="handleFaixaFieldChange(${i},'corListra',this.value)" title="Cor da listra">` : ''}
           <input type="text" value="${escapeHtml(f.nome)}" style="flex:1;" onchange="handleFaixaFieldChange(${i},'nome',this.value)">
           <button class="btn-icon" title="Mover pra cima" ${i===0?'disabled':''} onclick="handleMoverFaixa(${i},-1)">⬆️</button>
           <button class="btn-icon" title="Mover pra baixo" ${isUltima?'disabled':''} onclick="handleMoverFaixa(${i},1)">⬇️</button>
@@ -495,6 +499,11 @@ function renderGraduacaoRegrasLista() {
       </div>
     `;
   }).join('') : `<p style="color:var(--text2);">Nenhuma faixa cadastrada pra ${graduacaoRegrasCategoriaAtiva} ainda — clique em "+ Adicionar Faixa".</p>`;
+}
+
+function handleToggleListra(i, ligada) {
+  graduacaoRegrasEdit[graduacaoRegrasCategoriaAtiva][i].corListra = ligada ? '#111111' : null;
+  renderGraduacaoRegrasLista();
 }
 
 function handleFaixaFieldChange(i, field, value) {

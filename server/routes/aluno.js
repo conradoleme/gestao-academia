@@ -36,7 +36,7 @@ function computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes) {
   const regra = faixaAtual.regra;
 
   if (!regra) {
-    return { faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, proximaFaixa: null, semRegra: true };
+    return { faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, corListra: faixaAtual.corListra || null, proximaFaixa: null, semRegra: true };
   }
 
   const graduacoesAluno = graduacoes.filter(g => g.faixaNova === faixaAtualNome).sort((a, b) => b.data.localeCompare(a.data));
@@ -57,7 +57,8 @@ function computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes) {
   const pronto = okAulas && okRecentes;
 
   return {
-    faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, proximaFaixa: proximaFaixa?.nome || null,
+    faixaAtual: faixaAtual.nome, cor: faixaAtual.cor, corListra: faixaAtual.corListra || null,
+    proximaFaixa: proximaFaixa?.nome || null, proximaCor: proximaFaixa?.cor || null, proximaCorListra: proximaFaixa?.corListra || null,
     dataAncora,
     totalAulas, minAulas: regra.minAulas, okAulas,
     aulasRecentes, minAulasRecentes, okRecentes, janelaDias: JANELA_DIAS, ritmoSemanal,

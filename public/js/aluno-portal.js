@@ -58,22 +58,7 @@ function renderAlunoPortal() {
 
         ${renderAlunoMural(recados)}
 
-        <div class="card-grid card-grid-2">
-          <div class="card">
-            <h3>Mensalidade — ${monthLabel(currentYearMonth())}</h3>
-            ${mensalidadeAtual ? `
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:10px;">
-                <div>
-                  <div style="font-size:22px;font-weight:700;">${fmtFull(mensalidadeAtual.valor)}</div>
-                  <div style="font-size:12px;color:var(--text2);">Vencimento: ${fmtDate(mensalidadeAtual.data)}</div>
-                </div>
-                ${statusBadge}
-              </div>
-            ` : `<p style="color:var(--text2);margin:8px 0 0;">Nenhuma mensalidade lançada para este mês ainda.</p>`}
-          </div>
-
-          ${renderAlunoGraduacaoCard(graduacao)}
-        </div>
+        ${renderAlunoGraduacaoCard(graduacao)}
 
         <div class="card">
           <h3>Minha Turma</h3>
@@ -93,6 +78,18 @@ function renderAlunoPortal() {
               <tbody>${pagamentos.length ? pagamentos.map(alunoPagamentoRow).join('') : `<tr><td colspan="4" style="text-align:center;color:var(--text2);">Nenhum pagamento registrado.</td></tr>`}</tbody>
             </table>
           </div>
+        </div>
+        <div style="position:sticky;bottom:12px;z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-md, 0 6px 20px rgba(0,0,0,0.12));padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <div>
+            <div style="font-size:11px;color:var(--text2);">Mensalidade · ${monthLabel(currentYearMonth())}</div>
+            ${mensalidadeAtual ? `
+              <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;">
+                <span style="font-size:18px;font-weight:700;">${fmtFull(mensalidadeAtual.valor)}</span>
+                <span style="font-size:12px;color:var(--text2);">vence ${fmtDate(mensalidadeAtual.data)}</span>
+              </div>
+            ` : `<div style="font-size:13px;color:var(--text2);margin-top:2px;">Nenhuma mensalidade lançada ainda.</div>`}
+          </div>
+          ${statusBadge}
         </div>
       </div>
     </div>
@@ -123,12 +120,85 @@ function alunoBarra(pct, cor) {
   </div>`;
 }
 
+function hexToRgba(hex, alpha) {
+  const h = String(hex || '#000000').replace('#', '');
+  const f = h.length === 3 ? h.split('').map(c => c + c).join('') : h;
+  const n = parseInt(f, 16) || 0;
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+}
+
+/* Miniatura da faixa: bolinha da cor, ou a faixa desenhada com a listra no
+   meio quando ela tem (ex: laranja e preta). */
+function alunoFaixaMini(cor, corListra, largura = 34, altura = 14) {
+  if (!corListra) {
+    return `<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:${cor};border:1px solid var(--border);vertical-align:-2px;"></span>`;
+  }
+  return `<span style="display:inline-block;width:${largura}px;height:${altura}px;border-radius:3px;border:1px solid var(--border);vertical-align:middle;background:linear-gradient(to bottom,${cor} 0 36%,${corListra} 36% 64%,${cor} 64% 100%);"></span>`;
+}
+
+/* Barra de evolução em aulas, como um objetivo a alcançar: o preenchimento
+   vai da cor da faixa atual pra cor da próxima (degradê) e, se a próxima faixa
+   tem listra, ela aparece no meio da barra bem clarinha a partir da metade e
+   cada vez mais forte até o 4º grau. Os graus são marcos na própria barra. */
+function alunoBarraEvolucao(g) {
+  const pct = Math.min(1, g.totalAulas / (g.minAulas || 1));
+  const pc = Math.round(pct * 100);
+  const c1 = g.cor, c2 = g.proximaCor || g.cor, s1 = g.corListra, s2 = g.proximaCorListra;
+  const base = c1 !== c2 ? `linear-gradient(90deg,${c1},${c2})` : c1;
+  const faixaListra = 'position:absolute;left:0;right:0;top:50%;height:6px;transform:translateY(-50%);';
+  let listras = '';
+  if (s1) listras += `<div style="${faixaListra}background:${s1};"></div>`;
+  if (s2 && s2 !== s1) {
+    listras += `<div style="${faixaListra}background:linear-gradient(90deg,${hexToRgba(s2, 0)} 0%,${hexToRgba(s2, 0)} 49.9%,${hexToRgba(s2, 0.12)} 50%,${hexToRgba(s2, 1)} 100%);"></div>`;
+  }
+  const mascara = `<div style="position:absolute;top:0;bottom:0;right:0;width:${100 - pc}%;background:var(--surface2);"></div>`;
+
+  const marcos = [];
+  if (g.usaGrau) { for (let k = 1; k <= 4; k++) marcos.push({ at: k / 4, n: Math.round(g.minAulas * k / 4), grau: k, fim: k === 4 }); }
+  else { marcos.push({ at: 0.5, n: Math.round(g.minAulas / 2), grau: 0, fim: false }, { at: 1, n: g.minAulas, grau: 0, fim: true }); }
+
+  const marcosHtml = marcos.map(m => {
+    const feito = g.totalAulas >= m.n;
+    let miolo;
+    if (m.fim) {
+      miolo = s2
+        ? `<span style="width:36px;height:22px;border-radius:4px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;background:linear-gradient(to bottom,${c2} 0 36%,${s2} 36% 64%,${c2} 64% 100%);font-size:11px;color:#fff;">${feito ? '<span style="background:#111;border-radius:50%;width:15px;height:15px;line-height:15px;text-align:center;">✓</span>' : ''}</span>`
+        : `<span style="width:26px;height:26px;border-radius:50%;background:${c2};border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;">${feito ? '✓' : '🏁'}</span>`;
+    } else {
+      miolo = `<span style="width:22px;height:22px;border-radius:50%;background:${feito ? 'var(--text)' : 'var(--surface)'};border:${feito ? '2px solid var(--surface)' : '1.5px dashed var(--text2)'};box-shadow:${feito ? '0 0 0 1px var(--border)' : 'none'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${feito ? 'var(--surface)' : 'var(--text2)'};">${feito ? '✓' : (m.grau || '')}</span>`;
+    }
+    const rotulo = m.fim ? g.proximaFaixa : (m.grau ? m.grau + 'º grau' : 'metade');
+    return `<div style="position:absolute;left:${Math.round(m.at * 100)}%;top:-5px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;max-width:76px;text-align:center;">
+      ${miolo}
+      <span style="font-size:11px;margin-top:6px;line-height:1.25;color:${feito ? 'var(--text)' : 'var(--text2)'};font-weight:${feito ? 700 : 400};">${escapeHtml(rotulo)}</span>
+      <span style="font-size:10.5px;color:var(--text2);white-space:nowrap;">${m.n} aulas</span>
+    </div>`;
+  }).join('');
+
+  const proximo = marcos.find(m => g.totalAulas < m.n);
+  const falta = proximo ? proximo.n - g.totalAulas : 0;
+  const metaTxt = proximo
+    ? `<span style="font-size:18px;">🎯</span><span>Próxima meta: <strong>${proximo.fim ? 'faixa ' + escapeHtml(g.proximaFaixa) : proximo.grau ? proximo.grau + 'º grau' : 'metade do caminho'}</strong> em ${falta} aula${falta > 1 ? 's' : ''}.</span>`
+    : `<span style="font-size:18px;">🏆</span><span>Aulas completas! Falta a avaliação do seu instrutor para a faixa <strong>${escapeHtml(g.proximaFaixa)}</strong>.</span>`;
+
+  return `
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:26px;">
+      <span>Aulas treinadas na faixa</span><strong style="color:var(--text);">${g.totalAulas}/${g.minAulas}</strong>
+    </div>
+    <div style="position:relative;margin:0 28px 52px 12px;">
+      <div style="position:absolute;left:${pc}%;top:-20px;transform:translateX(-50%);font-size:11px;font-weight:700;white-space:nowrap;">${g.totalAulas} ▾</div>
+      <div style="position:relative;height:16px;border-radius:999px;border:1px solid var(--border);overflow:hidden;background:${base};">${listras}${mascara}</div>
+      ${marcosHtml}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;font-size:13px;background:var(--surface2);border-radius:10px;padding:10px 12px;">${metaTxt}</div>`;
+}
+
 function renderAlunoGraduacaoCard(g) {
   if (!g) return '';
 
   // Cor da faixa vai no fundo/borda, nunca no texto — faixas claras (ex:
   // Branca) ficam ilegíveis se o texto usar a cor da própria faixa.
-  const faixaTag = `<span class="tag" style="background:${g.cor}22;color:var(--text);border:1px solid ${g.cor}88;font-size:13px;">${escapeHtml(g.faixaAtual)}${g.usaGrau && g.grau ? ' · ' + g.grau + '°' : ''}</span>`;
+  const faixaTag = `<span class="tag" style="display:inline-flex;align-items:center;gap:8px;background:${g.cor}22;color:var(--text);border:1px solid ${g.cor}88;font-size:13px;">${alunoFaixaMini(g.cor, g.corListra)}${escapeHtml(g.faixaAtual)}${g.usaGrau && g.grau ? ' · ' + g.grau + '°' : ''}</span>`;
 
   if (g.semRegra) {
     return `<div class="card">
@@ -138,39 +208,34 @@ function renderAlunoGraduacaoCard(g) {
     </div>`;
   }
 
+  const proxima = `<span style="display:inline-flex;align-items:center;gap:8px;color:var(--text2);">→ rumo a ${alunoFaixaMini(g.proximaCor || g.cor, g.proximaCorListra)} <strong style="color:var(--text);">${escapeHtml(g.proximaFaixa)}</strong></span>`;
+  const faltamAulas = Math.max(0, g.minAulas - g.totalAulas);
+
   if (g.pronto) {
     return `<div class="card">
       <h3>🥋 Evolução</h3>
-      <div style="margin-top:8px;">${faixaTag} <span style="color:var(--text2);">→ rumo a <strong>${escapeHtml(g.proximaFaixa)}</strong></span></div>
+      <div style="margin:8px 0 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${faixaTag} ${proxima}</div>
+      ${alunoBarraEvolucao(g)}
       <p style="margin:14px 0 0;font-weight:600;">🎉 Você já bateu os critérios pra próxima faixa! Fala com seu instrutor.</p>
       ${alunoAvaliacaoDisclaimer()}
     </div>`;
   }
 
-  const faltamAulas = Math.max(0, g.minAulas - g.totalAulas);
-
   return `<div class="card">
     <h3>🥋 Evolução</h3>
-    <div style="margin-top:8px;margin-bottom:14px;">${faixaTag} <span style="color:var(--text2);">→ rumo a <strong>${escapeHtml(g.proximaFaixa)}</strong></span></div>
+    <div style="margin:8px 0 18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">${faixaTag} ${proxima}</div>
 
-    <div style="display:flex;flex-direction:column;gap:12px;">
-      <div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
-          <span>Aulas treinadas na faixa</span><span>${g.totalAulas}/${g.minAulas}</span>
-        </div>
-        ${alunoBarra(g.totalAulas / (g.minAulas || 1), g.okAulas ? 'var(--green)' : 'var(--accent)')}
+    ${alunoBarraEvolucao(g)}
+
+    ${g.minAulasRecentes > 0 ? `<div style="margin-top:16px;">
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
+        <span>Aulas nos últimos ${g.janelaDias} dias</span><span>${g.aulasRecentes}/${g.minAulasRecentes}</span>
       </div>
-      ${g.minAulasRecentes > 0 ? `<div>
-        <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text2);margin-bottom:4px;">
-          <span>Aulas nos últimos ${g.janelaDias} dias</span><span>${g.aulasRecentes}/${g.minAulasRecentes}</span>
-        </div>
-        ${alunoBarra(g.aulasRecentes / g.minAulasRecentes, g.okRecentes ? 'var(--green)' : 'var(--accent)')}
-      </div>` : ''}
-    </div>
+      ${alunoBarra(g.aulasRecentes / g.minAulasRecentes, g.okRecentes ? 'var(--green)' : 'var(--accent)')}
+    </div>` : ''}
 
     <p style="color:var(--text2);font-size:12.5px;margin:14px 0 0;">
-      ${faltamAulas > 0 ? `Faltam <strong>${faltamAulas}</strong> aula(s) pra faixa ${escapeHtml(g.proximaFaixa)}.` : 'Aulas — feito ✓'}
-      ${!g.okRecentes ? ` Treine mais nas próximas semanas pra manter o ritmo recente.` : ''}
+      ${faltamAulas > 0 ? '' : 'Aulas — feito ✓.'}${!g.okRecentes ? ` Treine mais nas próximas semanas pra manter o ritmo recente.` : ''}
     </p>
 
     ${alunoSimulacaoGraduacao(g)}
