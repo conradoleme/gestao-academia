@@ -326,3 +326,49 @@ function iniciarVigiaNovaVersao() {
   setInterval(checarNovaVersao, 2 * 60 * 1000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checarNovaVersao(); });
 }
+
+
+/* ---------------- Fotos (recados) ---------------- */
+// Reduz a foto aqui no navegador antes de enviar: fica ~150-400KB em vez de
+// 3-5MB da câmera (poupa banda e armazenamento) e, de quebra, recomprimir
+// pelo canvas descarta a localização (EXIF) que a câmera guarda no arquivo.
+async function comprimirImagem(file, alvoKB = 420) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    let dataUrl = '';
+    for (const lado of [1280, 1024, 800]) {
+      const escala = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(img.naturalWidth * escala);
+      canvas.height = Math.round(img.naturalHeight * escala);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      for (const q of [0.8, 0.7, 0.6]) {
+        dataUrl = canvas.toDataURL('image/jpeg', q);
+        if (dataUrl.length * 0.75 <= alvoKB * 1024) return dataUrl;
+      }
+    }
+    return dataUrl;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function abrirFotoGrande(url) {
+  openModal('Foto', `<img src="${escapeHtml(url)}" alt="Foto do recado" style="width:100%;border-radius:10px;display:block;">`, { width: '720px' });
+}
+
+// Busca os links temporários das fotos de um recado e desenha as miniaturas.
+async function preencherFotosRecado(containerId, endpoint) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  try {
+    const fotos = await api.get(endpoint);
+    if (!fotos.length) { el.innerHTML = ''; return; }
+    el.innerHTML = fotos.map(f => `<img src="${escapeHtml(f.url)}" alt="Foto" loading="lazy" onclick="abrirFotoGrande(this.src)" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:zoom-in;">`).join('');
+  } catch (e) {
+    el.innerHTML = '';
+  }
+}

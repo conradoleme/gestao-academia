@@ -4,6 +4,7 @@ const pool = require('../db');
 const { studentToJSON, studentToJSONParaOperacao } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
 const { requireRole } = require('../auth');
+const { apagarFotosDosRecados } = require('../recadoFotos');
 const { readVersion, updateLocked, replyLockResult } = require('../locks');
 
 router.get('/', asyncHandler(async (req, res) => {
@@ -47,6 +48,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
 
 // Excluir aluno apaga presenças/graduações em cascata — só dono/admin, nunca o professor.
 router.delete('/:id', requireRole('admin'), asyncHandler(async (req, res) => {
+  // Os recados do aluno somem em cascata no banco — os arquivos de foto no R2 não.
+  const [recs] = await pool.query("SELECT id FROM recados WHERE academia_id=? AND aluno_id=?", [req.academiaId, req.params.id]);
+  await apagarFotosDosRecados(req.academiaId, recs.map(r => r.id));
   await pool.query('DELETE FROM students WHERE id=? AND academia_id=?', [req.params.id, req.academiaId]);
   res.json({ ok: true });
 }));

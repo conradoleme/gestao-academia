@@ -9,6 +9,7 @@ const { r2Configurado, getR2Client } = require('../r2');
 const { slugify } = require('../slugify');
 const { getStripeClient, stripeConfigurado } = require('../stripe-client');
 const asyncHandler = require('../asyncHandler');
+const { recadosComFotos } = require('../recadoFotos');
 const { sendConflict, MSG_DESATUALIZADO } = require('../locks');
 
 // SVG fica de fora de propósito: pode carregar <script>/onload embutido, e
@@ -40,7 +41,7 @@ router.get('/bootstrap', asyncHandler(async (req, res) => {
     transactions: txRows.map(txToJSON),
     presencas: presencaRows.map(presencaToJSON),
     graduacoes: graduacaoRows.map(graduacaoToJSON),
-    recados: recadoRows.map(recadoToJSON),
+    recados: await recadosComFotos(recadoRows, req.academiaId),
   });
 }));
 

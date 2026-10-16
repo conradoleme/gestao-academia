@@ -182,3 +182,18 @@ CREATE TABLE IF NOT EXISTS recados (
   CONSTRAINT fk_recados_aluno FOREIGN KEY (aluno_id) REFERENCES students(id) ON DELETE CASCADE,
   INDEX idx_recados_academia (academia_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Fotos anexadas a recados (só em recado endereçado a um aluno). O arquivo
+-- fica no R2 (chave em r2_key, bucket privado); aqui só o vínculo.
+CREATE TABLE IF NOT EXISTS recado_fotos (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  academia_id INT NOT NULL,
+  recado_id INT NOT NULL,
+  r2_key VARCHAR(255) NOT NULL,
+  mime VARCHAR(30) NOT NULL,
+  bytes INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_recado_fotos_academia FOREIGN KEY (academia_id) REFERENCES academias(id) ON DELETE CASCADE,
+  CONSTRAINT fk_recado_fotos_recado FOREIGN KEY (recado_id) REFERENCES recados(id) ON DELETE CASCADE,
+  INDEX idx_recado_fotos_recado (recado_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

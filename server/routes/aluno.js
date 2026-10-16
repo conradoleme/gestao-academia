@@ -10,6 +10,8 @@ const pool = require('../db');
 const { studentToJSON, turmaToJSON, txToJSON, recadoToJSON, fichaMedicaToJSON } = require('../mappers');
 const { upsertFichaMedica, fichaMedicaVazia } = require('../fichaMedicaUpsert');
 const asyncHandler = require('../asyncHandler');
+const { recadosComFotos } = require('../recadoFotos');
+const { r2Configurado, r2UrlTemporaria } = require('../r2');
 const { readVersion, sendConflict } = require('../locks');
 
 router.use((req, res, next) => {
@@ -112,9 +114,18 @@ router.get('/me', asyncHandler(async (req, res) => {
       const g = computeGraduacaoStatus(aluno, graduacaoRegras, presencas, graduacoes);
       return g && { ...g, grau: aluno.grau || 0, usaGrau: academiaRows[0]?.usa_grau !== 0 };
     })(),
-    recados: recadoRows.map(recadoToJSON),
+    recados: await recadosComFotos(recadoRows, req.academiaId),
     fichaMedicaPreenchida: fichaMedicaRows.length > 0,
   });
+}));
+
+/* Fotos de um recado: só as dos recados endereçados a ESTE aluno (alcance
+   'aluno'). Link temporário direto do R2 — nada passa pelo servidor. */
+router.get('/recados/:id/fotos', asyncHandler(async (req, res) => {
+  const [rec] = await pool.query("SELECT id FROM recados WHERE id = ? AND academia_id = ? AND alcance = 'aluno' AND aluno_id = ?", [req.params.id, req.academiaId, req.alunoId]);
+  if (!rec[0] || !r2Configurado()) return res.json([]);
+  const [fotos] = await pool.query('SELECT id, r2_key FROM recado_fotos WHERE recado_id = ? AND academia_id = ? ORDER BY id', [req.params.id, req.academiaId]);
+  res.json(await Promise.all(fotos.map(async f => ({ id: String(f.id), url: await r2UrlTemporaria(f.r2_key) }))));
 }));
 
 /* Fica fora do /me de propósito — só busca quando o aluno realmente abre

@@ -94,6 +94,7 @@ function renderAlunoPortal() {
       </div>
     </div>
   `;
+  (recados || []).filter(r => r.fotos && r.fotos.length).forEach(r => preencherFotosRecado(`foto-rec-${r.id}`, `/api/aluno/recados/${r.id}/fotos`));
 }
 
 function renderAlunoMural(recados) {
@@ -106,6 +107,7 @@ function renderAlunoMural(recados) {
           <div style="padding:12px 0;${i < recados.length - 1 ? 'border-bottom:1px solid var(--border);' : ''}">
             <strong style="font-size:14px;">${escapeHtml(r.titulo)}</strong>
             <p style="margin:4px 0 0;color:var(--text2);white-space:pre-wrap;font-size:13.5px;">${escapeHtml(r.mensagem)}</p>
+            ${(r.fotos && r.fotos.length) ? `<div id="foto-rec-${r.id}" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;"></div>` : ''}
             <div style="font-size:11px;color:var(--text2);margin-top:6px;">${new Date(r.createdAt).toLocaleDateString('pt-BR')}</div>
           </div>
         `).join('')}

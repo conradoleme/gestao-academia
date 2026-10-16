@@ -12,7 +12,7 @@ const { requireAuth, requireRole, login, requireSuperAdmin, loginSuperAdmin } = 
 const { sendEmail } = require('./mailer');
 const { runBackup } = require('./backup');
 const { scheduleBackups } = require('./backup-scheduler');
-const { r2Configurado, getR2Client } = require('./r2');
+const { r2Configurado, getR2Client, r2ApagarPrefixo } = require('./r2');
 const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS_BJJ, DEFAULT_GRADUACAO_REGRAS_JUDO } = require('./seed-defaults');
 const { logSafeError } = require('./log-safe-error');
@@ -419,6 +419,7 @@ app.post('/admin/backup-now', requireSuperAdmin, async (req, res) => {
 
 app.delete('/admin/academias/:id', requireSuperAdmin, async (req, res) => {
   try {
+    await r2ApagarPrefixo(`fotos/${Number(req.params.id)}/`);
     await pool.query('DELETE FROM academias WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
   } catch (e) {
