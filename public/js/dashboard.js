@@ -32,7 +32,7 @@ function renderAulasHojeCard() {
       ${aulas.length ? `
         <div style="display:flex;flex-direction:column;gap:8px;">
           ${aulas.map(a => `
-            <button onclick="irParaChamadaDaTurma('${a.turma.replace(/'/g, "\\'")}')" style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:10px;padding:14px 16px;">
+            <button data-turma="${escapeHtml(a.turma)}" onclick="irParaChamadaDaTurma(this.dataset.turma)" style="all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;background:var(--surface2);border-radius:10px;padding:14px 16px;">
               <span style="font-weight:600;">${escapeHtml(a.turma)}</span>
               <span style="color:var(--accent);font-size:13px;font-weight:600;">${a.hora} →</span>
             </button>

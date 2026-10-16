@@ -509,6 +509,8 @@ app.get('*', (req, res) => {
 /* ---------------- Rede de segurança — qualquer erro não tratado cai aqui,
    em vez de derrubar o processo ou vazar stack trace pro cliente. ---------------- */
 app.use((err, req, res, next) => {
+  if (err && err.type === 'entity.parse.failed') return res.status(400).json({ error: 'Requisição inválida.' });
+  if (err && err.type === 'entity.too.large') return res.status(413).json({ error: 'Requisição grande demais.' });
   logSafeError(`${req.method} ${req.path}`, err);
   res.status(500).json({ error: 'Erro interno do servidor.' });
 });

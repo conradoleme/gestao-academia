@@ -25,7 +25,7 @@ function renderTurmasPage() {
       </div>
       <div class="alert" style="margin-bottom:0;background:${diag.faixaAtual.cor}1a;border:1px solid ${diag.faixaAtual.cor}55;color:${diag.faixaAtual.cor};">
         Você está atualmente na faixa <strong>${diag.faixaAtual.label.toUpperCase()}</strong>
-        — turma mais cheia: <strong>${diag.turmaMaisCheia?.nome || '—'}</strong> com ${(diag.turmaMaisCheia?.freqAtual || 0)} aluno(s) por sessão (${((diag.turmaMaisCheia?.pctCapacidade||0)*100).toFixed(0)}% da capacidade de segurança).
+        — turma mais cheia: <strong>${escapeHtml(diag.turmaMaisCheia?.nome || '—')}</strong> com ${(diag.turmaMaisCheia?.freqAtual || 0)} aluno(s) por sessão (${((diag.turmaMaisCheia?.pctCapacidade||0)*100).toFixed(0)}% da capacidade de segurança).
       </div>
     </div>
 
@@ -81,7 +81,7 @@ function renderTurmasPage() {
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2);">Crescimento total da escola</span><span class="${diag.crescimentoTotal>=0?'pos':'neg'}">${fmtPct(diag.crescimentoTotal*100)}</span></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2);">Alunos ativos cadastrados</span><span>${diag.alunosAtivos}</span></div>
           <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2);">Alunos matriculados no ponto de estouro</span><span>${isFinite(diag.estouroEm) ? diag.estouroEm.toFixed(0) : '—'}</span></div>
-          <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2);">Turma mais cheia</span><span style="font-weight:700;">${diag.turmaMaisCheia?.nome || '—'} (${((diag.turmaMaisCheia?.pctCapacidade||0)*100).toFixed(0)}%)</span></div>
+          <div style="display:flex;justify-content:space-between;"><span style="color:var(--text2);">Turma mais cheia</span><span style="font-weight:700;">${escapeHtml(diag.turmaMaisCheia?.nome || '—')} (${((diag.turmaMaisCheia?.pctCapacidade||0)*100).toFixed(0)}%)</span></div>
         </div>
       </div>
       <div class="card">
@@ -95,7 +95,7 @@ function renderTurmasPage() {
 function turmaRow(t) {
   const badgeCls = t.nivel === 'critico' ? 'tag-red' : t.nivel === 'atencao' ? 'tag-yellow' : 'tag-green';
   return `<tr>
-    <td style="text-align:left;font-weight:600;">${t.nome}</td>
+    <td style="text-align:left;font-weight:600;">${escapeHtml(t.nome)}</td>
     <td style="font-size:11px;color:var(--text2);">${t.horarios.map(h=>`${h.dia.slice(0,3)} ${h.hora}`).join(', ') || '—'}</td>
     <td>${t.alunosMatriculados}</td>
     <td><input type="number" value="${t.freqAnterior}" class="mini-input" onchange="updateTurmaFreq('${t.id}','freqAnterior',this.value)"></td>
@@ -123,7 +123,7 @@ function renderGradeHoraria() {
       <td style="text-align:left;font-weight:600;">${hora}</td>
       ${dias.map(dia => {
         const t = data.turmas.find(t => t.horarios.some(h => h.dia === dia && h.hora === hora));
-        return `<td>${t ? `<span class="tag tag-accent">${t.nome}</span>` : '—'}</td>`;
+        return `<td>${t ? `<span class="tag tag-accent">${escapeHtml(t.nome)}</span>` : '—'}</td>`;
       }).join('')}
     </tr>`).join('')}</tbody>
   </table></div>`;

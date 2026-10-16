@@ -5,12 +5,12 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const pool = require('../db');
-const { requireRole } = require('../auth');
+const { requireOwner, invalidarSessoes } = require('../auth');
 const { usuarioToJSON } = require('../mappers');
 const asyncHandler = require('../asyncHandler');
 const { readVersion, updateLocked, replyLockResult } = require('../locks');
 
-router.use(requireRole('admin'));
+router.use(requireOwner);
 
 const ROLES_VALIDOS = ['admin', 'operacao', 'aluno'];
 
@@ -67,6 +67,7 @@ router.put('/:id', asyncHandler(async (req, res) => {
   const v = readVersion(req, res); if (v === null) return;
   const where = 'id=? AND academia_id=?', ids = [req.params.id, req.academiaId];
   const ok = await updateLocked('usuarios', 'nome=?, role=?, aluno_id=?', [nome, role, role === 'aluno' ? alunoId : null], where, ids, v);
+  invalidarSessoes();
   await replyLockResult(res, ok, v, 'usuarios', where, ids, 'Usuário não encontrado.');
 }));
 
@@ -77,11 +78,13 @@ router.put('/:id/senha', asyncHandler(async (req, res) => {
   }
   const novoHash = await bcrypt.hash(novaSenha, 10);
   await pool.query('UPDATE usuarios SET senha_hash = ? WHERE id = ? AND academia_id = ?', [novoHash, req.params.id, req.academiaId]);
+  invalidarSessoes();
   res.json({ ok: true });
 }));
 
 router.delete('/:id', asyncHandler(async (req, res) => {
   await pool.query('DELETE FROM usuarios WHERE id = ? AND academia_id = ?', [req.params.id, req.academiaId]);
+  invalidarSessoes();
   res.json({ ok: true });
 }));
 

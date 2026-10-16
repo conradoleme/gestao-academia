@@ -70,7 +70,7 @@ function inadimplenciaRow(item) {
         <div class="avatar">${initials(s.nome)}</div>
         <div>
           <div style="font-weight:600;">${escapeHtml(s.nome)}</div>
-          <div style="font-size:11px;color:var(--text2);">${s.categoria}</div>
+          <div style="font-size:11px;color:var(--text2);">${escapeHtml(s.categoria)}</div>
         </div>
       </div>
     </td>

@@ -236,7 +236,7 @@ async function handleCobrarStripe(id, nome) {
 }
 
 function openTrocarSenhaModal(id, nome) {
-  openModal(`Trocar Senha — ${nome}`, `
+  openModal(`Trocar Senha — ${escapeHtml(nome)}`, `
     <div class="form-group"><label>Nova senha</label><input type="password" id="new-senha-input" placeholder="Mínimo 8 caracteres"></div>
     <div id="new-senha-error"></div>
     <div class="btn-row" style="margin-top:16px;">
@@ -264,7 +264,7 @@ async function handleTrocarSenha(id) {
 }
 
 function confirmarExclusaoAcademia(id, nome) {
-  confirmAction(`Excluir a academia <strong>${nome}</strong>? Isso apaga todos os alunos, turmas e lançamentos dela permanentemente.`, async () => {
+  confirmAction(`Excluir a academia <strong>${escapeHtml(nome)}</strong>? Isso apaga todos os alunos, turmas e lançamentos dela permanentemente.`, async () => {
     try {
       await adminFetch(`/admin/academias/${id}`, { method: 'DELETE' });
       showToast('Academia excluída.');

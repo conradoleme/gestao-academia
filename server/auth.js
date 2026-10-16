@@ -10,22 +10,58 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET não configurado — defina a variável de ambiente antes de subir o servidor.');
 }
 
-function requireAuth(req, res, next) {
+/* O token vale 30 dias, mas quem manda é o banco: a cada requisição confirmamos
+   que o usuário (ou a academia) ainda existe e usamos o papel ATUAL dele — assim
+   remover ou rebaixar alguém corta o acesso na hora, sem esperar o token expirar.
+   Cache curto só pra não somar uma consulta em toda chamada. */
+const SESSAO_TTL_MS = 10 * 1000;
+const sessaoCache = new Map();
+
+function invalidarSessoes() { sessaoCache.clear(); }
+
+async function sessaoAtual(payload) {
+  const chave = payload.userId ? `u:${payload.userId}` : `a:${payload.academiaId}`;
+  const hit = sessaoCache.get(chave);
+  if (hit && hit.exp > Date.now()) return hit.dados;
+
+  let dados = null;
+  if (payload.userId) {
+    const [rows] = await pool.query('SELECT role, aluno_id, academia_id FROM usuarios WHERE id = ?', [payload.userId]);
+    if (rows[0] && rows[0].academia_id === payload.academiaId) {
+      dados = { role: rows[0].role, alunoId: rows[0].aluno_id || null };
+    }
+  } else {
+    const [rows] = await pool.query('SELECT id FROM academias WHERE id = ?', [payload.academiaId]);
+    if (rows[0]) dados = { role: 'admin', alunoId: null };
+  }
+  if (sessaoCache.size > 5000) sessaoCache.clear();
+  if (dados) sessaoCache.set(chave, { dados, exp: Date.now() + SESSAO_TTL_MS });
+  return dados;
+}
+
+async function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Não autenticado.' });
+  let payload;
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
-    // Um token de super-admin (sem academiaId) não é um login de tenant —
-    // rejeita aqui em vez de deixar academia_id=undefined vazar pras queries.
-    if (!payload.academiaId) return res.status(401).json({ error: 'Não autenticado.' });
-    req.academiaId = payload.academiaId;
-    req.role = payload.role;
-    req.userId = payload.userId || null;
-    req.alunoId = payload.alunoId || null;
-    next();
+    payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
   } catch (e) {
     return res.status(401).json({ error: 'Sessão expirada — faça login novamente.' });
+  }
+  // Um token de super-admin (sem academiaId) não é um login de tenant —
+  // rejeita aqui em vez de deixar academia_id=undefined vazar pras queries.
+  if (!payload.academiaId) return res.status(401).json({ error: 'Não autenticado.' });
+  try {
+    const sessao = await sessaoAtual(payload);
+    if (!sessao) return res.status(401).json({ error: 'Sessão expirada — faça login novamente.' });
+    req.academiaId = payload.academiaId;
+    req.role = sessao.role;
+    req.userId = payload.userId || null;
+    req.alunoId = sessao.alunoId;
+    next();
+  } catch (e) {
+    next(e);
   }
 }
 
@@ -37,7 +73,7 @@ function requireSuperAdmin(req, res, next) {
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'Não autenticado.' });
   try {
-    const payload = jwt.verify(token, JWT_SECRET);
+    const payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     if (!payload.superAdmin) return res.status(403).json({ error: 'Sem permissão para essa ação.' });
     req.superAdminId = payload.superAdminId;
     next();
@@ -99,4 +135,4 @@ async function login(email, senha) {
   return null;
 }
 
-module.exports = { requireAuth, requireRole, requireOwner, login, requireSuperAdmin, loginSuperAdmin, JWT_SECRET };
+module.exports = { invalidarSessoes, requireAuth, requireRole, requireOwner, login, requireSuperAdmin, loginSuperAdmin, JWT_SECRET };

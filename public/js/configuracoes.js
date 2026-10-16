@@ -19,9 +19,10 @@ async function renderConfiguracoesPage() {
   const email = decodeAuthToken()?.email || '—';
   const role = decodeAuthToken()?.role;
   const isAdmin = role === 'admin';
+  const ehDono = isAdmin && !decodeAuthToken()?.userId; // admin extra não gerencia acessos
 
   if (isAdmin) {
-    try { usuariosCache = await fetchUsuarios(); } catch (e) { usuariosCache = []; }
+    if (ehDono) { try { usuariosCache = await fetchUsuarios(); } catch (e) { usuariosCache = []; } }
     if (!graduacaoRegrasEdit) initGraduacaoRegrasEdit();
   }
 
@@ -121,7 +122,7 @@ async function renderConfiguracoesPage() {
       </div>
     </div>
 
-    ${isAdmin ? `
+    ${ehDono ? `
       <div class="card" style="margin-bottom:24px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
           <div>
@@ -139,7 +140,9 @@ async function renderConfiguracoesPage() {
           </table>
         </div>
       </div>
+    ` : ''}
 
+    ${isAdmin ? `
       <div class="card">
         <h3>Regras de Graduação</h3>
         <p style="color:var(--text2);font-size:12.5px;margin-bottom:16px;">Defina a sequência de faixas de cada categoria e o critério pra avançar pra próxima — em aulas: o tempo é o ritmo de cada aluno. "Aulas nos últimos 60 dias" evita graduar quem parou de treinar (0 desliga). A última faixa da lista é o topo, sem critério.</p>
@@ -425,7 +428,7 @@ async function saveUsuarioForm(id) {
 }
 
 function openUsuarioSenhaModal(id, nome) {
-  openModal(`Trocar Senha — ${nome}`, `
+  openModal(`Trocar Senha — ${escapeHtml(nome)}`, `
     <div class="form-group"><label>Nova senha</label><input type="password" id="us-nova-senha" placeholder="Mínimo 8 caracteres"></div>
     <div id="us-senha-error"></div>
     <div class="btn-row" style="margin-top:16px;">
@@ -453,7 +456,7 @@ async function handleUsuarioSenha(id) {
 }
 
 function handleDeleteUsuario(id, nome) {
-  confirmAction(`Remover o acesso de <strong>${nome}</strong>? A pessoa não conseguirá mais entrar no sistema.`, async () => {
+  confirmAction(`Remover o acesso de <strong>${escapeHtml(nome)}</strong>? A pessoa não conseguirá mais entrar no sistema.`, async () => {
     await deleteUsuario(id);
     showToast('Usuário removido.');
     renderConfiguracoesPage();
