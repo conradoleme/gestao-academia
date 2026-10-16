@@ -149,7 +149,6 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
   keyGenerator: ipDoCliente, // atrás do Cloudflare, req.ip seria o do próprio Cloudflare
-  validate: { keyGeneratorIpFallback: false },
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Muitas tentativas — aguarde alguns minutos e tente de novo.' },
