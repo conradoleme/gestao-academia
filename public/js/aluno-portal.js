@@ -157,13 +157,15 @@ function alunoBarraEvolucao(g) {
   if (g.usaGrau) { for (let k = 1; k <= 4; k++) marcos.push({ at: k / 4, n: Math.round(g.minAulas * k / 4), grau: k, fim: k === 4 }); }
   else { marcos.push({ at: 0.5, n: Math.round(g.minAulas / 2), grau: 0, fim: false }, { at: 1, n: g.minAulas, grau: 0, fim: true }); }
 
-  // A meta final (faixa nova) não aparece de cara: começa quase invisível e
-  // embaçada e vai se revelando conforme o aluno avança — surpresa a conquistar.
-  const revelacao = pct >= 1 ? 1 : 0.1 + 0.9 * Math.pow(pct, 1.5);
-  const embaco = pct >= 1 ? 0 : Math.round((1 - pct) * 30) / 10;
-  const efeitoMeta = `opacity:${revelacao.toFixed(2)};filter:blur(${embaco}px);`;
+  // A meta final (desenho da faixa nova na ponta da barra) só aparece quando
+  // o aluno está perto do objetivo: some até ~87% das aulas e surge dali até
+  // completar. O nome da próxima faixa continua sempre no título do cartão.
+  const REVELA_A_PARTIR = 0.875;
+  const revelacao = pct >= 1 ? 1 : Math.max(0, (pct - REVELA_A_PARTIR) / (1 - REVELA_A_PARTIR));
+  const efeitoMeta = `opacity:${revelacao.toFixed(2)};`;
 
   const marcosHtml = marcos.map(m => {
+    if (m.fim && revelacao <= 0) return '';
     const feito = g.totalAulas >= m.n;
     let miolo;
     if (m.fim) {
