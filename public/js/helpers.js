@@ -333,18 +333,28 @@ function iniciarVigiaNovaVersao() {
 // 3-5MB da câmera (poupa banda e armazenamento) e, de quebra, recomprimir
 // pelo canvas descarta a localização (EXIF) que a câmera guarda no arquivo.
 async function comprimirImagem(file, alvoKB = 420) {
-  const url = URL.createObjectURL(file);
+  // createImageBitmap não depende da aba estar visível e já respeita a
+  // rotação da câmera; <img onload> fica como alternativa pra navegadores antigos.
+  let origem, largura, altura, liberar = () => {};
   try {
-    const img = new Image();
-    img.src = url;
-    await img.decode();
+    origem = await createImageBitmap(file);
+    largura = origem.width; altura = origem.height;
+    liberar = () => origem.close && origem.close();
+  } catch (e) {
+    const url = URL.createObjectURL(file);
+    origem = new Image();
+    await new Promise((resolve, reject) => { origem.onload = resolve; origem.onerror = reject; origem.src = url; });
+    largura = origem.naturalWidth; altura = origem.naturalHeight;
+    liberar = () => URL.revokeObjectURL(url);
+  }
+  try {
     let dataUrl = '';
     for (const lado of [1280, 1024, 800]) {
-      const escala = Math.min(1, lado / Math.max(img.naturalWidth, img.naturalHeight));
+      const escala = Math.min(1, lado / Math.max(largura, altura));
       const canvas = document.createElement('canvas');
-      canvas.width = Math.round(img.naturalWidth * escala);
-      canvas.height = Math.round(img.naturalHeight * escala);
-      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      canvas.width = Math.round(largura * escala);
+      canvas.height = Math.round(altura * escala);
+      canvas.getContext('2d').drawImage(origem, 0, 0, canvas.width, canvas.height);
       for (const q of [0.8, 0.7, 0.6]) {
         dataUrl = canvas.toDataURL('image/jpeg', q);
         if (dataUrl.length * 0.75 <= alvoKB * 1024) return dataUrl;
@@ -352,7 +362,7 @@ async function comprimirImagem(file, alvoKB = 420) {
     }
     return dataUrl;
   } finally {
-    URL.revokeObjectURL(url);
+    liberar();
   }
 }
 
