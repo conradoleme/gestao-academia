@@ -5,6 +5,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const rateLimit = require('express-rate-limit');
+const { ipDoCliente, exigirOrigemVerificada } = require('./client-ip');
 
 const migrate = require('./migrate');
 const pool = require('./db');
@@ -36,6 +37,8 @@ const PORT = process.env.PORT || 3000;
 // Railway fica atrás de um proxy reverso — sem isso, todo mundo apareceria
 // com o mesmo IP (o do proxy) pro rate limiter abaixo, e um limitaria todos.
 app.set('trust proxy', 1);
+// Opcional (desligado sem ORIGIN_VERIFY_SECRET): só aceita tráfego que passou pelo Cloudflare.
+app.use(exigirOrigemVerificada);
 
 // Frontend e API vivem na mesma origem (Railway serve os dois do mesmo
 // domínio) — não existe motivo pra aceitar chamada de outro site. Em dev
@@ -145,6 +148,8 @@ app.get('/health', (req, res) => res.status(200).json({ ok: true }));
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
+  keyGenerator: ipDoCliente, // atrás do Cloudflare, req.ip seria o do próprio Cloudflare
+  validate: { keyGeneratorIpFallback: false },
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Muitas tentativas — aguarde alguns minutos e tente de novo.' },
