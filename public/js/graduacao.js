@@ -28,6 +28,14 @@ function renderGraduacaoPage() {
 
   const prontos = alunos.filter(a => a.status?.pronto).length;
 
+  // O "ritmo recente" depende da chamada: aulas migradas (saldo) não têm data e
+  // não contam nele. Se a maioria não tem nenhuma presença registrada nos
+  // últimos 60 dias, o número reflete falta de chamada, não falta de treino.
+  const comRegraRecente = alunos.filter(a => a.status && !a.status.semRegra && a.status.minAulasRecentes > 0);
+  const semNenhumaRecente = comRegraRecente.filter(a => a.status.aulasRecentes === 0).length;
+  const chamadaIncompleta = comRegraRecente.length >= 3 && semNenhumaRecente / comRegraRecente.length >= 0.5;
+  const ehAdmin = !ehOperacao();
+
   document.getElementById('page-graduacao').innerHTML = `
     <div class="section-header">
       <div><h1>Graduação</h1><p class="subtitle" style="margin:0;">Progresso de cada aluno rumo à próxima faixa, a partir da presença real</p></div>
@@ -37,6 +45,23 @@ function renderGraduacaoPage() {
       <div class="kpi kpi-green"><div class="kpi-label">Prontos para Nova Faixa</div><div class="kpi-value">${prontos}</div></div>
       <div class="kpi kpi-accent"><div class="kpi-label">Alunos Acompanhados</div><div class="kpi-value">${alunos.length}</div></div>
     </div>
+
+    ${chamadaIncompleta ? `
+      <div class="alert alert-warning" style="margin-bottom:16px;">
+        ⚠️ <strong>Poucas presenças registradas:</strong> ${semNenhumaRecente} de ${comRegraRecente.length} alunos não têm nenhuma aula marcada nos últimos 60 dias.
+        O "Ritmo recente" só fica fiel quando a <strong>chamada é feita em toda aula</strong> — as aulas migradas de outro controle entram só no total, não no ritmo.
+        ${ehAdmin ? 'Enquanto isso, você pode desligar essa exigência em <strong>Configurações → Regras de Graduação</strong> (campo "Mín. aulas nos últimos 60 dias" = 0).' : 'Marque a presença na Chamada a cada aula.'}
+      </div>` : ''}
+
+    <details class="card" style="margin-bottom:16px;">
+      <summary style="cursor:pointer;font-weight:600;">ℹ️ Como ler esta tela</summary>
+      <div style="margin-top:12px;font-size:13px;line-height:1.7;color:var(--text2);">
+        <p style="margin:0 0 8px;"><strong style="color:var(--text);">Aulas</strong> — aulas do aluno na faixa atual (saldo trazido de outro controle + presenças marcadas aqui) sobre o mínimo da faixa. Ex.: <em>45/80</em>.</p>
+        <p style="margin:0 0 8px;"><strong style="color:var(--text);">Ritmo recente</strong> — quantas aulas foram <em>marcadas na chamada</em> nos últimos 60 dias sobre o mínimo exigido. Ex.: <em>1/5</em> = 1 aula marcada, e a faixa pede 5. Serve pra não graduar quem parou de treinar.</p>
+        <p style="margin:0 0 8px;"><strong style="color:var(--text);">Pronto</strong> — bateu as duas coisas: aulas suficientes <em>e</em> ritmo recente. <strong style="color:var(--text);">Apto ao Xº grau</strong> — a cada ¼ das aulas da faixa (e com ritmo recente em dia).</p>
+        <p style="margin:0;">Quem decide graduar é sempre o instrutor — a tela só mostra quem já cumpriu os números.</p>
+      </div>
+    </details>
 
     <div class="card" style="margin-bottom:20px;">
       <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
@@ -49,7 +74,7 @@ function renderGraduacaoPage() {
             <option value="Particular" ${graduacaoFiltroCategoria==='Particular'?'selected':''}>Particular</option>
           </select>
         </div>
-        <button class="btn btn-secondary" onclick="showPage('configuracoes')">⚙️ Configurar Regras de Graduação</button>
+        ${ehAdmin ? `<button class="btn btn-secondary" onclick="showPage('configuracoes')">⚙️ Configurar Regras de Graduação</button>` : ''}
       </div>
     </div>
 
@@ -57,7 +82,7 @@ function renderGraduacaoPage() {
       <div class="table-wrap table-responsive-cards">
         <table>
           <thead><tr>
-            <th style="text-align:left;">Aluno</th><th style="text-align:left;">Faixa Atual</th><th>Aulas</th><th>Ritmo recente</th><th>Status</th><th>Ações</th>
+            <th style="text-align:left;">Aluno</th><th style="text-align:left;">Faixa Atual</th><th>Aulas</th><th>Ritmo recente (60 dias)</th><th>Status</th><th>Ações</th>
           </tr></thead>
           <tbody>${alunos.map(graduacaoRow).join('') || `<tr><td colspan="7" style="text-align:center;color:var(--text2);">Nenhum aluno ativo nessa categoria.</td></tr>`}</tbody>
         </table>
@@ -100,7 +125,7 @@ function graduacaoRow({ student, status }) {
     <td data-label="Aluno" style="text-align:left;font-weight:600;">${escapeHtml(student.nome)}</td>
     <td data-label="Faixa Atual" style="text-align:left;">${faixaTag}</td>
     <td data-label="Aulas" class="${status.okAulas?'pos':''}">${status.totalAulas}/${status.minAulas}</td>
-    <td data-label="Ritmo recente" class="${status.okRecentes?'pos':''}" title="Aulas nos últimos ${status.janelaDias} dias">${status.aulasRecentes}/${status.minAulasRecentes} <span style="color:var(--text2);font-size:11px;">(${status.ritmoSemanal.toFixed(1)}x/sem)</span></td>
+    <td data-label="Ritmo recente" class="${status.okRecentes?'pos':''}" title="Aulas marcadas na chamada nos últimos ${status.janelaDias} dias">${status.aulasRecentes}/${status.minAulasRecentes} <span style="color:var(--text2);font-size:11px;">aulas em ${status.janelaDias} dias</span></td>
     <td data-label="Status">${statusTag}</td>
     <td data-label="Ações" style="display:flex;gap:4px;flex-wrap:wrap;">
       ${status.pronto ? `<button class="btn btn-primary" style="padding:6px 10px;font-size:12px;" onclick="openGraduarModal('${student.id}')">🎓 Graduar</button>` : ''}
