@@ -157,20 +157,26 @@ function alunoBarraEvolucao(g) {
   if (g.usaGrau) { for (let k = 1; k <= 4; k++) marcos.push({ at: k / 4, n: Math.round(g.minAulas * k / 4), grau: k, fim: k === 4 }); }
   else { marcos.push({ at: 0.5, n: Math.round(g.minAulas / 2), grau: 0, fim: false }, { at: 1, n: g.minAulas, grau: 0, fim: true }); }
 
+  // A meta final (faixa nova) não aparece de cara: começa quase invisível e
+  // embaçada e vai se revelando conforme o aluno avança — surpresa a conquistar.
+  const revelacao = pct >= 1 ? 1 : 0.1 + 0.9 * Math.pow(pct, 1.5);
+  const embaco = pct >= 1 ? 0 : Math.round((1 - pct) * 30) / 10;
+  const efeitoMeta = `opacity:${revelacao.toFixed(2)};filter:blur(${embaco}px);`;
+
   const marcosHtml = marcos.map(m => {
     const feito = g.totalAulas >= m.n;
     let miolo;
     if (m.fim) {
       miolo = s2
-        ? `<span style="width:36px;height:22px;border-radius:4px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;background:linear-gradient(to bottom,${c2} 0 36%,${s2} 36% 64%,${c2} 64% 100%);font-size:11px;color:#fff;">${feito ? '<span style="background:#111;border-radius:50%;width:15px;height:15px;line-height:15px;text-align:center;">✓</span>' : ''}</span>`
-        : `<span style="width:26px;height:26px;border-radius:50%;background:${c2};border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;">${feito ? '✓' : '🏁'}</span>`;
+        ? `<span style="width:36px;height:22px;border-radius:4px;border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;background:linear-gradient(to bottom,${c2} 0 36%,${s2} 36% 64%,${c2} 64% 100%);font-size:11px;color:#fff;${efeitoMeta}">${feito ? '<span style="background:#111;border-radius:50%;width:15px;height:15px;line-height:15px;text-align:center;">✓</span>' : ''}</span>`
+        : `<span style="width:26px;height:26px;border-radius:50%;background:${c2};border:2px solid var(--surface);box-shadow:0 0 0 1px var(--border);display:flex;align-items:center;justify-content:center;font-size:13px;${efeitoMeta}">${feito ? '✓' : '🏁'}</span>`;
     } else {
       miolo = `<span style="width:22px;height:22px;border-radius:50%;background:${feito ? 'var(--text)' : 'var(--surface)'};border:${feito ? '2px solid var(--surface)' : '1.5px dashed var(--text2)'};box-shadow:${feito ? '0 0 0 1px var(--border)' : 'none'};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:${feito ? 'var(--surface)' : 'var(--text2)'};">${feito ? '✓' : (m.grau || '')}</span>`;
     }
     const rotulo = m.fim ? g.proximaFaixa : (m.grau ? m.grau + 'º grau' : 'metade');
     return `<div style="position:absolute;left:${Math.round(m.at * 100)}%;top:-5px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;max-width:76px;text-align:center;">
       ${miolo}
-      <span style="font-size:11px;margin-top:6px;line-height:1.25;color:${feito ? 'var(--text)' : 'var(--text2)'};font-weight:${feito ? 700 : 400};">${escapeHtml(rotulo)}</span>
+      <span style="font-size:11px;margin-top:6px;line-height:1.25;color:${feito ? 'var(--text)' : 'var(--text2)'};font-weight:${feito ? 700 : 400};${m.fim ? 'opacity:' + revelacao.toFixed(2) + ';' : ''}">${escapeHtml(rotulo)}</span>
       <span style="font-size:10.5px;color:var(--text2);white-space:nowrap;">${m.n} aulas</span>
     </div>`;
   }).join('');
