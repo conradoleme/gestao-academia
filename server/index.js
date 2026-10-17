@@ -18,6 +18,7 @@ const { GetObjectCommand } = require('@aws-sdk/client-s3');
 const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, buildDefaultTransactions, DEFAULT_GRADUACAO_REGRAS_BJJ, DEFAULT_GRADUACAO_REGRAS_JUDO } = require('./seed-defaults');
 const { logSafeError } = require('./log-safe-error');
 const { generateUniqueSlug } = require('./slugify');
+const { htmlVersionado } = require('./html-versionado');
 const { getStripeClient, stripeConfigurado } = require('./stripe-client');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
@@ -501,9 +502,14 @@ app.use('/api/fichas-medicas', fichasMedicasRoutes);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Rota de API não encontrada.' }));
 
 /* ---------------- Frontend estático ---------------- */
+// As páginas HTML levam a versão do deploy nos endereços de JS/CSS (ver html-versionado.js).
+for (const [rota, arquivo] of [['/', 'index.html'], ['/index.html', 'index.html'], ['/admin.html', 'admin.html'], ['/reset-senha.html', 'reset-senha.html']]) {
+  app.get(rota, (req, res) => { res.set('Cache-Control', 'no-cache'); res.type('html').send(htmlVersionado(arquivo, BUILD_ID)); });
+}
 app.use(express.static(path.join(__dirname, '..', 'public')));
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '..', 'public', 'index.html'));
+  res.set('Cache-Control', 'no-cache');
+  res.type('html').send(htmlVersionado('index.html', BUILD_ID));
 });
 
 /* ---------------- Rede de segurança — qualquer erro não tratado cai aqui,
