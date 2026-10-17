@@ -53,6 +53,7 @@ function renderDashboardPage() {
       </div>
       ${renderAulasHojeCard()}
       ${renderProntosGraduarCard()}
+      ${renderQuaseLaCard()}
     `;
     return;
   }
@@ -71,6 +72,7 @@ function renderDashboardPage() {
     ${renderAulasHojeCard()}
 
     ${renderProntosGraduarCard()}
+      ${renderQuaseLaCard()}
 
     <div class="card-grid card-grid-3" style="margin-bottom:16px;">
       <div class="kpi kpi-green">

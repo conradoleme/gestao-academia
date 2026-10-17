@@ -428,6 +428,38 @@ function computeAlunosProntos() {
     .sort((a, b) => (a.pend.tipo === b.pend.tipo ? a.student.nome.localeCompare(b.student.nome) : a.pend.tipo === 'faixa' ? -1 : 1));
 }
 
+/* "Quase lá": aviso antecipado — aluno a poucas aulas do próximo grau ou da faixa.
+   Usa as mesmas regras das pendências (treino recente, "Ainda não") e nunca repete
+   quem já está pendente. Os limiares de grau são os mesmos de graduacaoPendencia. */
+const QUASE_LA_AULAS = 5;
+
+function computeAlunosQuaseLa() {
+  const usaGrau = data.meta.usaGrau !== false;
+  const lista = [];
+  for (const student of activeStudents()) {
+    if (graduacaoAdiada(student) || graduacaoPendencia(student)) continue;
+    const st = computeGraduacaoStatus(student);
+    if (!st || st.semRegra || !st.okRecentes || !(st.minAulas > 0) || st.okAulas) continue;
+
+    // Próximo marco: o grau seguinte (1/4, 2/4, 3/4 das aulas) ou, no último quarto, a faixa.
+    let alvo, texto, grauAlvo = null;
+    const proximoGrau = usaGrau ? Math.floor(st.totalAulas * GRAUS_POR_FAIXA / st.minAulas) + 1 : GRAUS_POR_FAIXA;
+    if (usaGrau && proximoGrau < GRAUS_POR_FAIXA) {
+      grauAlvo = proximoGrau;
+      alvo = Math.ceil(st.minAulas * proximoGrau / GRAUS_POR_FAIXA);
+      texto = `<strong>${proximoGrau}º grau</strong>`;
+    } else {
+      if (!st.proximaFaixa) continue;
+      alvo = st.minAulas;
+      texto = `Faixa <strong>${escapeHtml(st.proximaFaixa)}</strong>`;
+    }
+    const falta = alvo - st.totalAulas;
+    if (falta < 1 || falta > QUASE_LA_AULAS) continue;
+    lista.push({ student, st, texto, falta, atual: st.totalAulas, alvo, grauAlvo });
+  }
+  return lista.sort((a, b) => a.falta - b.falta || a.student.nome.localeCompare(b.student.nome));
+}
+
 async function adiarGraduacao(alunoId, dias = 30) {
   const aluno = data.students.find(s => s.id === alunoId);
   const r = await api.putLocked(`/api/students/${alunoId}/adiar-graduacao`, () => ({ dias, version: aluno && aluno.version }), v => { if (aluno) aluno.version = v; });

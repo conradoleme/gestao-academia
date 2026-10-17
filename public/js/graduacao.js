@@ -303,6 +303,38 @@ function renderProntosGraduarCard() {
     </div>`;
 }
 
+/* Aviso antecipado: quem está a poucas aulas de um grau/faixa (ver computeAlunosQuaseLa). */
+function renderQuaseLaCard() {
+  const lista = computeAlunosQuaseLa();
+  if (!lista.length) return '';
+  const visiveis = lista.slice(0, 10);
+  const linhas = visiveis.map(({ student, st, texto, falta, atual, alvo }) => {
+    const pct = Math.round(100 * atual / alvo);
+    const c2 = st.proximaCor || st.cor;
+    return `
+      <tr>
+        <td data-label="Aluno" style="text-align:left;font-weight:600;">${escapeHtml(student.nome)}</td>
+        <td data-label="Próximo passo" style="text-align:left;">${texto} <span style="color:var(--text2);">· ${escapeHtml(st.faixaAtual)}</span></td>
+        <td data-label="Progresso" style="min-width:150px;"><div style="display:flex;align-items:center;justify-content:flex-end;gap:8px;"><div style="flex:none;width:110px;height:8px;border-radius:999px;background:var(--surface3);overflow:hidden;"><div style="width:${pct}%;height:100%;background:linear-gradient(90deg,${st.cor},${c2});"></div></div><span style="font-size:11.5px;color:var(--text2);white-space:nowrap;">${atual}/${alvo}</span></div></td>
+        <td data-label="Faltam" style="font-weight:700;">${falta} aula${falta > 1 ? 's' : ''}</td>
+      </tr>`;
+  }).join('');
+  return `
+    <div class="card" style="margin-bottom:16px;">
+      <h3 style="margin-bottom:4px;">⏳ Quase lá (${lista.length})</h3>
+      <p style="color:var(--text2);font-size:12.5px;margin-bottom:14px;">
+        Alunos a ${QUASE_LA_AULAS} aulas ou menos de um grau ou de uma faixa — dá pra se preparar antes da aula em que eles completam.
+      </p>
+      <div class="table-wrap table-responsive-cards">
+        <table>
+          <thead><tr><th style="text-align:left;">Aluno</th><th style="text-align:left;">Próximo passo</th><th>Progresso</th><th>Faltam</th></tr></thead>
+          <tbody>${linhas}</tbody>
+        </table>
+      </div>
+      ${lista.length > visiveis.length ? `<p style="color:var(--text2);font-size:12px;margin:10px 0 0;">e mais ${lista.length - visiveis.length} aluno(s) — veja a tela Graduação.</p>` : ''}
+    </div>`;
+}
+
 function updateGraduacaoBadge() {
   const el = document.getElementById('nav-graduacao-badge');
   if (!el) return;
