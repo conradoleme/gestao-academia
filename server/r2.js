@@ -31,6 +31,16 @@ async function r2UrlTemporaria(key, segundos = 900) {
   return getSignedUrl(getR2Client(), new GetObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }), { expiresIn: segundos });
 }
 
+// Mesmo arquivo, mas com "Content-Disposition: attachment": o navegador baixa em vez de
+// abrir. É o que faz o botão "Baixar foto" funcionar (o atributo download do HTML é
+// ignorado em endereço de outro domínio, e o CSP não deixa o JS buscar o arquivo).
+async function r2UrlDownload(key, nomeArquivo, segundos = 900) {
+  const nome = String(nomeArquivo || 'foto').replace(/[^A-Za-z0-9._-]/g, '_');
+  return getSignedUrl(getR2Client(), new GetObjectCommand({
+    Bucket: process.env.R2_BUCKET, Key: key, ResponseContentDisposition: `attachment; filename="${nome}"`,
+  }), { expiresIn: segundos });
+}
+
 async function r2Apagar(keys) {
   if (!r2Configurado()) return;
   const s3 = getR2Client();
@@ -51,4 +61,4 @@ async function r2ApagarPrefixo(prefixo) {
   } while (token);
 }
 
-module.exports = { r2Configurado, getR2Client, r2Put, r2UrlTemporaria, r2Apagar, r2ApagarPrefixo };
+module.exports = { r2Configurado, getR2Client, r2Put, r2UrlTemporaria, r2UrlDownload, r2Apagar, r2ApagarPrefixo };

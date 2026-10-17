@@ -6,7 +6,7 @@ const router = express.Router();
 const pool = require('../db');
 const { recadoToJSON } = require('../mappers');
 const crypto = require('crypto');
-const { r2Configurado, r2Put, r2UrlTemporaria, r2Apagar } = require('../r2');
+const { r2Configurado, r2Put, r2UrlTemporaria, r2UrlDownload, r2Apagar } = require('../r2');
 const { recadosComFotos, apagarFotosDosRecados } = require('../recadoFotos');
 const asyncHandler = require('../asyncHandler');
 
@@ -76,7 +76,7 @@ router.post('/', asyncHandler(async (req, res) => {
 router.get('/:id/fotos', asyncHandler(async (req, res) => {
   const [fotos] = await pool.query('SELECT id, r2_key FROM recado_fotos WHERE recado_id = ? AND academia_id = ? ORDER BY id', [req.params.id, req.academiaId]);
   if (!fotos.length || !r2Configurado()) return res.json([]);
-  res.json(await Promise.all(fotos.map(async f => ({ id: String(f.id), url: await r2UrlTemporaria(f.r2_key) }))));
+  res.json(await Promise.all(fotos.map(async f => ({ id: String(f.id), url: await r2UrlTemporaria(f.r2_key), urlDownload: await r2UrlDownload(f.r2_key, `foto-${f.id}.${String(f.r2_key).split('.').pop()}`) }))));
 }));
 
 router.delete('/:id', asyncHandler(async (req, res) => {

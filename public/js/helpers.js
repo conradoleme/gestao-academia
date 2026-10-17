@@ -366,8 +366,9 @@ async function comprimirImagem(file, alvoKB = 420) {
   }
 }
 
-function abrirFotoGrande(url) {
-  openModal('Foto', `<img src="${escapeHtml(url)}" alt="Foto do recado" style="width:100%;border-radius:10px;display:block;">`, { width: '720px' });
+function abrirFotoGrande(url, urlBaixar) {
+  const baixar = urlBaixar ? `<div style="margin-top:12px;text-align:center;"><a class="btn btn-primary" href="${escapeHtml(urlBaixar)}" download style="text-decoration:none;display:inline-block;">⬇ Baixar foto</a></div>` : '';
+  openModal('Foto', `<img src="${escapeHtml(url)}" alt="Foto do recado" style="width:100%;border-radius:10px;display:block;">${baixar}`, { width: '720px' });
 }
 
 // Busca os links temporários das fotos de um recado e desenha as miniaturas.
@@ -377,7 +378,7 @@ async function preencherFotosRecado(containerId, endpoint) {
   try {
     const fotos = await api.get(endpoint);
     if (!fotos.length) { el.innerHTML = ''; return; }
-    el.innerHTML = fotos.map(f => `<img src="${escapeHtml(f.url)}" alt="Foto" loading="lazy" onclick="abrirFotoGrande(this.src)" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:zoom-in;">`).join('');
+    el.innerHTML = fotos.map(f => `<img src="${escapeHtml(f.url)}" alt="Foto" loading="lazy" data-baixar="${escapeHtml(f.urlDownload || '')}" onclick="abrirFotoGrande(this.src, this.dataset.baixar)" style="width:96px;height:96px;object-fit:cover;border-radius:10px;border:1px solid var(--border);cursor:zoom-in;">`).join('');
   } catch (e) {
     el.innerHTML = '';
   }

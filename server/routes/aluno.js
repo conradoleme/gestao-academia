@@ -11,7 +11,7 @@ const { studentToJSON, turmaToJSON, txToJSON, recadoToJSON, fichaMedicaToJSON } 
 const { upsertFichaMedica, fichaMedicaVazia } = require('../fichaMedicaUpsert');
 const asyncHandler = require('../asyncHandler');
 const { recadosComFotos } = require('../recadoFotos');
-const { r2Configurado, r2UrlTemporaria } = require('../r2');
+const { r2Configurado, r2UrlTemporaria, r2UrlDownload } = require('../r2');
 const { readVersion, sendConflict } = require('../locks');
 
 router.use((req, res, next) => {
@@ -125,7 +125,7 @@ router.get('/recados/:id/fotos', asyncHandler(async (req, res) => {
   const [rec] = await pool.query("SELECT id FROM recados WHERE id = ? AND academia_id = ? AND alcance = 'aluno' AND aluno_id = ?", [req.params.id, req.academiaId, req.alunoId]);
   if (!rec[0] || !r2Configurado()) return res.json([]);
   const [fotos] = await pool.query('SELECT id, r2_key FROM recado_fotos WHERE recado_id = ? AND academia_id = ? ORDER BY id', [req.params.id, req.academiaId]);
-  res.json(await Promise.all(fotos.map(async f => ({ id: String(f.id), url: await r2UrlTemporaria(f.r2_key) }))));
+  res.json(await Promise.all(fotos.map(async f => ({ id: String(f.id), url: await r2UrlTemporaria(f.r2_key), urlDownload: await r2UrlDownload(f.r2_key, `foto-${f.id}.${String(f.r2_key).split('.').pop()}`) }))));
 }));
 
 /* Fica fora do /me de propósito — só busca quando o aluno realmente abre
