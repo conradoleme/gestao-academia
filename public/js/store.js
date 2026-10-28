@@ -527,7 +527,10 @@ async function ensureMensalidadesForMonth(yearMonth) {
     // Mensalidade recorrente
     if (s.valorMensalidade > 0) {
       const categoria = mensalidadeCategoriaFor(s.categoria);
-      const already = data.transactions.some(t => t.alunoId === s.id && t.categoria === categoria && monthKey(t.data) === yearMonth && t.origem === 'auto-mensalidade');
+      // Qualquer mensalidade do aluno no mês conta, não só a da categoria de hoje: aluno que
+      // muda de categoria (ex: Particular → Adulto) no meio do mês já tem a mensalidade lançada,
+      // e gerar outra duplicava o valor.
+      const already = mensalidadeTransactionsFor(s.id, yearMonth).length > 0;
       if (!already) {
         const dia = Math.min(s.diaVencimento || 5, daysInMonth);
         const dataStr = `${yearMonth}-${String(dia).padStart(2,'0')}`;
