@@ -1,5 +1,5 @@
 /* Gerador de QR code, sem dependências (o CSP do sistema só aceita scripts do próprio site).
-   Modo byte (UTF-8), versões 1 a 10, correção de erro L, M ou Q — sobra para um endereço de
+   Modo byte (UTF-8), versões 1 a 10, correção de erro L, M, Q ou H — sobra para um endereço de
    academia. Segue a ISO 18004; conferido lendo os códigos gerados com um leitor de verdade.
 
    Uso: qrMatriz('https://meutatameapp.com.br/minha-academia', 'M') → matriz[linha][coluna] = true (módulo escuro) */
@@ -9,8 +9,9 @@ const QR_BLOCOS = {
   L: [null, [7, [[1, 19]]], [10, [[1, 34]]], [15, [[1, 55]]], [20, [[1, 80]]], [26, [[1, 108]]], [18, [[2, 68]]], [20, [[2, 78]]], [24, [[2, 97]]], [30, [[2, 116]]], [18, [[2, 68], [2, 69]]]],
   M: [null, [10, [[1, 16]]], [16, [[1, 28]]], [26, [[1, 44]]], [18, [[2, 32]]], [24, [[2, 43]]], [16, [[4, 27]]], [18, [[4, 31]]], [22, [[2, 38], [2, 39]]], [22, [[3, 36], [2, 37]]], [26, [[4, 43], [1, 44]]]],
   Q: [null, [13, [[1, 13]]], [22, [[1, 22]]], [18, [[2, 17]]], [26, [[2, 24]]], [18, [[2, 15], [2, 16]]], [24, [[4, 19]]], [18, [[2, 14], [4, 15]]], [22, [[4, 18], [2, 19]]], [20, [[4, 16], [4, 17]]], [24, [[6, 19], [2, 20]]]],
+  H: [null, [17, [[1, 9]]], [28, [[1, 16]]], [22, [[2, 13]]], [16, [[4, 9]]], [22, [[2, 11], [2, 12]]], [28, [[4, 15]]], [26, [[4, 13], [1, 14]]], [26, [[4, 14], [2, 15]]], [24, [[4, 12], [4, 13]]], [28, [[6, 15], [2, 16]]]],
 };
-const QR_BITS_NIVEL = { L: 1, M: 0, Q: 3 };
+const QR_BITS_NIVEL = { L: 1, M: 0, Q: 3, H: 2 };
 const QR_ALINHAMENTO = [null, [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50]];
 
 const QR_EXP = new Array(512);

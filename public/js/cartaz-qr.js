@@ -19,9 +19,11 @@ function cartazCarregarImagem(url) {
   });
 }
 
-/* Desenha só o QR (módulos pretos em fundo branco, com a margem de 4 módulos que a leitura exige). */
-function cartazDesenharQr(ctx, texto, x, y, lado) {
-  const matriz = qrMatriz(texto, 'M');
+/* Desenha só o QR (módulos pretos em fundo branco, com a margem de 4 módulos que a leitura exige).
+   Com logo, ele vai no centro e o QR usa a correção de erro máxima (H), que aguenta o logo por cima:
+   o miolo coberto fica em ~24% do lado, e testamos a leitura com até 26%. */
+function cartazDesenharQr(ctx, texto, x, y, lado, logo = null) {
+  const matriz = qrMatriz(texto, logo ? 'H' : 'M');
   const n = matriz.length;
   const modulo = Math.floor(lado / (n + 8));
   const tamanho = modulo * (n + 8);
@@ -31,6 +33,17 @@ function cartazDesenharQr(ctx, texto, x, y, lado) {
   ctx.fillStyle = '#000000';
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
     if (matriz[r][c]) ctx.fillRect(ox + (c + 4) * modulo, oy + (r + 4) * modulo, modulo, modulo);
+  }
+  if (logo) {
+    const d = tamanho * 0.20, cx = ox + tamanho / 2, cy = oy + tamanho / 2;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath(); ctx.arc(cx, cy, d / 2 * 1.18, 0, Math.PI * 2); ctx.fill();
+    ctx.save();
+    ctx.beginPath(); ctx.arc(cx, cy, d / 2, 0, Math.PI * 2); ctx.clip();
+    const esc = Math.min(d / logo.naturalWidth, d / logo.naturalHeight);
+    const w = logo.naturalWidth * esc, h = logo.naturalHeight * esc;
+    ctx.drawImage(logo, cx - w / 2, cy - h / 2, w, h);
+    ctx.restore();
   }
 }
 
@@ -51,6 +64,7 @@ async function cartazMontar() {
   if (!link) throw new Error('Defina o link da academia antes de gerar o QR code.');
   const nome = (data.meta.empresa || 'a academia').trim();
   const logo = await cartazCarregarImagem(data.meta.logoUrl || '/icons/icon-512.png');
+  const logoNoQr = data.meta.logoUrl ? logo : null; // sem logo próprio, o QR fica simples
 
   const canvas = document.createElement('canvas');
   canvas.width = CARTAZ_LARGURA; canvas.height = CARTAZ_ALTURA;
@@ -98,7 +112,7 @@ async function cartazMontar() {
   const QR = 1240, qy = 1060 + tamNome + 330, qx = centro - QR / 2;
   ctx.fillStyle = destaque; cartazRetanguloArredondado(ctx, qx - 26, qy - 26, QR + 52, QR + 52, 90); ctx.fill();
   ctx.save(); cartazRetanguloArredondado(ctx, qx, qy, QR, QR, 64); ctx.clip();
-  cartazDesenharQr(ctx, link, qx, qy, QR);
+  cartazDesenharQr(ctx, link, qx, qy, QR, logoNoQr);
   ctx.restore();
 
   // chamada e passos
@@ -146,7 +160,8 @@ async function cartazBaixarSoQr() {
     const link = cartazLink();
     if (!link) throw new Error('Defina o link da academia antes de gerar o QR code.');
     const c = document.createElement('canvas'); c.width = c.height = 1400;
-    cartazDesenharQr(c.getContext('2d'), link, 0, 0, 1400);
+    const logo = data.meta.logoUrl ? await cartazCarregarImagem(data.meta.logoUrl) : null;
+    cartazDesenharQr(c.getContext('2d'), link, 0, 0, 1400, logo);
     cartazBaixarArquivo(c, cartazNomeArquivo('qr'));
   } catch (e) { showToast(e.message, 'error'); }
 }
@@ -168,11 +183,12 @@ async function cartazImprimir() {
 }
 
 /* Pré-visualização pequena do QR na tela de Configurações. */
-function cartazMostrarPreview() {
+async function cartazMostrarPreview() {
   const el = document.getElementById('cfg-qr-preview');
   const link = cartazLink();
   if (!el || !link) return;
+  const logo = data.meta.logoUrl ? await cartazCarregarImagem(data.meta.logoUrl) : null;
   const c = document.createElement('canvas'); c.width = c.height = 400;
-  cartazDesenharQr(c.getContext('2d'), link, 0, 0, 400);
+  cartazDesenharQr(c.getContext('2d'), link, 0, 0, 400, logo);
   el.src = c.toDataURL('image/png');
 }
