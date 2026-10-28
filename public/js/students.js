@@ -303,12 +303,33 @@ async function saveStudentForm() {
   showToast('Aluno salvo!');
   renderAlunosPage();
   if (typeof refreshDashboard === 'function') refreshDashboard();
+  perguntarSobrePendenciasDoAluno(studentFormId);
+}
+
+/* Aluno que saiu (não está mais ativo) com mensalidade ainda "a receber" do mês em diante:
+   sem isto o valor ficava no Dashboard como a receber pra sempre, e fora da Cobrança. */
+const pendenciaJaPerguntada = new Set();
+function perguntarSobrePendenciasDoAluno(studentId) {
+  if (ehOperacao() || !studentId || pendenciaJaPerguntada.has(studentId)) return;
+  const s = data.students.find(x => x.id === studentId);
+  if (!s || s.status === 'Ativo') return;
+  const pend = pendenciasDoAluno(studentId);
+  if (!pend.length) return;
+  pendenciaJaPerguntada.add(studentId);
+  const total = pend.reduce((a, t) => a + t.valor, 0);
+  confirmAction(`<strong>${escapeHtml(s.nome)}</strong> não está mais ativo e tem <strong>${fmtFull(total)}</strong> a receber neste mês ou nos próximos (${pend.length} lançamento${pend.length > 1 ? 's' : ''}). Quer cancelar esses valores? Os de meses anteriores continuam como dívida.`, async () => {
+    for (const t of pend) await deleteTransaction(t.id);
+    showToast('Valores a receber cancelados.');
+    if (typeof refreshDashboard === 'function') refreshDashboard();
+  });
 }
 
 function handleDeleteStudent(id) {
   if (ehOperacao()) return;
   const s = data.students.find(x => x.id === id);
-  confirmAction(`Excluir o aluno <strong>${escapeHtml(s?.nome||'')}</strong>? Lançamentos já gerados não serão removidos.`, async () => {
+  const pend = pendenciasDoAluno(id);
+  const aviso = pend.length ? ` Ele tem <strong>${fmtFull(pend.reduce((a, t) => a + t.valor, 0))}</strong> a receber, que continuará no Dashboard e aparece em Cobrança → Outras entradas.` : '';
+  confirmAction(`Excluir o aluno <strong>${escapeHtml(s?.nome||'')}</strong>? Lançamentos já gerados não serão removidos.${aviso}`, async () => {
     await deleteStudent(id);
     showToast('Aluno excluído.');
     renderAlunosPage();

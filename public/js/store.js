@@ -833,9 +833,35 @@ function computePlanejamentoDiagnostico() {
 }
 
 /* ---------------- Inadimplência ---------------- */
-function mensalidadeTransactionFor(studentId, yearMonth) {
-  return data.transactions.find(t => t.alunoId === studentId && monthKey(t.data) === yearMonth &&
+/* TODOS os lançamentos de mensalidade do aluno no mês. Normalmente é um só, mas um
+   lançamento manual repetido pode criar um segundo — a Cobrança olhava só o primeiro
+   e deixava o Dashboard (que soma tudo) divergir. */
+function mensalidadeTransactionsFor(studentId, yearMonth) {
+  return data.transactions.filter(t => t.alunoId === studentId && monthKey(t.data) === yearMonth &&
     (t.origem === 'auto-mensalidade' || t.categoria === 'AULA PARTICULAR' || t.categoria.startsWith('MENSALIDADE')));
+}
+
+/* O lançamento que a Cobrança mostra e alterna: o que ainda está em aberto, se houver. */
+function mensalidadeTransactionFor(studentId, yearMonth) {
+  const todos = mensalidadeTransactionsFor(studentId, yearMonth);
+  return todos.find(t => t.status !== 'recebido') || todos[0];
+}
+
+/* Entradas do mês que NÃO são a mensalidade de um aluno ativo (matrícula, venda avulsa,
+   mensalidade de aluno inativo/excluído...). O Dashboard soma essas entradas; a Cobrança
+   passa a listá-las, pra os dois números sempre fecharem. */
+function entradasForaDaCobranca(yearMonth) {
+  const naCobranca = new Set();
+  activeStudents().filter(s => s.valorMensalidade > 0)
+    .forEach(s => mensalidadeTransactionsFor(s.id, yearMonth).forEach(t => naCobranca.add(t.id)));
+  return transactionsInMonth(yearMonth).filter(t => t.tipo === 'entrada' && !naCobranca.has(t.id));
+}
+
+/* Lançamentos a receber de um aluno, do mês corrente em diante (os de meses antigos
+   são dívida e ficam). Usado pra avisar quando o aluno sai. */
+function pendenciasDoAluno(studentId) {
+  const ym = currentYearMonth();
+  return data.transactions.filter(t => t.alunoId === studentId && t.tipo === 'entrada' && t.status !== 'recebido' && monthKey(t.data) >= ym);
 }
 
 function daysBetween(dateStr, refDate = new Date()) {
@@ -848,13 +874,17 @@ function daysBetween(dateStr, refDate = new Date()) {
 async function getInadimplenciaList(yearMonth) {
   await ensureMensalidadesForMonth(yearMonth);
   return activeStudents().filter(s => s.valorMensalidade > 0).map(s => {
+    const todos = mensalidadeTransactionsFor(s.id, yearMonth);
     const tx = mensalidadeTransactionFor(s.id, yearMonth);
-    const pago = tx ? (tx.status === 'recebido') : false;
-    const diasAtraso = tx ? daysBetween(tx.data) : 0;
+    // valores pelos lançamentos de verdade (não pelo valor atual do cadastro), como o Dashboard
+    const recebido = todos.filter(t => t.status === 'recebido').reduce((a, t) => a + t.valor, 0);
+    const emAberto = todos.filter(t => t.status !== 'recebido').reduce((a, t) => a + t.valor, 0);
+    const pago = todos.length > 0 && emAberto === 0 && !todos.some(t => t.status !== 'recebido');
+    const diasAtraso = tx && !pago ? daysBetween(tx.data) : 0;
     let situacao = 'pendente';
     if (pago) situacao = 'pago';
     else if (diasAtraso > 0) situacao = 'atrasado';
-    return { student: s, tx, pago, diasAtraso, situacao };
+    return { student: s, tx, pago, diasAtraso, situacao, qtd: todos.length, recebido, emAberto, valor: todos.length ? recebido + emAberto : s.valorMensalidade };
   }).sort((a,b) => b.diasAtraso - a.diasAtraso);
 }
 

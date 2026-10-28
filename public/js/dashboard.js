@@ -17,6 +17,11 @@ function computeAulasHoje() {
   return { hojeDia, aulas };
 }
 
+function irParaCobrancaDoMes() {
+  inadimplenciaSelectedMonth = currentYearMonth();
+  showPage('inadimplencia');
+}
+
 function irParaChamadaDaTurma(nomeTurma) {
   chamadaData = todayStr();
   chamadaTurma = nomeTurma;
@@ -101,7 +106,7 @@ function renderDashboardPage() {
       <div class="kpi kpi-yellow">
         <div class="kpi-label">A Receber no Mês</div>
         <div class="kpi-value">${fmt(k.entradasAReceber)}</div>
-        <div class="kpi-sub">ainda em aberto em ${mesAtualLabel}</div>
+        <div class="kpi-sub">ainda em aberto em ${mesAtualLabel}${k.entradasAReceber > 0 ? ` · <a href="#" style="color:var(--accent);font-weight:600;" onclick="irParaCobrancaDoMes();return false;">ver de onde vem</a>` : ''}</div>
       </div>
     </div>
 
