@@ -116,6 +116,7 @@ function academiaToShape(r) {
       concentracaoPico: Number(r.concentracao_pico),
       generatedMonths: r.generated_months || [],
       logoUrl: r.logo_key ? `/logo/${r.id}` : null,
+      iconeUrl: r.icon_key ? `/icone/${r.id}` : null,
       watermarkAtivo: !!r.watermark_ativo,
       slug: r.slug || null,
       usaGrau: r.usa_grau === undefined || r.usa_grau === null ? true : !!r.usa_grau,

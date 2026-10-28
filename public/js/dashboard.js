@@ -56,6 +56,7 @@ function renderDashboardPage() {
       <div class="section-header">
         <div><h1>Dashboard</h1><p class="subtitle" style="margin:0;">Aulas de hoje em ${escapeHtml(data.meta.empresa)}</p></div>
       </div>
+      ${pwaSlot(data.meta.empresa, data.meta.iconeUrl, true)}
       ${renderAulasHojeCard()}
       ${renderProntosGraduarCard()}
       ${renderQuaseLaCard()}

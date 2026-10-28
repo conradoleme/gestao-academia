@@ -83,7 +83,7 @@ router.get('/me', asyncHandler(async (req, res) => {
     ? await pool.query('SELECT * FROM turmas WHERE academia_id = ? AND nome = ?', [req.academiaId, aluno.turma])
     : [[]];
 
-  const [academiaRows] = await pool.query('SELECT nome, graduacao_regras, usa_grau FROM academias WHERE id = ?', [req.academiaId]);
+  const [academiaRows] = await pool.query('SELECT id, nome, slug, logo_key, icon_key, graduacao_regras, usa_grau FROM academias WHERE id = ?', [req.academiaId]);
   // Só a existência do registro, nunca o conteúdo — os dados sensíveis
   // continuam de fora do /me, buscados só quando o aluno abre a ficha.
   const [fichaMedicaRows] = await pool.query('SELECT 1 FROM fichas_medicas WHERE aluno_id = ? AND academia_id = ?', [req.alunoId, req.academiaId]);
@@ -107,6 +107,11 @@ router.get('/me', asyncHandler(async (req, res) => {
 
   res.json({
     academiaNome: academiaRows[0]?.nome || '',
+    academia: academiaRows[0] && {
+      nome: academiaRows[0].nome, slug: academiaRows[0].slug || null,
+      logoUrl: academiaRows[0].logo_key ? `/logo/${academiaRows[0].id}` : null,
+      iconeUrl: academiaRows[0].icon_key ? `/icone/${academiaRows[0].id}` : null,
+    },
     aluno,
     pagamentos: txRows.map(txToJSON),
     turmas: turmaRows.map(turmaToJSON),

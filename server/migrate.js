@@ -34,6 +34,8 @@ async function migrate() {
   await addColumnIfMissing('transactions', 'recorrente', `TINYINT(1) NOT NULL DEFAULT 0`);
   await addColumnIfMissing('transactions', 'recorrencia_meses', `INT NULL`);
   await addColumnIfMissing('academias', 'logo_key', `VARCHAR(255) NULL`);
+  // Ícone do app instalado (PNG 512x512 gerado a partir do logo, no navegador do dono).
+  await addColumnIfMissing('academias', 'icon_key', `VARCHAR(255) NULL`);
   await addColumnIfMissing('academias', 'watermark_ativo', `TINYINT(1) NOT NULL DEFAULT 0`);
   await addColumnIfMissing('academias', 'graduacao_regras', `JSON NULL`);
   await addColumnIfMissing('students', 'data_inicio', `DATE NULL`);

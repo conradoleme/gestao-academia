@@ -19,6 +19,7 @@ const { DEFAULT_CATEGORY_GROUPS, DEFAULT_COBRANCA_TEMPLATES, DEFAULT_TURMAS, bui
 const { logSafeError } = require('./log-safe-error');
 const { generateUniqueSlug } = require('./slugify');
 const { htmlVersionado } = require('./html-versionado');
+const { montarManifest } = require('./pwa');
 const { getStripeClient, stripeConfigurado } = require('./stripe-client');
 const academiaRoutes = require('./routes/academia');
 const studentsRoutes = require('./routes/students');
@@ -172,6 +173,37 @@ app.get('/logo/:academiaId', async (req, res) => {
   } catch (e) {
     res.status(404).end();
   }
+});
+
+/* Ícone do app instalado (PNG gerado a partir do logo) — público pelo mesmo motivo do logo. */
+app.get('/icone/:academiaId', async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT icon_key FROM academias WHERE id = ?', [req.params.academiaId]);
+    const iconKey = rows[0]?.icon_key;
+    if (!iconKey || !r2Configurado()) return res.status(404).end();
+    const obj = await getR2Client().send(new GetObjectCommand({ Bucket: process.env.R2_BUCKET, Key: iconKey }));
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=3600');
+    obj.Body.pipe(res);
+  } catch (e) {
+    res.status(404).end();
+  }
+});
+
+/* Manifesto do app instalável, por academia (?slug=). Sem slug ou slug desconhecido: o do Meu Tatame. */
+app.get('/manifest.webmanifest', async (req, res) => {
+  let academia = null;
+  try {
+    const slug = String(req.query.slug || '').toLowerCase();
+    if (/^[a-z0-9-]{1,60}$/.test(slug)) {
+      const [rows] = await pool.query('SELECT id, nome, slug, icon_key FROM academias WHERE slug = ?', [slug]);
+      academia = rows[0] || null;
+    }
+  } catch (e) {
+    logSafeError('GET /manifest.webmanifest', e);
+  }
+  res.set('Cache-Control', 'public, max-age=300');
+  res.type('application/manifest+json').send(JSON.stringify(montarManifest(academia)));
 });
 
 /* ---------------- Login (única rota pública) ---------------- */
@@ -457,6 +489,7 @@ app.post('/admin/backup-now', requireSuperAdmin, async (req, res) => {
 app.delete('/admin/academias/:id', requireSuperAdmin, async (req, res) => {
   try {
     await r2ApagarPrefixo(`fotos/${Number(req.params.id)}/`);
+    await r2ApagarPrefixo(`icons/${Number(req.params.id)}.`);
     await pool.query('DELETE FROM academias WHERE id = ?', [req.params.id]);
     res.json({ ok: true });
   } catch (e) {
@@ -470,10 +503,10 @@ app.delete('/admin/academias/:id', requireSuperAdmin, async (req, res) => {
    personalizar a tela de login antes mesmo do aluno digitar o e-mail. */
 app.get('/api/academia-by-slug/:slug', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT id, nome, logo_key FROM academias WHERE slug = ?', [req.params.slug]);
+    const [rows] = await pool.query('SELECT id, nome, logo_key, icon_key FROM academias WHERE slug = ?', [req.params.slug]);
     if (!rows[0]) return res.status(404).json({ error: 'Academia não encontrada.' });
     const r = rows[0];
-    res.json({ nome: r.nome, logoUrl: r.logo_key ? `/logo/${r.id}` : null });
+    res.json({ nome: r.nome, logoUrl: r.logo_key ? `/logo/${r.id}` : null, iconeUrl: r.icon_key ? `/icone/${r.id}` : null });
   } catch (e) {
     logSafeError('GET /api/academia-by-slug/:slug', e);
     res.status(500).json({ error: 'Erro ao buscar academia.' });

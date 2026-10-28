@@ -28,6 +28,8 @@ function alunoMensalidadeDoMes() {
 
 function renderAlunoPortal() {
   const { aluno, academiaNome, pagamentos, turmas, graduacao, recados, fichaMedicaPreenchida } = alunoData;
+  const academiaInfo = alunoData.academia || {};
+  pwaAplicarMarca({ slug: academiaInfo.slug, nome: academiaInfo.nome || academiaNome, iconeUrl: academiaInfo.iconeUrl });
   const mensalidadeAtual = alunoMensalidadeDoMes();
 
   let statusBadge = '';
@@ -56,6 +58,8 @@ function renderAlunoPortal() {
           </div>
         </div>
 
+        ${pwaSlot(academiaInfo.nome || academiaNome, academiaInfo.iconeUrl, true)}
+
         ${renderAlunoMural(recados)}
 
         ${renderAlunoGraduacaoCard(graduacao)}
@@ -79,7 +83,7 @@ function renderAlunoPortal() {
             </table>
           </div>
         </div>
-        <div style="position:sticky;bottom:12px;z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-md, 0 6px 20px rgba(0,0,0,0.12));padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+        <div style="position:sticky;bottom:calc(12px + env(safe-area-inset-bottom, 0px));z-index:5;background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:var(--shadow-md, 0 6px 20px rgba(0,0,0,0.12));padding:12px 16px calc(12px + env(safe-area-inset-bottom));display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
           <div>
             <div style="font-size:11px;color:var(--text2);">Mensalidade · ${monthLabel(currentYearMonth())}</div>
             ${mensalidadeAtual ? `

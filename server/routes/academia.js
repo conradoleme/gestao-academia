@@ -6,6 +6,7 @@ const pool = require('../db');
 const { studentToJSON, studentToJSONParaOperacao, academiaShapeParaOperacao, turmaToJSON, txToJSON, academiaToShape, presencaToJSON, graduacaoToJSON, recadoToJSON } = require('../mappers');
 const { requireRole, requireOwner } = require('../auth');
 const { r2Configurado, getR2Client } = require('../r2');
+const { validarIconePng } = require('../pwa');
 const { slugify } = require('../slugify');
 const { getStripeClient, stripeConfigurado } = require('../stripe-client');
 const asyncHandler = require('../asyncHandler');
@@ -216,14 +217,33 @@ router.put('/academia/logo', requireRole('admin'), asyncHandler(async (req, res)
 }));
 
 router.delete('/academia/logo', requireRole('admin'), asyncHandler(async (req, res) => {
-  const [rows] = await pool.query('SELECT logo_key FROM academias WHERE id = ?', [req.academiaId]);
+  const [rows] = await pool.query('SELECT logo_key, icon_key FROM academias WHERE id = ?', [req.academiaId]);
   const logoKey = rows[0]?.logo_key;
-  await pool.query('UPDATE academias SET logo_key = NULL WHERE id = ?', [req.academiaId]);
-  if (logoKey && r2Configurado()) {
+  const iconKey = rows[0]?.icon_key;
+  // sem logo, o ícone do app volta ao padrão do Meu Tatame
+  await pool.query('UPDATE academias SET logo_key = NULL, icon_key = NULL WHERE id = ?', [req.academiaId]);
+  if (r2Configurado()) {
     const s3 = getR2Client();
-    await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: logoKey })).catch(() => {});
+    for (const k of [logoKey, iconKey]) {
+      if (k) await s3.send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: k })).catch(() => {});
+    }
   }
   res.json({ ok: true });
+}));
+
+/* Ícone do app instalado: PNG 512x512 que o navegador do dono gera a partir do logo. */
+router.put('/academia/icone', requireRole('admin'), asyncHandler(async (req, res) => {
+  if (!r2Configurado()) return res.status(503).json({ error: 'Upload não configurado neste servidor.' });
+  const match = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec((req.body || {}).imageBase64 || '');
+  if (!match) return res.status(400).json({ error: 'Envie o ícone em PNG.' });
+  const buffer = Buffer.from(match[1], 'base64');
+  const erro = validarIconePng(buffer);
+  if (erro) return res.status(400).json({ error: erro });
+
+  const key = `icons/${req.academiaId}.png`;
+  await getR2Client().send(new PutObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key, Body: buffer, ContentType: 'image/png' }));
+  await pool.query('UPDATE academias SET icon_key = ? WHERE id = ?', [key, req.academiaId]);
+  res.json({ ok: true, iconeUrl: `/icone/${req.academiaId}` });
 }));
 
 /* Autoatendimento da própria academia (não confundir com a rota igual

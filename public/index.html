@@ -2,8 +2,15 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Gestão da Academia</title>
+<link rel="manifest" id="pwa-manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#4a3fd6">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" id="pwa-apple-title" content="Meu Tatame">
+<link rel="apple-touch-icon" id="pwa-apple-icon" href="/icons/apple-touch-icon.png">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -74,6 +81,7 @@
   </main>
 </div>
 
+<script src="js/pwa.js"></script>
 <script src="js/api-client.js"></script>
 <script src="js/auth.js"></script>
 <script src="js/store.js"></script>

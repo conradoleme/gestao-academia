@@ -97,6 +97,16 @@ async function renderConfiguracoesPage() {
           <label style="margin:0;">Usar como marca d'água no fundo do sistema</label>
         </div>
       ` : ''}
+
+      <hr class="divider">
+
+      <h3>App no celular</h3>
+      <p style="color:var(--text2);font-size:12.5px;margin:-4px 0 12px;">Seus alunos podem instalar a academia na tela inicial do celular, com o seu nome e o seu logo. Mande o link da academia (acima) e peça para abrirem no celular.</p>
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+        <img id="cfg-pwa-icone" src="${escapeHtml(data.meta.iconeUrl || '/icons/icon-192.png')}" alt="" style="width:56px;height:56px;border-radius:13px;box-shadow:0 0 0 1px var(--border);">
+        <div id="cfg-pwa-icone-txt" style="font-size:12.5px;color:var(--text2);">Ícone do app: ${data.meta.iconeUrl ? 'gerado a partir do seu logo.' : (data.meta.logoUrl ? 'gerando a partir do seu logo…' : 'o padrão do Meu Tatame. Envie um logo para personalizar.')}</div>
+      </div>
+      ${pwaSlot(data.meta.empresa, data.meta.iconeUrl, false)}
     </div>
     ` : ''}
 
@@ -163,6 +173,7 @@ async function renderConfiguracoesPage() {
     ` : ''}
   `;
   if (isAdmin) renderGraduacaoRegrasLista();
+  if (isAdmin) pwaGarantirIcone(); // academia com logo e sem ícone do app: gera em segundo plano
 }
 
 async function handleChangeSenha() {
@@ -249,6 +260,7 @@ async function handleUploadLogo() {
   errorEl.innerHTML = '';
   try {
     await uploadAcademiaLogo(logoSelecionadaBase64);
+    try { await pwaEnviarIconeDaLogo(); } catch (e) { /* o ícone padrão continua valendo; tenta de novo ao abrir Configurações */ }
     applyAcademiaLogo();
     applyWatermark();
     showToast('Logo atualizada!');
@@ -261,6 +273,7 @@ async function handleUploadLogo() {
 function handleRemoveLogo() {
   confirmAction('Remover a logo da academia? Volta a mostrar o ícone padrão.', async () => {
     await removeAcademiaLogo();
+    data.meta.iconeUrl = null; // o servidor também apaga o ícone: volta ao padrão
     if (data.meta.watermarkAtivo) await updateWatermarkAtivo(false);
     applyAcademiaLogo();
     applyWatermark();

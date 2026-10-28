@@ -17,6 +17,7 @@ async function resolveSlugBranding() {
   if (!slug) return null;
   try {
     cachedSlugBranding = await api.get('/api/academia-by-slug/' + encodeURIComponent(slug));
+    pwaAplicarMarca({ slug, nome: cachedSlugBranding.nome, iconeUrl: cachedSlugBranding.iconeUrl });
   } catch (e) {
     cachedSlugBranding = null;
   }
