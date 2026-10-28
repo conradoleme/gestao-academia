@@ -5,6 +5,7 @@
 const PWA_DISPENSADO_KEY = 'pwa_convite_dispensado';
 let pwaPromptAdiado = null; // evento do Chrome/Android que permite instalar com um toque
 let pwaGerandoIcone = false;
+let pwaIconeTentado = false; // uma tentativa automática por abertura do sistema
 
 window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); pwaPromptAdiado = e; pwaAtualizarConvites(); });
 window.addEventListener('appinstalled', () => { pwaPromptAdiado = null; pwaAtualizarConvites(); });
@@ -131,8 +132,9 @@ async function pwaEnviarIconeDaLogo() {
 
 /* Academia com logo mas sem ícone (já existia antes deste recurso): gera uma vez, em segundo plano. */
 async function pwaGarantirIcone() {
-  if (pwaGerandoIcone || !data || !data.meta || !data.meta.logoUrl || data.meta.iconeUrl) return;
+  if (pwaGerandoIcone || pwaIconeTentado || !data || !data.meta || !data.meta.logoUrl || data.meta.iconeUrl) return;
   pwaGerandoIcone = true;
+  pwaIconeTentado = true;
   try {
     await pwaEnviarIconeDaLogo();
     const prev = document.getElementById('cfg-pwa-icone');

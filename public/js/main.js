@@ -126,6 +126,7 @@ function applyAssinaturaUI(role) {
 /* ---------------- Logo personalizada da academia ---------------- */
 function applyAcademiaLogo() {
   pwaAplicarMarca({ slug: data.meta.slug, nome: data.meta.empresa, iconeUrl: data.meta.iconeUrl });
+  if (decodeAuthToken()?.role === 'admin') pwaGarantirIcone(); // academia com logo e sem ícone do app: gera sozinho
   const html = data.meta.logoUrl
     ? `<img src="${data.meta.logoUrl}" style="height:22px;vertical-align:middle;border-radius:4px;">`
     : '🥋';

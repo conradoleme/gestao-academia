@@ -107,6 +107,22 @@ async function renderConfiguracoesPage() {
         <div id="cfg-pwa-icone-txt" style="font-size:12.5px;color:var(--text2);">Ícone do app: ${data.meta.iconeUrl ? 'gerado a partir do seu logo.' : (data.meta.logoUrl ? 'gerando a partir do seu logo…' : 'o padrão do Meu Tatame. Envie um logo para personalizar.')}</div>
       </div>
       ${pwaSlot(data.meta.empresa, data.meta.iconeUrl, false)}
+
+      <hr class="divider">
+
+      <h3>QR code para os alunos</h3>
+      ${data.meta.slug ? `
+        <p style="color:var(--text2);font-size:12.5px;margin:-4px 0 12px;">Cole o cartaz na recepção ou mande no grupo: quem apontar a câmera cai na página da sua academia, entra e instala o app. Serve para alunos, professores e para você.</p>
+        <div style="display:flex;gap:16px;align-items:center;flex-wrap:wrap;">
+          <img id="cfg-qr-preview" alt="QR code da academia" style="width:140px;height:140px;border-radius:10px;border:1px solid var(--border);background:#fff;flex:none;">
+          <div style="display:grid;gap:8px;min-width:0;">
+            <button class="btn btn-primary" onclick="cartazBaixar()">⬇ Baixar cartaz (A4)</button>
+            <button class="btn btn-secondary" onclick="cartazImprimir()">🖨 Imprimir cartaz</button>
+            <button class="btn btn-secondary" onclick="cartazBaixarSoQr()">⬇ Baixar só o QR code</button>
+          </div>
+        </div>
+        <p style="color:var(--text2);font-size:12px;margin:10px 0 0;word-break:break-all;">O código leva a <strong>${escapeHtml(location.host)}/${escapeHtml(data.meta.slug)}</strong>.</p>
+      ` : `<p style="color:var(--text2);font-size:12.5px;">Defina o <strong>Link da Academia</strong> (acima) para gerar o QR code.</p>`}
     </div>
     ` : ''}
 
@@ -174,6 +190,7 @@ async function renderConfiguracoesPage() {
   `;
   if (isAdmin) renderGraduacaoRegrasLista();
   if (isAdmin) pwaGarantirIcone(); // academia com logo e sem ícone do app: gera em segundo plano
+  if (isAdmin) cartazMostrarPreview();
 }
 
 async function handleChangeSenha() {
