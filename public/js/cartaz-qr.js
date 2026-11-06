@@ -98,7 +98,7 @@ async function cartazMontar() {
   const tamTitulo = cartazFonteQueCabe(ctx, 'INSTALE O APP', '800', W - 360, 300);
   ctx.font = `800 ${tamTitulo}px ${CARTAZ_FONTE}`;
   ctx.fillText('INSTALE O APP', centro, 1060);
-  const linha2 = `DA ${nome}`.toUpperCase();
+  const linha2 = nome.toUpperCase(); // sem "DA/DO": o gênero do nome varia (Goushi, Judô Colégio Integral...)
   const tamNome = cartazFonteQueCabe(ctx, linha2, '800', W - 360, tamTitulo);
   ctx.fillStyle = claro; ctx.font = `800 ${tamNome}px ${CARTAZ_FONTE}`;
   ctx.fillText(linha2, centro, 1060 + tamNome + 20);
